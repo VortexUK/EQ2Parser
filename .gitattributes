@@ -1,0 +1,7 @@
+# Normalise everything to LF in the repo; working tree follows platform.
+* text=auto
+
+# Windows-native file types stay CRLF in the working tree.
+*.sln text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf

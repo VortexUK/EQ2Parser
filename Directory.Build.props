@@ -1,0 +1,14 @@
+<Project>
+  <!-- Repo-wide build settings: every csproj inherits these. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Single version source for the app + Velopack releases. -->
+    <Version>0.0.1</Version>
+    <Authors>VortexUK</Authors>
+    <Product>EQ2Parser</Product>
+    <RepositoryUrl>https://github.com/VortexUK/EQ2Parser</RepositoryUrl>
+  </PropertyGroup>
+</Project>

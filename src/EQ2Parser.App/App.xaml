@@ -1,0 +1,11 @@
+<Application x:Class="EQ2Parser.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml"
+             ThemeMode="System">
+    <!-- ThemeMode enables WPF's built-in Windows 11 Fluent theme (light/dark
+         follows the OS). Experimental-API warning WPF0001 is suppressed in
+         the csproj — the property is the documented .NET 9+ opt-in. -->
+    <Application.Resources>
+    </Application.Resources>
+</Application>

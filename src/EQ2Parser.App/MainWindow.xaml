@@ -1,0 +1,23 @@
+<Window x:Class="EQ2Parser.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="EQ2Parser" Height="520" Width="860"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="EQ2Parser" FontSize="28" FontWeight="SemiBold"/>
+        <TextBlock Grid.Row="1" Margin="0,4,0,0" Opacity="0.7"
+                   Text="Scaffold build — the parse engine lands first. See README.md for the roadmap."/>
+
+        <StackPanel Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" Width="420">
+            <TextBlock Text="Phase 1: log tailing + line grammar + encounter detection"
+                       TextWrapping="Wrap" Opacity="0.6" Margin="0,0,0,8"/>
+            <Button Content="Select EQ2 log file… (coming soon)" IsEnabled="False" Padding="12,6"/>
+        </StackPanel>
+    </Grid>
+</Window>
