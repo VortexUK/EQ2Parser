@@ -27,6 +27,17 @@ sources; the app itself is closed source).
   EQ2Lexicon `backend/server/api/parses/ingest.py` + `core/gzip_request.py`.
 - ACT **trigger XML share-format import** is a compatibility promise; binary
   ACT plugin compatibility is explicitly NOT.
+- **Match the numbers, improve everything around them**: stat definitions that
+  feed visible numbers (EncDPS, durations, ally graph, success level, 6 s idle
+  rule) stay ACT-compatible so site rankings remain comparable. Improvements
+  (multi-log, catch-up, grammar-as-data, etc.) live in
+  docs/act-behavior.md → "Improvements over ACT".
+- **Multi-log architecture**: one parse pipeline per log source (own tail
+  reader / grammar / perspective state), feeding an encounter correlator that
+  merges concurrent encounters across sources (zone + time overlap + shared
+  enemies) with per-combatant authority — a character's own log wins for that
+  character. A single configurable "primary character" scopes trigger
+  audio/TTS/timers. Design every engine type source-aware from the start.
 
 ## Build / test
 

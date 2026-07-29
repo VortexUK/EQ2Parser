@@ -29,6 +29,53 @@ Everything below is the observed ACT behavior our engine must either match
 
 ---
 
+## Improvements over ACT (decided 2026-07-29)
+
+Governing principle: **match the numbers, improve everything around them.**
+Every stat definition that feeds a visible number (EncDPS, durations, ally
+resolution, success level, the 6 s idle rule) stays ACT-compatible —
+"improving" a formula would fork the site's rankings into incomparable eras.
+Improvements live in architecture, robustness, performance and UX:
+
+1. **Multi-log parsing with encounter correlation** (the headline feature ACT
+   cannot do — its companion logs interleave *lines*; we merge
+   *perspectives*). One parse pipeline per log source: own tail reader, own
+   grammar instance, own perspective state (owner name, "YOUR" resolution,
+   zone, in-combat). An **encounter correlator** groups concurrent encounters
+   across sources into one canonical encounter by zone identity + time
+   overlap + shared enemy set, and keeps them separate when zones differ.
+   Per-combatant authority within a merged encounter: a character's own log
+   is authoritative for that character (EQ2 logs only fully record their
+   owner); combatants no source owns go to the source that recorded them most
+   completely. (This is the EQ2Lexicon mirror-grouping design, upgraded from
+   per-fight-primary to per-combatant and run live.) A configurable **primary
+   character** scopes trigger audio/TTS/timers so multiple sources don't
+   double-fire alerts.
+2. **Catch-up on attach** — ACT seeks to end-of-file and loses the current
+   fight when started mid-raid. We rewind a configurable window (or to the
+   last zone change) and replay.
+3. **Grammar as data** — ACT ships four separately compiled language parsers.
+   Our line grammar is pattern data per language (EN first, RU next), one
+   engine for all.
+4. **Trigger matching that scales** — source-generated regexes + a literal
+   prefilter instead of ACT's every-trigger×every-line scan on one
+   below-normal thread.
+5. **Configurable magic numbers** (ACT's values as defaults): idle timeout
+   (6 s — kept as a setting, per user decision), trigger audio rate-limit
+   (1 s), spell-timer dedupe (2 s) and sub-timer window (12 s).
+6. **SQLite history from day one** — every swing queryable across sessions;
+   encounter replay; survives crashes (vs ACT's culled in-memory model +
+   opaque history DB).
+7. **Diagnostics as a feature** — structured event log, upload arrival
+   verification, payload-size visibility (lessons from the 2026-07-28 upload
+   incident).
+8. **Live trigger reload + site trigger-pack subscription** — active triggers
+   re-evaluate on edit (not only on zone change); trigger/spell-timer packs
+   subscribe per-encounter from EQ2Lexicon raids.db.
+9. **Companion logs**: not reimplemented — superseded by (1).
+
+---
+
 ## 1. Log reading
 
 - **Polling, not watchers** — no FileSystemWatcher anywhere. Reader thread
