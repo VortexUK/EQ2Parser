@@ -86,14 +86,24 @@ public class ClassIdentifierTests(ITestOutputHelper output)
                 processor.Process(line);
         engine.EndCombat();
 
-        var identifier = new ClassIdentifier(SpellClassMap.LoadEmbedded());
+        var classifier = new CombatantClassifier(new ClassIdentifier(SpellClassMap.LoadEmbedded()));
         foreach (var encounter in engine.History.Where(e => e.Title.Contains(bossFilter, StringComparison.OrdinalIgnoreCase)))
         {
             output.WriteLine($"[{encounter.Zone}] {encounter.Title} — {encounter.Duration.TotalSeconds:F0}s, success {encounter.GetSuccessLevel()}");
-            foreach (var ally in encounter.GetAllies().OrderByDescending(a => a.Damage))
+            var tags = classifier.Classify(encounter);
+            var byDamage = encounter.Combatants.Values.OrderByDescending(c => c.Damage).ToList();
+
+            foreach (var kind in new[] { CombatantKind.Player, CombatantKind.Pet, CombatantKind.Enemy })
             {
-                var d = identifier.Detect(ally);
-                output.WriteLine($"  {ally.Name,-16} {d.ClassName ?? "?",-13} conf {d.Confidence:P0}  ({d.MappedAbilities}/{d.TotalAbilities} abilities)  dmg {ally.Damage:N0}");
+                var group = byDamage.Where(c => tags[c.Key].Kind == kind).ToList();
+                output.WriteLine($" {kind} ({group.Count}):");
+                foreach (var c in group)
+                {
+                    var tag = tags[c.Key];
+                    var d = tag.Class;
+                    var ownerNote = tag.PetOwner is not null ? $" owner={tag.PetOwner}" : "";
+                    output.WriteLine($"  {c.Name,-28} {d.ClassName ?? "?",-13} conf {d.Confidence:P0}  ({d.MappedAbilities}/{d.TotalAbilities} abilities)  dmg {c.Damage:N0}{ownerNote}");
+                }
             }
         }
     }
