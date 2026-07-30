@@ -11,6 +11,7 @@ public class CombatantClassifierTests
     private static readonly SpellClassMap Fixture = SpellClassMap.FromDictionary(new()
     {
         ["divine strike"] = ["Templar"],
+        ["reverence"] = ["Templar"],
         ["quick strike"] = ["Swashbuckler"],
     });
 
@@ -41,6 +42,7 @@ public class CombatantClassifierTests
         var engine = new ParserEngine("log", "Menlu");
         Assert.True(engine.SetEncounter(T0, "Menlu", "a gnoll"));
         engine.AddSwing(SwingCategory.NonMelee, false, "None", "Menlu", "Divine Strike", 100, T0, "a gnoll", "divine");
+        engine.AddSwing(SwingCategory.Healing, false, "None", "Menlu", "Reverence", 50, T0, "Menlu", "heal");
         engine.AddSwing(SwingCategory.NonMelee, false, "None", "Bosun", "Quick Strike", 90, T0, "a gnoll", "piercing");
         engine.AddSwing(SwingCategory.Melee, false, "None", "Menlu's warder", Grammar.EnglishGrammar.AutoAttackAbility, 40, T0, "a gnoll", "slashing");
         engine.AddSwing(SwingCategory.Melee, false, "None", "Gibab", Grammar.EnglishGrammar.AutoAttackAbility, 30, T0, "a gnoll", "crushing");

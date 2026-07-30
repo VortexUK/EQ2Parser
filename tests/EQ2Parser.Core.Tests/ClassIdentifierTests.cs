@@ -47,6 +47,23 @@ public class ClassIdentifierTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void Single_Vote_Is_Not_A_Verdict()
+    {
+        // One stray mapped ability (e.g. an item-granted Breeze on an
+        // era-named Conjuror kit) must not produce a confident verdict.
+        var engine = new ParserEngine("log", "Menlu");
+        Assert.True(engine.SetEncounter(T0, "Senn", "a gnoll"));
+        engine.AddSwing(SwingCategory.NonMelee, false, "None", "Senn", "Reverence", 50, T0, "Senn", "heal");
+        engine.AddSwing(SwingCategory.NonMelee, false, "None", "Senn", "Storm of Flames", 300, T0, "a gnoll", "heat");
+        engine.EndCombat();
+
+        var detection = new ClassIdentifier(Fixture).Detect(engine.History[^1].Combatants["SENN"]);
+        Assert.Null(detection.ClassName);
+        Assert.Equal(1, detection.MappedAbilities);
+        Assert.Equal(2, detection.TotalAbilities);
+    }
+
+    [Fact]
     public void No_Mapped_Abilities_Means_Unknown()
     {
         var engine = new ParserEngine("log", "Menlu");
@@ -103,6 +120,19 @@ public class ClassIdentifierTests(ITestOutputHelper output)
                     var d = tag.Class;
                     var ownerNote = tag.PetOwner is not null ? $" owner={tag.PetOwner}" : "";
                     output.WriteLine($"  {c.Name,-28} {d.ClassName ?? "?",-13} conf {d.Confidence:P0}  ({d.MappedAbilities}/{d.TotalAbilities} abilities)  dmg {c.Damage:N0}{ownerNote}");
+                }
+            }
+
+            // EQ2PARSER_DUMP_ABILITIES=<name>: list that combatant's distinct
+            // abilities with their map lookup — for diagnosing thin verdicts.
+            var dump = Environment.GetEnvironmentVariable("EQ2PARSER_DUMP_ABILITIES");
+            if (!string.IsNullOrEmpty(dump) && encounter.Combatants.TryGetValue(dump.ToUpperInvariant(), out var target))
+            {
+                output.WriteLine($" Abilities of {target.Name}:");
+                foreach (var ability in ClassIdentifier.CastAbilities(target).OrderBy(a => a, StringComparer.Ordinal))
+                {
+                    var classes = classifier.Identifier.Map.ClassesFor(ability);
+                    output.WriteLine($"  {ability,-40} {(classes.Count == 0 ? "—" : string.Join(", ", classes))}");
                 }
             }
         }

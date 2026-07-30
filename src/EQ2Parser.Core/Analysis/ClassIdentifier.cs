@@ -66,7 +66,15 @@ public sealed class ClassIdentifier(SpellClassMap map)
         if (mapped == 0)
             return new ClassDetection(null, 0, 0, abilities.Count);
 
+        // A single stray vote is not evidence — e.g. an EoF Conjuror whose
+        // only MAPPED ability was an item-granted "Breeze" (Illusionist) got
+        // a confident wrong verdict, because pre-Sentinel's-Fate eras name
+        // each spell tier uniquely and census never carries those names.
+        // Require the winner to be corroborated by a second ability.
         var winner = votes.MaxBy(kv => kv.Value);
+        if (winner.Value < 2)
+            return new ClassDetection(null, 0, mapped, abilities.Count);
+
         return new ClassDetection(
             winner.Key,
             (double)winner.Value / mapped,
