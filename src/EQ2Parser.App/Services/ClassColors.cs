@@ -24,6 +24,13 @@ public static class ClassColors
     public static readonly SolidColorBrush SourceRaid = Frozen("#93D9FF");
     public static readonly SolidColorBrush SourceItem = Frozen("#9D9D9D");
 
+    // Parse-tree text: default, gold headers, and fight outcomes.
+    public static readonly SolidColorBrush TreeText = Frozen("#E2E4F0");
+    public static readonly SolidColorBrush TreeHeader = Frozen("#C8A96E");
+    public static readonly SolidColorBrush OutcomeWin = Frozen("#4ADE80");
+    public static readonly SolidColorBrush OutcomePartial = Frozen("#FBBF24");
+    public static readonly SolidColorBrush OutcomeLoss = Frozen("#F87171");
+
     private static readonly Dictionary<string, SolidColorBrush> ByClass = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Guardian"] = Fighter, ["Berserker"] = Fighter, ["Paladin"] = Fighter,

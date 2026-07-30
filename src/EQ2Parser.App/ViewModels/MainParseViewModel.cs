@@ -16,6 +16,10 @@ public sealed class ParseNode
     /// <summary>Encounter (live), CorrelatedEncounter (history), or
     /// AggregateFights ("All" / "All Bosses" zone rollups).</summary>
     public object? Fight { get; init; }
+    /// <summary>Zone-group identity for collapse toggling (headers only).</summary>
+    public string? GroupKey { get; init; }
+    /// <summary>Win green / Partial amber / Loss red; gold for headers.</summary>
+    public System.Windows.Media.Brush TitleBrush { get; init; } = ClassColors.TreeText;
 }
 
 /// <summary>A zone rollup selection: combined stats over several fights.</summary>
@@ -178,9 +182,27 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [ObservableProperty]
     private bool _sortDescending = true;
 
+    private readonly HashSet<string> _collapsedZones = new(StringComparer.Ordinal);
+
+    [ObservableProperty]
+    private bool _bossesOnly;
+
+    partial void OnBossesOnlyChanged(bool value) => RebuildTree();
+
     partial void OnSelectedNodeChanged(ParseNode? value)
     {
-        if (value?.Fight is null)
+        if (value is null)
+            return;
+        if (value is { IsHeader: true, GroupKey: { } groupKey })
+        {
+            // Header click toggles the zone's collapse state.
+            if (!_collapsedZones.Remove(groupKey))
+                _collapsedZones.Add(groupKey);
+            RebuildTree();
+            SelectedNode = null;
+            return;
+        }
+        if (value.Fight is null)
             return;
         _pinnedFight = value.Fight;
         FollowLive = false;
@@ -244,13 +266,27 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         if ((historyCount, anyActive) == _treeSignature)
             return;
         _treeSignature = (historyCount, anyActive);
+        RebuildTree();
+    }
 
+    private static System.Windows.Media.Brush OutcomeBrush(CorrelatedEncounter fight) =>
+        fight.GetSuccessLevel() switch
+        {
+            SuccessLevel.Win => ClassColors.OutcomeWin,
+            SuccessLevel.Partial => ClassColors.OutcomePartial,
+            SuccessLevel.Loss => ClassColors.OutcomeLoss,
+            _ => ClassColors.TreeText,
+        };
+
+    private void RebuildTree()
+    {
         List<ParseNode> nodes = [];
         lock (manager.Sync)
         {
             // Newest first: group consecutive same-zone fights, ACT-sidebar
             // style ("The Emerald Halls - [25] 18:57:04") with per-zone
-            // "All" / "All Bosses" rollup nodes.
+            // "All" / "All Bosses" rollup nodes. Zone headers collapse on
+            // click; the Bosses-only filter trims trash fights.
             var fights = manager.Correlator.History;
             List<(string Zone, List<CorrelatedEncounter> Items)> groups = [];
             foreach (var fight in fights)
@@ -263,19 +299,31 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             {
                 var (zone, items) = groups[g];
                 var zoneName = string.IsNullOrEmpty(zone) ? "Unknown zone" : zone;
+                var shown = BossesOnly ? items.Where(f => IsBossTitle(f.Title)).ToList() : items;
+                if (shown.Count == 0)
+                    continue;
+                var groupKey = $"{zoneName}|{items[0].StartTime.Ticks}";
+                var collapsed = _collapsedZones.Contains(groupKey);
                 nodes.Add(new ParseNode
                 {
                     IsHeader = true,
-                    Title = $"{zoneName} - [{items.Count}] {items[0].StartTime.ToLocalTime():HH:mm:ss}",
+                    GroupKey = groupKey,
+                    Title = $"{(collapsed ? "▸" : "▾")} {zoneName} - [{shown.Count}] {items[0].StartTime.ToLocalTime():HH:mm:ss}",
+                    TitleBrush = ClassColors.TreeHeader,
                 });
-                if (items.Count > 1)
+                if (collapsed)
+                    continue;
+                if (shown.Count > 1)
                 {
-                    var all = items.ToArray();
-                    nodes.Add(new ParseNode
+                    if (!BossesOnly)
                     {
-                        Title = $"All - [{FmtSpan(SumDuration(all))}]",
-                        Fight = new AggregateFights(zoneName, "All", all),
-                    });
+                        var all = items.ToArray();
+                        nodes.Add(new ParseNode
+                        {
+                            Title = $"All - [{FmtSpan(SumDuration(all))}]",
+                            Fight = new AggregateFights(zoneName, "All", all),
+                        });
+                    }
                     var bosses = items.Where(f => IsBossTitle(f.Title)).ToArray();
                     if (bosses.Length > 0)
                     {
@@ -286,14 +334,15 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                         });
                     }
                 }
-                for (var i = items.Count - 1; i >= 0; i--)
+                for (var i = shown.Count - 1; i >= 0; i--)
                 {
-                    var fight = items[i];
+                    var fight = shown[i];
                     var sources = fight.Sources.Count > 1 ? $" ·{fight.Sources.Count}L" : "";
                     nodes.Add(new ParseNode
                     {
                         Title = $"{fight.Title} - [{FmtSpan(fight.Duration)}] {fight.StartTime.ToLocalTime():HH:mm:ss}{sources}",
                         Fight = fight,
+                        TitleBrush = OutcomeBrush(fight),
                     });
                 }
             }

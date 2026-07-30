@@ -73,6 +73,36 @@
         <Setter Property="Padding" Value="14" />
     </Style>
 
+    <!-- Pill filter toggle (the site's rounded chip look). -->
+    <Style x:Key="PillToggle" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource BodySemiBoldFont}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Root" Background="Transparent" CornerRadius="999"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            Padding="12,4">
+                        <ContentPresenter VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="#1AC8A96E" />
+                            <Setter Property="Foreground" Value="{StaticResource GoldBrightBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="#33C8A96E" />
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource GoldDimBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource GoldBrightBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Top tab (ACT-style tab strip, site TabButton look: gold underline). -->
     <Style x:Key="TopTabStyle" TargetType="ListBoxItem">
         <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
