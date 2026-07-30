@@ -19,6 +19,11 @@ public static class ClassColors
     public static readonly SolidColorBrush Mage = Frozen("#93B4FF");
     public static readonly SolidColorBrush Neutral = Frozen("#8B90AB");
 
+    // Ability source tags (drill-down): own class kit / raid-granted / item proc.
+    public static readonly SolidColorBrush SourceClass = Frozen("#C8A96E");
+    public static readonly SolidColorBrush SourceRaid = Frozen("#93D9FF");
+    public static readonly SolidColorBrush SourceItem = Frozen("#9D9D9D");
+
     private static readonly Dictionary<string, SolidColorBrush> ByClass = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Guardian"] = Fighter, ["Berserker"] = Fighter, ["Paladin"] = Fighter,

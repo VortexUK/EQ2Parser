@@ -21,6 +21,52 @@ public sealed class ParseNode
 /// <summary>A zone rollup selection: combined stats over several fights.</summary>
 public sealed record AggregateFights(string Zone, string Label, IReadOnlyList<CorrelatedEncounter> Fights);
 
+/// <summary>One row of a drill-down table (ability or attacker breakdown).</summary>
+public sealed partial class AbilityRow : ObservableObject
+{
+    public required string Key { get; init; }
+
+    [ObservableProperty]
+    private string _name = "";
+
+    [ObservableProperty]
+    private string _source = "";
+
+    [ObservableProperty]
+    private System.Windows.Media.Brush _sourceBrush = ClassColors.Neutral;
+
+    [ObservableProperty]
+    private string _casts = "";
+
+    [ObservableProperty]
+    private string _hits = "";
+
+    [ObservableProperty]
+    private string _critPct = "";
+
+    [ObservableProperty]
+    private string _avg = "";
+
+    [ObservableProperty]
+    private string _max = "";
+
+    [ObservableProperty]
+    private string _total = "";
+
+    [ObservableProperty]
+    private string _percent = "";
+
+    [ObservableProperty]
+    private double _barFraction;
+}
+
+/// <summary>One titled table of the drill-down.</summary>
+public sealed class AbilitySection(string header)
+{
+    public string Header { get; } = header;
+    public ObservableCollection<AbilityRow> Rows { get; } = [];
+}
+
 /// <summary>
 /// The ACT-style Main page: zone/fight tree on the left, sortable combatant
 /// grid on the right with allies and enemies in separate sections. "Follow
@@ -38,6 +84,40 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     [ObservableProperty]
     private string _petHeader = "Pets (0)";
+
+    // ── Drill-down state ────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    private bool _detailOpen;
+
+    [ObservableProperty]
+    private string _detailTitle = "";
+
+    private string? _detailKey;
+
+    public AbilitySection DamageSection { get; } = new("Damage by ability");
+    public AbilitySection HealingSection { get; } = new("Healing by ability");
+    public AbilitySection TakenSection { get; } = new("Damage taken by attacker");
+    public IReadOnlyList<AbilitySection> DetailSections { get; private set; } = [];
+
+    [RelayCommand]
+    private void OpenDetail(CombatantRow? row)
+    {
+        if (row is null)
+            return;
+        _detailKey = row.Key;
+        DetailSections = [DamageSection, HealingSection, TakenSection];
+        OnPropertyChanged(nameof(DetailSections));
+        DetailOpen = true;
+        RefreshGrid();
+    }
+
+    [RelayCommand]
+    private void CloseDetail()
+    {
+        DetailOpen = false;
+        _detailKey = null;
+    }
 
     [ObservableProperty]
     private string _breadcrumb = "No encounters yet — add a log under Sources.";
@@ -214,12 +294,15 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         List<RowData> enemies = [];
         string breadcrumb;
         var live = false;
+        DetailData? detail = null;
 
         lock (manager.Sync)
         {
             var fight = ResolveFight();
             if (fight is null)
                 return;
+            if (DetailOpen && _detailKey is not null)
+                detail = SnapshotDetail(fight, _detailKey);
 
             switch (fight)
             {
@@ -253,6 +336,157 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         Apply(AllyRows, Sort(allies));
         Apply(PetRows, Sort(pets));
         Apply(EnemyRows, Sort(enemies));
+
+        if (detail is not null)
+        {
+            DetailTitle = detail.Title;
+            ApplyAbilityRows(DamageSection.Rows, detail.Damage);
+            ApplyAbilityRows(HealingSection.Rows, detail.Healing);
+            ApplyAbilityRows(TakenSection.Rows, detail.Taken);
+        }
+    }
+
+    // ── Drill-down snapshot ─────────────────────────────────────────────────
+
+    private sealed record AbilityData(string Name, string Source, int Swings, int Hits, int Crits, long Max, long Total);
+
+    private sealed record DetailData(string Title, List<AbilityData> Damage, List<AbilityData> Healing, List<AbilityData> Taken);
+
+    private sealed class AbilityAcc
+    {
+        public int Swings;
+        public int Hits;
+        public int Crits;
+        public long Max;
+        public long Total;
+    }
+
+    /// <summary>Runs under the manager lock — copies primitive stats out of
+    /// the live buckets for the drilled combatant.</summary>
+    private DetailData? SnapshotDetail(object fight, string key)
+    {
+        List<Combatant> instances = fight switch
+        {
+            Encounter encounter =>
+                encounter.Combatants.TryGetValue(key, out var c) ? [c] : [],
+            CorrelatedEncounter merged =>
+                merged.MergedCombatants.TryGetValue(key, out var mc) ? [mc.Combatant] : [],
+            AggregateFights aggregate =>
+                [.. aggregate.Fights
+                    .Select(f => f.MergedCombatants.TryGetValue(key, out var mc) ? mc.Combatant : null)
+                    .Where(c => c is not null)
+                    .Select(c => c!)],
+            _ => [],
+        };
+        if (instances.Count == 0)
+            return null;
+
+        var detection = manager.Classifier.Identifier.Detect(instances[0]);
+        var damage = new Dictionary<string, AbilityAcc>(StringComparer.Ordinal);
+        var healing = new Dictionary<string, AbilityAcc>(StringComparer.Ordinal);
+        var taken = new Dictionary<string, AbilityAcc>(StringComparer.Ordinal);
+
+        foreach (var combatant in instances)
+        {
+            AccumulateBucket(combatant, BucketConfig.OutgoingDamage, damage);
+            AccumulateBucket(combatant, BucketConfig.HealedOut, healing);
+            if (combatant.IncomingBuckets.TryGetValue(BucketConfig.IncomingDamage, out var incoming))
+            {
+                foreach (var swing in incoming.All.Swings)
+                {
+                    var acc = GetOrAdd(taken, swing.Attacker);
+                    acc.Swings++;
+                    if (swing.Damage.Number >= 0)
+                    {
+                        acc.Hits++;
+                        if (swing.Critical)
+                            acc.Crits++;
+                        acc.Max = Math.Max(acc.Max, swing.Damage.Number);
+                        acc.Total += Math.Max(0, swing.Damage.Number);
+                    }
+                }
+            }
+        }
+
+        List<AbilityData> ToList(Dictionary<string, AbilityAcc> accs, bool classify) =>
+            [.. accs.Select(kv => new AbilityData(
+                kv.Key,
+                classify
+                    ? manager.Classifier.Identifier.ClassifySource(kv.Key, detection.ClassName)
+                        .ToString().ToLowerInvariant()
+                    : "",
+                kv.Value.Swings, kv.Value.Hits, kv.Value.Crits, kv.Value.Max, kv.Value.Total))];
+
+        var cls = detection.ClassName is not null ? $"  ·  {detection.ClassName}" : "";
+        return new DetailData(
+            $"{instances[0].Name}{cls}",
+            ToList(damage, classify: true),
+            ToList(healing, classify: true),
+            ToList(taken, classify: false));
+    }
+
+    private static void AccumulateBucket(Combatant combatant, string bucketName, Dictionary<string, AbilityAcc> into)
+    {
+        if (!combatant.OutgoingBuckets.TryGetValue(bucketName, out var bucket))
+            return;
+        foreach (var (name, stats) in bucket.Abilities)
+        {
+            if (name == Bucket.AllAbility)
+                continue;
+            var acc = GetOrAdd(into, name);
+            acc.Swings += stats.SwingCount;
+            acc.Hits += stats.Hits;
+            acc.Crits += stats.CritHits;
+            acc.Max = Math.Max(acc.Max, stats.MaxHit);
+            acc.Total += stats.Damage;
+        }
+    }
+
+    private static AbilityAcc GetOrAdd(Dictionary<string, AbilityAcc> accs, string key)
+    {
+        if (!accs.TryGetValue(key, out var acc))
+            accs[key] = acc = new AbilityAcc();
+        return acc;
+    }
+
+    private static void ApplyAbilityRows(ObservableCollection<AbilityRow> rows, List<AbilityData> snapshot)
+    {
+        snapshot.Sort((a, b) => b.Total.CompareTo(a.Total));
+        var top = snapshot.Count > 0 ? Math.Max(1, snapshot[0].Total) : 1;
+        var total = Math.Max(1, snapshot.Sum(r => r.Total));
+        for (var i = 0; i < snapshot.Count; i++)
+        {
+            var data = snapshot[i];
+            AbilityRow row;
+            if (i < rows.Count)
+            {
+                row = rows[i];
+            }
+            else
+            {
+                row = new AbilityRow { Key = data.Name };
+                rows.Add(row);
+            }
+            row.Name = data.Name;
+            row.Source = data.Source == "system" ? "" : data.Source;
+            row.SourceBrush = data.Source switch
+            {
+                "class" => ClassColors.SourceClass,
+                "raid" => ClassColors.SourceRaid,
+                "item" => ClassColors.SourceItem,
+                _ => ClassColors.Neutral,
+            };
+            row.Casts = data.Swings.ToString("N0");
+            row.Hits = data.Hits.ToString("N0");
+            row.CritPct = data.Hits > 0 ? $"{100.0 * data.Crits / data.Hits:F0}%" : "";
+            row.Avg = data.Hits > 0 ? CombatantRow.Compact((double)data.Total / data.Hits) : "";
+            row.Max = data.Max > 0 ? CombatantRow.Compact(data.Max) : "";
+            row.Total = CombatantRow.Compact(data.Total);
+            row.Percent = $"{100.0 * data.Total / total:F0}%";
+            row.BarFraction = (double)data.Total / top;
+        }
+        while (rows.Count > snapshot.Count)
+            rows.RemoveAt(rows.Count - 1);
     }
 
     private object? ResolveFight()
@@ -292,7 +526,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 combatant.Duration.TotalSeconds, combatant.Damage,
                 encounter.EncDpsOf(combatant), encounter.EncHpsOf(combatant),
                 combatant.DamageTaken, combatant.Deaths);
-            Bucket(tag, row, allies, pets, enemies);
+            BucketRow(tag, row, allies, pets, enemies);
         }
     }
 
@@ -314,7 +548,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 combatant.Duration.TotalSeconds, combatant.Damage,
                 combatant.Damage / seconds, combatant.Healed / seconds,
                 combatant.DamageTaken, combatant.Deaths);
-            Bucket(tag, row, allies, pets, enemies);
+            BucketRow(tag, row, allies, pets, enemies);
         }
     }
 
@@ -365,11 +599,11 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 entry.Seconds, entry.Damage,
                 entry.Damage / totalSeconds, entry.Healed / totalSeconds,
                 entry.Taken, entry.Deaths);
-            Bucket(entry.Tag, row, allies, pets, enemies);
+            BucketRow(entry.Tag, row, allies, pets, enemies);
         }
     }
 
-    private static void Bucket(CombatantTag tag, RowData row, List<RowData> allies, List<RowData> pets, List<RowData> enemies)
+    private static void BucketRow(CombatantTag tag, RowData row, List<RowData> allies, List<RowData> pets, List<RowData> enemies)
     {
         var target = tag.Kind switch
         {
