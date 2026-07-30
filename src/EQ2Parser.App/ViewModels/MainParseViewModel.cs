@@ -57,6 +57,12 @@ public sealed partial class AbilityRow : ObservableObject
     private string _percent = "";
 
     [ObservableProperty]
+    private string _types = "";
+
+    [ObservableProperty]
+    private string _dps = "";
+
+    [ObservableProperty]
     private double _barFraction;
 
     /// <summary>True for the OUTGOING/INCOMING divider rows in the bucket
@@ -391,7 +397,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     // ── Drill-down snapshot ─────────────────────────────────────────────────
 
-    private sealed record AbilityData(string Name, string Source, int Swings, int Hits, int Crits, long Max, long Total);
+    private sealed record AbilityData(
+        string Name, string Source, string Types, int Swings, int Hits, int Crits, long Max, long Total, double Dps);
 
     private sealed record DetailData(
         string Title, string NameHeader, bool SortTable, bool Bars, bool IsSwingLevel,
@@ -404,7 +411,43 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         public int Crits;
         public long Max;
         public long Total;
+        public readonly SortedSet<string> Types = new(StringComparer.OrdinalIgnoreCase);
+
+        public void AddSwing(Core.Combat.Swing swing)
+        {
+            Swings++;
+            if (swing.Damage.Number >= 0)
+            {
+                Hits++;
+                if (swing.Critical)
+                    Crits++;
+                Max = Math.Max(Max, swing.Damage.Number);
+                Total += Math.Max(0, swing.Damage.Number);
+            }
+            AddType(swing.DamageType);
+        }
+
+        public void AddType(string type)
+        {
+            if (type is not ("" or "avoided" or "death" or "none" or "heal"))
+                Types.Add(type);
+        }
+
+        public AbilityData ToData(string label, string source, double seconds) =>
+            new(label, source, string.Join(", ", Types), Swings, Hits, Crits, Max, Total, Total / seconds);
     }
+
+    /// <summary>Special-based grouping for the Auto-Attack bucket:
+    /// All / Normal / Multi Attack / Double Attack / Flurry / AoE Attack.</summary>
+    private static readonly string[] AutoAttackGroups =
+        ["All", "Normal", "Multi Attack", "Double Attack", "Flurry", "AoE Attack"];
+
+    private static bool SwingInAutoGroup(Core.Combat.Swing swing, string group) => group switch
+    {
+        "All" => true,
+        "Normal" => swing.Special == "None",
+        _ => swing.Special == group,
+    };
 
     /// <summary>ACT's bucket order, outgoing then incoming.</summary>
     private static readonly string[] BucketOrder =
@@ -448,6 +491,14 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         var name = instances[0].Name;
         var detection = manager.Classifier.Identifier.Detect(instances[0]);
         var cls = detection.ClassName is not null ? $" · {detection.ClassName}" : "";
+        var seconds = Math.Max(1, fight switch
+        {
+            Encounter e => e.Duration.TotalSeconds,
+            CorrelatedEncounter m => m.Duration.TotalSeconds,
+            AggregateFights a => SumDuration(a.Fights).TotalSeconds,
+            _ => 0,
+        });
+        var isAutoBucket = _detailBucket == BucketConfig.AutoAttackOut;
 
         // Depth 1 — the combatant's buckets, canonical ACT order, with
         // explicit OUTGOING/INCOMING dividers so the directions can never
@@ -476,13 +527,39 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 {
                     if (pendingDivider is not null)
                     {
-                        table.Add(new AbilityData(pendingDivider, "divider", -1, 0, 0, 0, 0));
+                        table.Add(new AbilityData(pendingDivider, "divider", "", -1, 0, 0, 0, 0, 0));
                         pendingDivider = null;
                     }
-                    table.Add(new AbilityData(bucketName, "", acc.Swings, acc.Hits, acc.Crits, acc.Max, acc.Total));
+                    table.Add(acc.ToData(bucketName, "", seconds));
                 }
             }
             return new DetailData($"{name}{cls}", "BUCKET", SortTable: false, Bars: false, IsSwingLevel: false, table, null);
+        }
+
+        // Depth 2 — inside the Auto-Attack bucket, group by attack kind
+        // (All / Normal / Multi Attack / …) rather than weapon names.
+        if (_detailAbility is null && isAutoBucket)
+        {
+            List<AbilityData> table = [];
+            foreach (var group in AutoAttackGroups)
+            {
+                var acc = new AbilityAcc();
+                foreach (var combatant in instances)
+                {
+                    if (FindBucket(combatant, _detailBucket) is not { } bucket)
+                        continue;
+                    foreach (var swing in bucket.All.Swings)
+                    {
+                        if (swing.Ability == Combatant.KillingAbility)
+                            continue;
+                        if (SwingInAutoGroup(swing, group))
+                            acc.AddSwing(swing);
+                    }
+                }
+                if (acc.Swings > 0)
+                    table.Add(acc.ToData(group, "", seconds));
+            }
+            return new DetailData($"{name}{cls} › {_detailBucket}", "ATTACK", SortTable: false, Bars: true, IsSwingLevel: false, table, null);
         }
 
         // Depth 2 — abilities within the chosen bucket.
@@ -495,28 +572,26 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                     continue;
                 foreach (var (abilityName, stats) in bucket.Abilities)
                 {
-                    if (abilityName == Bucket.AllAbility)
+                    if (abilityName is Bucket.AllAbility or Combatant.KillingAbility)
                         continue;
                     var acc = GetOrAdd(abilities, abilityName);
-                    acc.Swings += stats.SwingCount;
-                    acc.Hits += stats.Hits;
-                    acc.Crits += stats.CritHits;
-                    acc.Max = Math.Max(acc.Max, stats.MaxHit);
-                    acc.Total += stats.Damage;
+                    foreach (var swing in stats.Swings)
+                        acc.AddSwing(swing);
                 }
             }
             var classify = !IsIncomingBucket(_detailBucket);
-            List<AbilityData> table = [.. abilities.Select(kv => new AbilityData(
+            List<AbilityData> table = [.. abilities.Select(kv => kv.Value.ToData(
                 kv.Key,
                 classify
                     ? manager.Classifier.Identifier.ClassifySource(kv.Key, detection.ClassName)
                         .ToString().ToLowerInvariant()
                     : "",
-                kv.Value.Swings, kv.Value.Hits, kv.Value.Crits, kv.Value.Max, kv.Value.Total))];
+                seconds))];
             return new DetailData($"{name}{cls} › {_detailBucket}", "ABILITY", SortTable: true, Bars: true, IsSwingLevel: false, table, null);
         }
 
-        // Depth 3 — the individual swings of one ability.
+        // Depth 3 — the individual swings of one ability (or one attack kind
+        // inside the Auto-Attack bucket).
         var title = $"{name}{cls} › {_detailBucket} › {_detailAbility}";
         var incoming = IsIncomingBucket(_detailBucket);
         List<Core.Combat.Swing> collected = [];
@@ -524,8 +599,18 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         {
             if (FindBucket(combatant, _detailBucket) is not { } bucket)
                 continue;
-            if (bucket.Abilities.TryGetValue(_detailAbility, out var stats))
+            if (isAutoBucket)
+            {
+                foreach (var swing in bucket.All.Swings)
+                {
+                    if (swing.Ability != Combatant.KillingAbility && SwingInAutoGroup(swing, _detailAbility))
+                        collected.Add(swing);
+                }
+            }
+            else if (bucket.Abilities.TryGetValue(_detailAbility, out var stats))
+            {
                 collected.AddRange(stats.Swings);
+            }
         }
         var signature = (key, _detailBucket, _detailAbility, collected.Count);
         if (signature == _swingSignature && SwingRows.Count > 0)
@@ -588,10 +673,14 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 row.Max = "";
                 row.Total = "";
                 row.Percent = "";
+                row.Types = "";
+                row.Dps = "";
                 row.BarFraction = 0;
                 continue;
             }
             row.IsGroupLabel = false;
+            row.Types = data.Types;
+            row.Dps = data.Total > 0 ? CombatantRow.Compact(data.Dps) : "";
             row.Source = data.Source == "system" ? "" : data.Source;
             row.SourceBrush = data.Source switch
             {
