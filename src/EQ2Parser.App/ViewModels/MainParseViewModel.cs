@@ -58,6 +58,11 @@ public sealed partial class AbilityRow : ObservableObject
 
     [ObservableProperty]
     private double _barFraction;
+
+    /// <summary>True for the OUTGOING/INCOMING divider rows in the bucket
+    /// list — styled as labels, not drillable.</summary>
+    [ObservableProperty]
+    private bool _isGroupLabel;
 }
 
 /// <summary>One swing of the deepest drill level.</summary>
@@ -119,7 +124,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [RelayCommand]
     private void DrillInto(AbilityRow? row)
     {
-        if (row is null)
+        if (row is null || row.IsGroupLabel)
             return;
         if (_detailBucket is null)
             _detailBucket = row.Name;
@@ -441,12 +446,17 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         var detection = manager.Classifier.Identifier.Detect(instances[0]);
         var cls = detection.ClassName is not null ? $" · {detection.ClassName}" : "";
 
-        // Depth 1 — the combatant's buckets, canonical ACT order.
+        // Depth 1 — the combatant's buckets, canonical ACT order, with
+        // explicit OUTGOING/INCOMING dividers so the directions can never
+        // read as one mixed table.
         if (_detailBucket is null)
         {
             List<AbilityData> table = [];
+            string? pendingDivider = "OUTGOING";
             foreach (var bucketName in BucketOrder)
             {
+                if (bucketName == BucketConfig.IncomingDamage)
+                    pendingDivider = "INCOMING";
                 var acc = new AbilityAcc();
                 foreach (var combatant in instances)
                 {
@@ -460,7 +470,14 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                     acc.Total += all.Damage;
                 }
                 if (acc.Swings > 0)
+                {
+                    if (pendingDivider is not null)
+                    {
+                        table.Add(new AbilityData(pendingDivider, "divider", -1, 0, 0, 0, 0));
+                        pendingDivider = null;
+                    }
                     table.Add(new AbilityData(bucketName, "", acc.Swings, acc.Hits, acc.Crits, acc.Max, acc.Total));
+                }
             }
             return new DetailData($"{name}{cls}", "BUCKET", SortTable: false, table, null);
         }
@@ -538,8 +555,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     {
         if (sort)
             snapshot.Sort((a, b) => b.Total.CompareTo(a.Total));
-        var top = snapshot.Count > 0 ? Math.Max(1, snapshot.Max(r => r.Total)) : 1;
-        var total = Math.Max(1, snapshot.Sum(r => r.Total));
+        var real = snapshot.Where(r => r.Swings >= 0).ToList();
+        var top = real.Count > 0 ? Math.Max(1, real.Max(r => r.Total)) : 1;
+        var total = Math.Max(1, real.Sum(r => r.Total));
         for (var i = 0; i < snapshot.Count; i++)
         {
             var data = snapshot[i];
@@ -554,6 +572,22 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 rows.Add(row);
             }
             row.Name = data.Name;
+            if (data.Swings < 0)
+            {
+                // OUTGOING/INCOMING divider.
+                row.IsGroupLabel = true;
+                row.Source = "";
+                row.Casts = "";
+                row.Hits = "";
+                row.CritPct = "";
+                row.Avg = "";
+                row.Max = "";
+                row.Total = "";
+                row.Percent = "";
+                row.BarFraction = 0;
+                continue;
+            }
+            row.IsGroupLabel = false;
             row.Source = data.Source == "system" ? "" : data.Source;
             row.SourceBrush = data.Source switch
             {

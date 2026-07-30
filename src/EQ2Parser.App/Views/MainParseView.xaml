@@ -304,7 +304,7 @@
                             <ItemsControl ItemsSource="{Binding DrillRows}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:AbilityRow}">
-                                        <Grid Margin="0,1" Cursor="Hand" Background="Transparent">
+                                        <Grid x:Name="RowRoot" Margin="0,1" Cursor="Hand" Background="Transparent">
                                             <Grid.InputBindings>
                                                 <MouseBinding MouseAction="LeftClick"
                                                               Command="{Binding DataContext.DrillIntoCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -333,7 +333,7 @@
                                                     <ColumnDefinition Width="84" />
                                                     <ColumnDefinition Width="44" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextBrush}"
+                                                <TextBlock x:Name="RowName" Text="{Binding Name}" Foreground="{StaticResource TextBrush}"
                                                            FontFamily="{StaticResource BodyFont}" FontSize="13"
                                                            TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Grid.Column="1" Text="{Binding Source}" Foreground="{Binding SourceBrush}"
@@ -354,6 +354,17 @@
                                                            FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right" />
                                             </Grid>
                                         </Grid>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsGroupLabel}" Value="True">
+                                                <Setter TargetName="RowRoot" Property="Cursor" Value="Arrow" />
+                                                <Setter TargetName="RowRoot" Property="Margin" Value="0,8,0,1" />
+                                                <Setter TargetName="AbilityBarHost" Property="Background" Value="Transparent" />
+                                                <Setter TargetName="AbilityBarHost" Property="MinHeight" Value="18" />
+                                                <Setter TargetName="RowName" Property="Foreground" Value="{StaticResource GoldBrush}" />
+                                                <Setter TargetName="RowName" Property="FontFamily" Value="{StaticResource HeadingFont}" />
+                                                <Setter TargetName="RowName" Property="FontSize" Value="11" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
