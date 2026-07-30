@@ -11,8 +11,9 @@ namespace EQ2Parser.Core.Grammar;
 /// Perspective: "YOU"/"YOUR" resolve to the log owner's name at the driver
 /// level, not here — the grammar returns the literal "YOU" marker.
 ///
-/// Melee vs non-melee follows the damage school: crushing/piercing/slashing
-/// are melee (auto-attack family); everything else is a skill/spell.
+/// Melee (auto-attack) vs non-melee (skill) follows the ABILITY, never the
+/// damage school — infusions can make autoattacks deal any school, and
+/// combat arts routinely deal crushing/piercing/slashing.
 /// </summary>
 public static partial class EnglishGrammar
 {
@@ -21,11 +22,6 @@ public static partial class EnglishGrammar
     public const string You = "YOU";
 
     public const string AutoAttackAbility = "Auto-Attack";
-
-    private static readonly HashSet<string> MeleeSchools = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "crushing", "piercing", "slashing",
-    };
 
     // ── Damage ──────────────────────────────────────────────────────────────
     // YOUR Divine Strike hits a bog slug for a critical of 15,032 divine damage.
@@ -239,14 +235,15 @@ public static partial class EnglishGrammar
     private static SwingEvent Damage(Match m, string attacker, string ability)
     {
         var school = m.Groups["school"].Value;
-        // Auto-attack vs skill follows the ABILITY, not the school: named
-        // abilities are skills even when they deal crushing/piercing/slashing
-        // (an Assassin's whole kit is melee-school), while plain attacks and
-        // the multi/double/flurry/AoE autoattack verbs are melee. Matches
-        // ACT's Auto-Attack (Out) / Skill/Ability (Out) split.
+        // Auto-attack vs skill follows the ABILITY alone, never the school:
+        // named abilities are skills even when they deal
+        // crushing/piercing/slashing (an Assassin's whole kit), and plain
+        // attacks plus the multi/double/flurry/AoE autoattack verbs are
+        // melee even when infused to another school entirely (Asame's
+        // autoattack deals disease). Matches ACT's Auto-Attack (Out) /
+        // Skill/Ability (Out) split.
         var special = SpecialFromVerb(m.Groups["verb"].Value);
-        var isAutoAttack = ability == AutoAttackAbility || special != "None";
-        var category = isAutoAttack && MeleeSchools.Contains(school)
+        var category = ability == AutoAttackAbility || special != "None"
             ? SwingCategory.Melee
             : SwingCategory.NonMelee;
         return new SwingEvent(
