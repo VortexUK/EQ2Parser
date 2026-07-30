@@ -10,14 +10,20 @@ public class ClassIdentifierTests(ITestOutputHelper output)
 {
     private static readonly DateTimeOffset T0 = DateTimeOffset.FromUnixTimeSeconds(1_775_000_000);
 
-    private static readonly SpellClassMap Fixture = SpellClassMap.FromDictionary(new()
-    {
-        ["divine strike"] = ["Templar"],
-        ["reverence"] = ["Templar"],
-        ["holy strike"] = ["Paladin"],
-        ["perfection of the maestro"] = ["Troubador"],
-        ["bloodletter"] = ["Defiler", "Mystic"],
-    });
+    private static readonly SpellClassMap Fixture = SpellClassMap.FromDictionary(
+        new()
+        {
+            ["divine strike"] = ["Templar"],
+            ["reverence"] = ["Templar"],
+            ["holy strike"] = ["Paladin"],
+            ["perfection of the maestro"] = ["Troubador"],
+            ["bloodletter"] = ["Defiler", "Mystic"],
+        },
+        effects: new()
+        {
+            ["precise note"] = ["Troubador"],
+            ["divine prayer"] = ["Templar"],
+        });
 
     [Fact]
     public void Majority_Vote_Detects_The_Class()
@@ -28,20 +34,25 @@ public class ClassIdentifierTests(ITestOutputHelper output)
         engine.AddSwing(SwingCategory.Healing, false, "None", "Menlu", "Reverence", 50, T0, "Menlu", "heal");
         engine.AddSwing(SwingCategory.NonMelee, false, "None", "Menlu", "Perfection of the Maestro", 200, T0, "a gnoll", "magic"); // granted
         engine.AddSwing(SwingCategory.NonMelee, false, "None", "Menlu", "Wildfire", 300, T0, "a gnoll", "heat"); // proc, unmapped
+        engine.AddSwing(SwingCategory.NonMelee, false, "None", "Menlu", "Precise Note", 150, T0, "a gnoll", "mental"); // granted effect proc
         engine.EndCombat();
 
         var identifier = new ClassIdentifier(Fixture);
         var combatant = engine.History[^1].Combatants["MENLU"];
         var detection = identifier.Detect(combatant);
 
+        // Precise Note is effects-layer: it must NOT vote (it identifies the
+        // granting Troubador, not the caster) and not count as mapped.
         Assert.Equal("Templar", detection.ClassName);
         Assert.Equal(2.0 / 3, detection.Confidence, precision: 5); // 2 Templar of 3 mapped
         Assert.Equal(3, detection.MappedAbilities);
-        Assert.Equal(4, detection.TotalAbilities);
+        Assert.Equal(5, detection.TotalAbilities);
 
-        // Source tagging.
+        // Source tagging (uses both layers).
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Divine Strike III", "Templar"));
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Divine Prayer", "Templar"));
         Assert.Equal(AbilitySource.Raid, identifier.ClassifySource("Perfection of the Maestro", "Templar"));
+        Assert.Equal(AbilitySource.Raid, identifier.ClassifySource("Precise Note", "Templar"));
         Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Wildfire", "Templar"));
         Assert.Equal(AbilitySource.System, identifier.ClassifySource(Grammar.EnglishGrammar.AutoAttackAbility, "Templar"));
     }
@@ -81,7 +92,10 @@ public class ClassIdentifierTests(ITestOutputHelper output)
     {
         var map = SpellClassMap.LoadEmbedded();
         Assert.True(map.Count > 3000);
-        Assert.Equal(["Templar"], map.ClassesFor("Divine Strike VI"));
+        Assert.Contains("Templar", map.ClassesFor("Divine Strike VI"));
+        // Effect-cast mining: "Holy Intercession V" logs as its triggered
+        // effect "Divine Prayer" — the map must know the effect name.
+        Assert.Contains("Templar", map.ClassesFor("Divine Prayer"));
         Assert.Empty(map.ClassesFor("Absolute Vitae"));
     }
 

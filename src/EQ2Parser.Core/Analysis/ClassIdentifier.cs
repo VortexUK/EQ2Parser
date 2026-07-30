@@ -56,7 +56,9 @@ public sealed class ClassIdentifier(SpellClassMap map)
         var mapped = 0;
         foreach (var ability in abilities)
         {
-            var classes = Map.ClassesFor(ability);
+            // Voting layer only — triggered-effect names (Precise Note,
+            // Divine Prayer) identify the GRANTING class, not the caster.
+            var classes = Map.VotingClassesFor(ability);
             if (classes.Count == 0)
                 continue;
             mapped++;

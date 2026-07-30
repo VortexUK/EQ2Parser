@@ -1,4 +1,5 @@
 {
+"spells": {
 "&quot;protect me!&quot;": [
 "Channeler"
 ],
@@ -18253,4 +18254,1178 @@
 "zumaik's wincing posture": [
 "Illusionist"
 ]
+},
+"effects": {
+"abhorrence": [
+"Warlock"
+],
+"acceleration counter": [
+"Berserker",
+"Guardian"
+],
+"acid blades": [
+"Assassin"
+],
+"aftermath": [
+"Bruiser",
+"Illusionist"
+],
+"agonizing pain": [
+"Assassin"
+],
+"armorbreak": [
+"Shadowknight"
+],
+"atoning faith": [
+"Inquisitor"
+],
+"aura of pain": [
+"Warlock"
+],
+"baffle": [
+"Brigand"
+],
+"battle frenzy": [
+"Berserker"
+],
+"beg": [
+"Brigand"
+],
+"benefaction": [
+"Templar"
+],
+"berserk": [
+"Berserker",
+"Necromancer"
+],
+"blade chime": [
+"Dirge"
+],
+"blamed": [
+"Ranger",
+"Swashbuckler"
+],
+"blaze": [
+"Conjuror"
+],
+"blood infusion": [
+"Assassin",
+"Beastlord",
+"Berserker",
+"Brigand",
+"Bruiser",
+"Channeler",
+"Coercer",
+"Conjuror",
+"Defiler",
+"Dirge",
+"Fury",
+"Illusionist",
+"Inquisitor",
+"Monk",
+"Mystic",
+"Necromancer",
+"Paladin",
+"Ranger",
+"Shadowknight",
+"Swashbuckler",
+"Templar",
+"Troubador",
+"Warden",
+"Warlock",
+"Wizard"
+],
+"bloodletter": [
+"Shadowknight"
+],
+"blooming flames": [
+"Conjuror"
+],
+"brittle armor": [
+"Assassin",
+"Beastlord",
+"Berserker",
+"Brigand",
+"Bruiser",
+"Channeler",
+"Coercer",
+"Conjuror",
+"Defiler",
+"Dirge",
+"Fury",
+"Guardian",
+"Illusionist",
+"Inquisitor",
+"Monk",
+"Mystic",
+"Necromancer",
+"Paladin",
+"Ranger",
+"Shadowknight",
+"Swashbuckler",
+"Templar",
+"Troubador",
+"Warden",
+"Warlock",
+"Wizard"
+],
+"brutal counter": [
+"Bruiser"
+],
+"bulwark of life": [
+"Templar"
+],
+"burning intensity": [
+"Ranger"
+],
+"calming assault": [
+"Illusionist"
+],
+"caress feedback": [
+"Shadowknight"
+],
+"chained claws": [
+"Assassin",
+"Beastlord",
+"Dirge",
+"Ranger",
+"Swashbuckler",
+"Troubador"
+],
+"champion's sight": [
+"Guardian"
+],
+"channeler's protection": [
+"Channeler"
+],
+"chilling invigoration": [
+"Inquisitor"
+],
+"chilling vengeance": [
+"Inquisitor"
+],
+"cleanse": [
+"Inquisitor",
+"Templar"
+],
+"collect bounty": [
+"Assassin",
+"Ranger"
+],
+"combat glory": [
+"Templar"
+],
+"combat stealth": [
+"Assassin"
+],
+"combination": [
+"Monk"
+],
+"concurrence": [
+"Wizard"
+],
+"construct's sacrifice": [
+"Channeler"
+],
+"consume": [
+"Necromancer"
+],
+"convert ally": [
+"Inquisitor"
+],
+"convulsions": [
+"Illusionist"
+],
+"counterattack": [
+"Berserker",
+"Swashbuckler"
+],
+"crane twirl": [
+"Bruiser",
+"Monk"
+],
+"curse of darkness": [
+"Warlock"
+],
+"dance of metal": [
+"Brigand",
+"Swashbuckler"
+],
+"daring attack": [
+"Swashbuckler"
+],
+"dauntless drive": [
+"Channeler",
+"Fury",
+"Inquisitor",
+"Templar",
+"Warden"
+],
+"deadly reaction": [
+"Bruiser"
+],
+"death's door": [
+"Berserker",
+"Guardian"
+],
+"defiling hex ward": [
+"Defiler"
+],
+"den mother's intervention": [
+"Beastlord"
+],
+"despotic mind": [
+"Illusionist"
+],
+"direct assault": [
+"Assassin"
+],
+"disorientation": [
+"Illusionist"
+],
+"dissonant note": [
+"Troubador"
+],
+"divine favor": [
+"Paladin"
+],
+"divine guidance": [
+"Inquisitor",
+"Templar"
+],
+"divine prayer": [
+"Inquisitor",
+"Templar"
+],
+"divine radiance": [
+"Paladin",
+"Shadowknight"
+],
+"divine rage": [
+"Templar"
+],
+"divine retribution": [
+"Channeler",
+"Fury",
+"Inquisitor",
+"Mystic",
+"Templar",
+"Warden"
+],
+"divine strike": [
+"Paladin"
+],
+"dragon stance": [
+"Monk"
+],
+"draw from the void": [
+"Warlock"
+],
+"dynamism": [
+"Coercer"
+],
+"eerie avenger": [
+"Defiler"
+],
+"eidolic savior": [
+"Mystic"
+],
+"elemental destruction": [
+"Beastlord",
+"Berserker",
+"Brigand",
+"Bruiser",
+"Channeler",
+"Conjuror",
+"Defiler",
+"Dirge",
+"Fury",
+"Guardian",
+"Illusionist",
+"Inquisitor",
+"Monk",
+"Mystic",
+"Necromancer",
+"Paladin",
+"Ranger",
+"Shadowknight",
+"Swashbuckler",
+"Templar",
+"Troubador",
+"Warden",
+"Warlock",
+"Wizard"
+],
+"elemental vestment": [
+"Conjuror"
+],
+"encore": [
+"Dirge"
+],
+"energetic reverberation": [
+"Troubador"
+],
+"engulf": [
+"Bruiser"
+],
+"enraging assault": [
+"Illusionist"
+],
+"equilibrium": [
+"Inquisitor",
+"Templar"
+],
+"evade blame": [
+"Swashbuckler"
+],
+"fae fires": [
+"Fury"
+],
+"faithful smite": [
+"Templar"
+],
+"fanatic's devotion": [
+"Inquisitor"
+],
+"fanatical devotion": [
+"Inquisitor"
+],
+"fatal combination": [
+"Ranger"
+],
+"fate of healing": [
+"Templar"
+],
+"feedback": [
+"Assassin",
+"Beastlord",
+"Berserker",
+"Brigand",
+"Bruiser",
+"Coercer",
+"Conjuror",
+"Defiler",
+"Dirge",
+"Fury",
+"Guardian",
+"Illusionist",
+"Inquisitor",
+"Monk",
+"Mystic",
+"Necromancer",
+"Paladin",
+"Ranger",
+"Shadowknight",
+"Swashbuckler",
+"Templar",
+"Troubador",
+"Warden",
+"Warlock",
+"Wizard"
+],
+"feral rampage": [
+"Beastlord"
+],
+"feral tenacity": [
+"Fury"
+],
+"ferocity of resistance": [
+"Inquisitor"
+],
+"ferocity of spirits": [
+"Mystic"
+],
+"fierce combat": [
+"Dirge",
+"Paladin",
+"Shadowknight"
+],
+"fiery blast": [
+"Wizard"
+],
+"flame surge": [
+"Wizard"
+],
+"flameshield": [
+"Conjuror"
+],
+"flamestrike": [
+"Conjuror"
+],
+"flametongue": [
+"Wizard"
+],
+"flaming weapons": [
+"Ranger"
+],
+"force of the elements": [
+"Conjuror"
+],
+"foretold prophecy": [
+"Illusionist"
+],
+"frost spikes": [
+"Wizard"
+],
+"frost ward": [
+"Wizard"
+],
+"frozen solid": [
+"Wizard"
+],
+"furious assault": [
+"Berserker"
+],
+"fury of the storm": [
+"Fury",
+"Warden"
+],
+"glacial assault": [
+"Warden"
+],
+"gladiator's strike": [
+"Bruiser",
+"Guardian"
+],
+"glorious strike": [
+"Paladin"
+],
+"grand finale": [
+"Dirge"
+],
+"grim strike": [
+"Shadowknight"
+],
+"grisly feedback": [
+"Necromancer"
+],
+"grit": [
+"Guardian"
+],
+"hand of death": [
+"Assassin",
+"Berserker",
+"Ranger"
+],
+"heretical strike": [
+"Inquisitor"
+],
+"holding the line": [
+"Guardian"
+],
+"holy ground": [
+"Paladin"
+],
+"ice lash": [
+"Wizard"
+],
+"illusionary mindstorm": [
+"Coercer"
+],
+"impenetrable force": [
+"Berserker"
+],
+"incineration": [
+"Wizard"
+],
+"infuriating thorns": [
+"Warden"
+],
+"infusive wrath": [
+"Fury"
+],
+"insight": [
+"Berserker",
+"Guardian"
+],
+"insurmountable will": [
+"Guardian"
+],
+"interrupt": [
+"Brigand",
+"Swashbuckler"
+],
+"invigorated": [
+"Guardian"
+],
+"jolting strike": [
+"Monk"
+],
+"lash": [
+"Illusionist"
+],
+"last stand": [
+"Guardian"
+],
+"leg bleed": [
+"Defiler",
+"Mystic"
+],
+"lich's siphoning": [
+"Necromancer"
+],
+"linked agony": [
+"Illusionist"
+],
+"lunge reversal": [
+"Brigand",
+"Swashbuckler"
+],
+"madness": [
+"Berserker"
+],
+"makeshift arrow": [
+"Ranger"
+],
+"malevolent hatred": [
+"Shadowknight"
+],
+"mana boon": [
+"Warlock"
+],
+"mana breeze": [
+"Coercer",
+"Illusionist"
+],
+"mantis aggression": [
+"Bruiser",
+"Monk"
+],
+"mantis bolt": [
+"Bruiser",
+"Monk"
+],
+"marr's strength": [
+"Monk"
+],
+"mystic illusion": [
+"Coercer"
+],
+"mystical hex ward": [
+"Mystic"
+],
+"natural infusion": [
+"Warden"
+],
+"nature's retribution": [
+"Channeler",
+"Fury",
+"Inquisitor",
+"Mystic",
+"Templar",
+"Warden"
+],
+"nature's soothing": [
+"Fury"
+],
+"nature's touch": [
+"Warden"
+],
+"necrotic caress": [
+"Assassin",
+"Beastlord",
+"Berserker",
+"Brigand",
+"Bruiser",
+"Channeler",
+"Coercer",
+"Conjuror",
+"Defiler",
+"Dirge",
+"Fury",
+"Illusionist",
+"Inquisitor",
+"Monk",
+"Mystic",
+"Necromancer",
+"Paladin",
+"Ranger",
+"Shadowknight",
+"Swashbuckler",
+"Templar",
+"Troubador",
+"Warden",
+"Warlock",
+"Wizard"
+],
+"nether void": [
+"Warlock"
+],
+"neurotoxin": [
+"Ranger"
+],
+"noxious influx": [
+"Warlock"
+],
+"noxious retribution": [
+"Channeler",
+"Fury",
+"Inquisitor",
+"Mystic",
+"Templar",
+"Warden"
+],
+"noxious venom": [
+"Ranger"
+],
+"nullmail armor": [
+"Warlock"
+],
+"nurturing devotion": [
+"Beastlord"
+],
+"obsidian shards": [
+"Assassin",
+"Beastlord",
+"Berserker",
+"Brigand",
+"Bruiser",
+"Channeler",
+"Conjuror",
+"Defiler",
+"Dirge",
+"Fury",
+"Illusionist",
+"Inquisitor",
+"Monk",
+"Mystic",
+"Necromancer",
+"Paladin",
+"Ranger",
+"Shadowknight",
+"Swashbuckler",
+"Templar",
+"Troubador",
+"Warlock",
+"Wizard"
+],
+"on the march": [
+"Shadowknight"
+],
+"organized crime": [
+"Brigand"
+],
+"overpowering barrage": [
+"Berserker",
+"Bruiser",
+"Guardian",
+"Monk",
+"Paladin",
+"Shadowknight"
+],
+"peace of mind": [
+"Coercer",
+"Illusionist"
+],
+"perpetual motion": [
+"Coercer",
+"Illusionist"
+],
+"persevere": [
+"Berserker"
+],
+"persistence": [
+"Assassin",
+"Beastlord",
+"Brigand",
+"Dirge",
+"Swashbuckler",
+"Troubador"
+],
+"pestilence mark": [
+"Shadowknight"
+],
+"phoenix rising": [
+"Assassin",
+"Beastlord",
+"Berserker",
+"Brigand",
+"Bruiser",
+"Channeler",
+"Coercer",
+"Conjuror",
+"Defiler",
+"Dirge",
+"Fury",
+"Guardian",
+"Illusionist",
+"Inquisitor",
+"Monk",
+"Mystic",
+"Necromancer",
+"Paladin",
+"Ranger",
+"Shadowknight",
+"Swashbuckler",
+"Templar",
+"Troubador",
+"Warden",
+"Warlock",
+"Wizard"
+],
+"pirate stab": [
+"Brigand",
+"Swashbuckler"
+],
+"pirate's perception": [
+"Swashbuckler"
+],
+"planned poisoning": [
+"Brigand"
+],
+"poison": [
+"Dirge",
+"Troubador"
+],
+"poison splash": [
+"Channeler",
+"Fury",
+"Inquisitor",
+"Mystic",
+"Templar",
+"Warden"
+],
+"porcupine quills": [
+"Fury"
+],
+"power surge": [
+"Coercer",
+"Illusionist"
+],
+"power through": [
+"Assassin",
+"Beastlord",
+"Brigand",
+"Dirge",
+"Swashbuckler",
+"Troubador"
+],
+"precise note": [
+"Troubador"
+],
+"primal assault": [
+"Beastlord"
+],
+"primal instincts": [
+"Warden"
+],
+"prismatic shock": [
+"Coercer"
+],
+"protect servant": [
+"Conjuror"
+],
+"provoking counterattack": [
+"Berserker"
+],
+"pulse of oblivion": [
+"Dirge",
+"Troubador"
+],
+"rage": [
+"Defiler",
+"Mystic"
+],
+"ralissk's insight": [
+"Beastlord"
+],
+"ralissk's perception": [
+"Beastlord"
+],
+"rampaging blow": [
+"Berserker"
+],
+"reanimation": [
+"Conjuror",
+"Defiler"
+],
+"reap": [
+"Shadowknight"
+],
+"reaver's mania": [
+"Shadowknight"
+],
+"rebuke death": [
+"Guardian"
+],
+"redemption": [
+"Inquisitor"
+],
+"reinforcement": [
+"Guardian"
+],
+"repeated salvo": [
+"Ranger"
+],
+"repenting strike": [
+"Inquisitor"
+],
+"resonation": [
+"Dirge"
+],
+"revocation of life": [
+"Assassin",
+"Beastlord",
+"Berserker",
+"Brigand",
+"Bruiser",
+"Channeler",
+"Coercer",
+"Conjuror",
+"Defiler",
+"Dirge",
+"Fury",
+"Illusionist",
+"Inquisitor",
+"Monk",
+"Mystic",
+"Necromancer",
+"Paladin",
+"Ranger",
+"Shadowknight",
+"Swashbuckler",
+"Templar",
+"Troubador",
+"Warden",
+"Warlock",
+"Wizard"
+],
+"sacred vengeance": [
+"Warden"
+],
+"safehouse immunity": [
+"Brigand"
+],
+"saga": [
+"Berserker"
+],
+"salvation": [
+"Templar"
+],
+"savage feast": [
+"Fury"
+],
+"savage minds": [
+"Illusionist"
+],
+"savage ruin": [
+"Beastlord"
+],
+"savage spirit": [
+"Beastlord"
+],
+"saving grace": [
+"Berserker",
+"Guardian",
+"Inquisitor"
+],
+"scale barrier": [
+"Conjuror",
+"Illusionist",
+"Warlock",
+"Wizard"
+],
+"seed of fire": [
+"Conjuror"
+],
+"sentry watch guard": [
+"Guardian"
+],
+"seraph's intervention": [
+"Templar"
+],
+"serenade": [
+"Troubador"
+],
+"shadowknight's furor": [
+"Shadowknight"
+],
+"sharpened claws": [
+"Beastlord"
+],
+"shifty dodge": [
+"Bruiser"
+],
+"shock of conviction": [
+"Paladin",
+"Shadowknight"
+],
+"shock of faith": [
+"Paladin"
+],
+"shock of light": [
+"Templar"
+],
+"shock of mana": [
+"Coercer"
+],
+"shock of sound": [
+"Troubador"
+],
+"shockwave": [
+"Conjuror",
+"Necromancer"
+],
+"shout": [
+"Conjuror",
+"Necromancer"
+],
+"shove": [
+"Bruiser"
+],
+"siphoned fervor": [
+"Assassin",
+"Beastlord",
+"Berserker",
+"Brigand",
+"Bruiser",
+"Channeler",
+"Coercer",
+"Conjuror",
+"Defiler",
+"Dirge",
+"Fury",
+"Guardian",
+"Illusionist",
+"Inquisitor",
+"Monk",
+"Mystic",
+"Necromancer",
+"Paladin",
+"Ranger",
+"Shadowknight",
+"Swashbuckler",
+"Templar",
+"Troubador",
+"Warden",
+"Warlock",
+"Wizard"
+],
+"sloth's habitat": [
+"Mystic"
+],
+"soothing fire": [
+"Conjuror"
+],
+"soothing mind": [
+"Coercer"
+],
+"spirit claw": [
+"Defiler"
+],
+"spirit of druidism": [
+"Fury",
+"Warden"
+],
+"spirit of restoration": [
+"Beastlord"
+],
+"spiritual arrow": [
+"Channeler"
+],
+"spiritual sacrifice": [
+"Defiler"
+],
+"spirituality": [
+"Beastlord",
+"Mystic"
+],
+"stampede": [
+"Mystic"
+],
+"static discharge": [
+"Wizard"
+],
+"strike of faith": [
+"Inquisitor"
+],
+"supplicant's prayer": [
+"Templar"
+],
+"surprise attack": [
+"Brigand"
+],
+"swindle fate": [
+"Mystic",
+"Troubador"
+],
+"swipe": [
+"Assassin"
+],
+"tainted mutation": [
+"Assassin",
+"Beastlord",
+"Berserker",
+"Brigand",
+"Bruiser",
+"Channeler",
+"Coercer",
+"Conjuror",
+"Defiler",
+"Dirge",
+"Fury",
+"Illusionist",
+"Inquisitor",
+"Monk",
+"Mystic",
+"Necromancer",
+"Paladin",
+"Ranger",
+"Shadowknight",
+"Swashbuckler",
+"Templar",
+"Troubador",
+"Warden",
+"Warlock",
+"Wizard"
+],
+"tear": [
+"Fury"
+],
+"tenacity": [
+"Bruiser",
+"Monk"
+],
+"terrify": [
+"Paladin"
+],
+"theorems": [
+"Coercer"
+],
+"thermal depletion": [
+"Assassin",
+"Beastlord",
+"Berserker",
+"Brigand",
+"Bruiser",
+"Channeler",
+"Coercer",
+"Conjuror",
+"Defiler",
+"Dirge",
+"Fury",
+"Guardian",
+"Illusionist",
+"Inquisitor",
+"Monk",
+"Mystic",
+"Necromancer",
+"Paladin",
+"Ranger",
+"Shadowknight",
+"Swashbuckler",
+"Templar",
+"Troubador",
+"Warden",
+"Warlock",
+"Wizard"
+],
+"thickened calluses": [
+"Bruiser"
+],
+"thorns": [
+"Warden"
+],
+"thornstorm": [
+"Fury"
+],
+"thunder fist": [
+"Bruiser"
+],
+"tiger bite": [
+"Fury",
+"Warden"
+],
+"touch of life": [
+"Templar"
+],
+"toxic aura": [
+"Warlock"
+],
+"toxic life": [
+"Assassin",
+"Beastlord",
+"Berserker",
+"Brigand",
+"Bruiser",
+"Channeler",
+"Coercer",
+"Conjuror",
+"Defiler",
+"Dirge",
+"Fury",
+"Illusionist",
+"Inquisitor",
+"Monk",
+"Mystic",
+"Necromancer",
+"Paladin",
+"Ranger",
+"Shadowknight",
+"Swashbuckler",
+"Templar",
+"Troubador",
+"Warden",
+"Warlock",
+"Wizard"
+],
+"triggered rejuvenation": [
+"Channeler"
+],
+"triggered restoration": [
+"Channeler"
+],
+"truespirit defiance": [
+"Channeler"
+],
+"truespirit's understanding": [
+"Beastlord"
+],
+"undaunted": [
+"Channeler",
+"Fury",
+"Inquisitor",
+"Templar",
+"Warden"
+],
+"undeath": [
+"Coercer",
+"Conjuror",
+"Illusionist",
+"Wizard"
+],
+"unholy strike": [
+"Shadowknight"
+],
+"unrivaled focus": [
+"Bruiser",
+"Monk"
+],
+"unseen strikes": [
+"Bruiser"
+],
+"vengeance": [
+"Inquisitor"
+],
+"vengeful faith": [
+"Inquisitor",
+"Templar"
+],
+"venomous runes": [
+"Warlock"
+],
+"vitae": [
+"Inquisitor",
+"Templar"
+],
+"void of damnation": [
+"Warlock"
+],
+"voracious soul": [
+"Shadowknight"
+],
+"wuoshi's barrier": [
+"Warden"
+]
+}
 }
