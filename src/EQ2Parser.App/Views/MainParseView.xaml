@@ -103,7 +103,7 @@
                      VirtualizingPanel.IsVirtualizing="True">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
-                        <Setter Property="Padding" Value="6,3" />
+                        <Setter Property="Padding" Value="4,1" />
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="ListBoxItem">
@@ -131,37 +131,23 @@
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <StackPanel>
-                            <StackPanel.Style>
-                                <Style TargetType="StackPanel">
+                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
                                     <Setter Property="Margin" Value="12,0,0,0" />
+                                    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                                    <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
+                                    <Setter Property="FontSize" Value="12" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsHeader}" Value="True">
-                                            <Setter Property="Margin" Value="0,6,0,1" />
+                                            <Setter Property="Margin" Value="0,5,0,0" />
+                                            <Setter Property="Foreground" Value="{StaticResource GoldBrush}" />
+                                            <Setter Property="FontFamily" Value="{StaticResource BodySemiBoldFont}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </StackPanel.Style>
-                            <TextBlock TextTrimming="CharacterEllipsis">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="{Binding Title}" />
-                                        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-                                        <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
-                                        <Setter Property="FontSize" Value="13" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsHeader}" Value="True">
-                                                <Setter Property="Foreground" Value="{StaticResource GoldBrush}" />
-                                                <Setter Property="FontFamily" Value="{StaticResource HeadingFont}" />
-                                                <Setter Property="FontSize" Value="12" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                            <TextBlock Text="{Binding Detail}" Foreground="{StaticResource TextMutedBrush}"
-                                       FontFamily="{StaticResource BodyFont}" FontSize="10.5" />
-                        </StackPanel>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>

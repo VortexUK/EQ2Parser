@@ -13,10 +13,13 @@ public sealed class ParseNode
 {
     public bool IsHeader { get; init; }
     public string Title { get; init; } = "";
-    public string Detail { get; init; } = "";
-    /// <summary>Encounter (live) or CorrelatedEncounter (history).</summary>
+    /// <summary>Encounter (live), CorrelatedEncounter (history), or
+    /// AggregateFights ("All" / "All Bosses" zone rollups).</summary>
     public object? Fight { get; init; }
 }
+
+/// <summary>A zone rollup selection: combined stats over several fights.</summary>
+public sealed record AggregateFights(string Zone, string Label, IReadOnlyList<CorrelatedEncounter> Fights);
 
 /// <summary>
 /// The ACT-style Main page: zone/fight tree on the left, sortable combatant
@@ -125,7 +128,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         lock (manager.Sync)
         {
             // Newest first: group consecutive same-zone fights, ACT-sidebar
-            // style ("The Emerald Halls - [25] 18:57:04").
+            // style ("The Emerald Halls - [25] 18:57:04") with per-zone
+            // "All" / "All Bosses" rollup nodes.
             var fights = manager.Correlator.History;
             List<(string Zone, List<CorrelatedEncounter> Items)> groups = [];
             foreach (var fight in fights)
@@ -137,20 +141,37 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             for (var g = groups.Count - 1; g >= 0; g--)
             {
                 var (zone, items) = groups[g];
+                var zoneName = string.IsNullOrEmpty(zone) ? "Unknown zone" : zone;
                 nodes.Add(new ParseNode
                 {
                     IsHeader = true,
-                    Title = string.IsNullOrEmpty(zone) ? "Unknown zone" : zone,
-                    Detail = $"[{items.Count}]  {items[0].StartTime.ToLocalTime():HH:mm:ss}",
+                    Title = $"{zoneName} - [{items.Count}] {items[0].StartTime.ToLocalTime():HH:mm:ss}",
                 });
+                if (items.Count > 1)
+                {
+                    var all = items.ToArray();
+                    nodes.Add(new ParseNode
+                    {
+                        Title = $"All - [{FmtSpan(SumDuration(all))}]",
+                        Fight = new AggregateFights(zoneName, "All", all),
+                    });
+                    var bosses = items.Where(f => IsBossTitle(f.Title)).ToArray();
+                    if (bosses.Length > 0)
+                    {
+                        nodes.Add(new ParseNode
+                        {
+                            Title = $"All Bosses - [{bosses.Length}] [{FmtSpan(SumDuration(bosses))}]",
+                            Fight = new AggregateFights(zoneName, "All Bosses", bosses),
+                        });
+                    }
+                }
                 for (var i = items.Count - 1; i >= 0; i--)
                 {
                     var fight = items[i];
-                    var sources = fight.Sources.Count > 1 ? $"  ·  {fight.Sources.Count} logs" : "";
+                    var sources = fight.Sources.Count > 1 ? $" ·{fight.Sources.Count}L" : "";
                     nodes.Add(new ParseNode
                     {
-                        Title = fight.Title,
-                        Detail = $"{fight.StartTime.ToLocalTime():HH:mm:ss}  ·  {fight.Duration.TotalSeconds:F0}s{sources}",
+                        Title = $"{fight.Title} - [{FmtSpan(fight.Duration)}] {fight.StartTime.ToLocalTime():HH:mm:ss}{sources}",
                         Fight = fight,
                     });
                 }
@@ -161,6 +182,24 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         foreach (var node in nodes)
             TreeNodes.Add(node);
     }
+
+    /// <summary>Trash mobs are articled ("a bloom custodian"); named bosses
+    /// are not. Placeholder-titled scraps are never bosses.</summary>
+    private static bool IsBossTitle(string title) =>
+        title != Encounter.PlaceholderTitle
+        && !title.StartsWith("a ", StringComparison.Ordinal)
+        && !title.StartsWith("an ", StringComparison.Ordinal);
+
+    private static TimeSpan SumDuration(IReadOnlyList<CorrelatedEncounter> fights)
+    {
+        var total = TimeSpan.Zero;
+        foreach (var fight in fights)
+            total += fight.Duration;
+        return total;
+    }
+
+    private static string FmtSpan(TimeSpan span) =>
+        span.TotalHours >= 1 ? span.ToString(@"h\:mm\:ss") : span.ToString(@"mm\:ss");
 
     // ── Grid ────────────────────────────────────────────────────────────────
 
@@ -193,6 +232,16 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                     breadcrumb = Describe(merged.Zone, merged.Title, merged.Duration, merged.EncDps, live: false);
                     SnapshotMerged(merged, allies, pets, enemies);
                     break;
+                case AggregateFights aggregate:
+                {
+                    SnapshotAggregate(aggregate, allies, pets, enemies);
+                    var seconds = Math.Max(1, SumDuration(aggregate.Fights).TotalSeconds);
+                    var allyDamage = allies.Sum(r => r.Damage) + pets.Sum(r => r.Damage);
+                    breadcrumb = Describe(
+                        aggregate.Zone, $"{aggregate.Label} ({aggregate.Fights.Count} fights)",
+                        SumDuration(aggregate.Fights), allyDamage / seconds, live: false);
+                    break;
+                }
                 default:
                     return;
             }
@@ -266,6 +315,57 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 combatant.Damage / seconds, combatant.Healed / seconds,
                 combatant.DamageTaken, combatant.Deaths);
             Bucket(tag, row, allies, pets, enemies);
+        }
+    }
+
+    /// <summary>Combined stats over a zone rollup — sums per combatant, with
+    /// EncDPS/EncHPS over the COMBINED fight duration (ACT's "All" maths).
+    /// The class/kind tag is taken from the fight with the strongest class
+    /// evidence for that combatant.</summary>
+    private void SnapshotAggregate(AggregateFights aggregate, List<RowData> allies, List<RowData> pets, List<RowData> enemies)
+    {
+        var totalSeconds = Math.Max(1, SumDuration(aggregate.Fights).TotalSeconds);
+        var acc = new Dictionary<string, (string Name, CombatantTag Tag, double Seconds, long Damage, long Healed, long Taken, int Deaths)>(StringComparer.Ordinal);
+
+        foreach (var fight in aggregate.Fights)
+        {
+            var tags = manager.Classifier.Classify(fight.Primary);
+            foreach (var (key, entry) in fight.MergedCombatants)
+            {
+                var combatant = entry.Combatant;
+                if (!tags.TryGetValue(key, out var tag))
+                    continue;
+                if (tag.Kind is CombatantKind.System or CombatantKind.Bystander)
+                    continue;
+                if (combatant.Damage <= 0 && combatant.Healed <= 0 && combatant.DamageTaken <= 0)
+                    continue;
+                if (acc.TryGetValue(key, out var existing))
+                {
+                    var bestTag = tag.Class.MappedAbilities > existing.Tag.Class.MappedAbilities ? tag : existing.Tag;
+                    acc[key] = (existing.Name, bestTag,
+                        existing.Seconds + combatant.Duration.TotalSeconds,
+                        existing.Damage + combatant.Damage,
+                        existing.Healed + combatant.Healed,
+                        existing.Taken + combatant.DamageTaken,
+                        existing.Deaths + combatant.Deaths);
+                }
+                else
+                {
+                    acc[key] = (combatant.Name, tag,
+                        combatant.Duration.TotalSeconds, combatant.Damage,
+                        combatant.Healed, combatant.DamageTaken, combatant.Deaths);
+                }
+            }
+        }
+
+        foreach (var (key, entry) in acc)
+        {
+            var row = BuildRow(
+                key, entry.Name, entry.Tag,
+                entry.Seconds, entry.Damage,
+                entry.Damage / totalSeconds, entry.Healed / totalSeconds,
+                entry.Taken, entry.Deaths);
+            Bucket(entry.Tag, row, allies, pets, enemies);
         }
     }
 
