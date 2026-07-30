@@ -11,8 +11,10 @@ public sealed record LogTailOptions
 
     /// <summary>How often to poll for new content. Polling beats FileSystemWatcher
     /// here: watchers are notoriously unreliable for files a game keeps open and
-    /// appends to without touching metadata.</summary>
-    public TimeSpan PollInterval { get; init; } = TimeSpan.FromMilliseconds(250);
+    /// appends to without touching metadata. 10 ms matches ACT's reader cadence —
+    /// the poll interval is effectively trigger-alert latency, and a length
+    /// check is a near-free syscall.</summary>
+    public TimeSpan PollInterval { get; init; } = TimeSpan.FromMilliseconds(10);
 
     /// <summary>Text encoding of the log. EQ2 logs are UTF-8 on modern clients;
     /// the decoder never throws (invalid sequences become U+FFFD) so a wrong
