@@ -1,0 +1,100 @@
+using EQ2Parser.Core.Analysis;
+using EQ2Parser.Core.Combat;
+using EQ2Parser.Core.Engine;
+using EQ2Parser.Core.Logs;
+using Xunit.Abstractions;
+
+namespace EQ2Parser.Core.Tests;
+
+public class ClassIdentifierTests(ITestOutputHelper output)
+{
+    private static readonly DateTimeOffset T0 = DateTimeOffset.FromUnixTimeSeconds(1_775_000_000);
+
+    private static readonly SpellClassMap Fixture = SpellClassMap.FromDictionary(new()
+    {
+        ["divine strike"] = ["Templar"],
+        ["reverence"] = ["Templar"],
+        ["holy strike"] = ["Paladin"],
+        ["perfection of the maestro"] = ["Troubador"],
+        ["bloodletter"] = ["Defiler", "Mystic"],
+    });
+
+    [Fact]
+    public void Majority_Vote_Detects_The_Class()
+    {
+        var engine = new ParserEngine("log", "Menlu");
+        Assert.True(engine.SetEncounter(T0, "Menlu", "a gnoll"));
+        engine.AddSwing(SwingCategory.NonMelee, false, "None", "Menlu", "Divine Strike III", 100, T0, "a gnoll", "divine");
+        engine.AddSwing(SwingCategory.Healing, false, "None", "Menlu", "Reverence", 50, T0, "Menlu", "heal");
+        engine.AddSwing(SwingCategory.NonMelee, false, "None", "Menlu", "Perfection of the Maestro", 200, T0, "a gnoll", "magic"); // granted
+        engine.AddSwing(SwingCategory.NonMelee, false, "None", "Menlu", "Wildfire", 300, T0, "a gnoll", "heat"); // proc, unmapped
+        engine.EndCombat();
+
+        var identifier = new ClassIdentifier(Fixture);
+        var combatant = engine.History[^1].Combatants["MENLU"];
+        var detection = identifier.Detect(combatant);
+
+        Assert.Equal("Templar", detection.ClassName);
+        Assert.Equal(2.0 / 3, detection.Confidence, precision: 5); // 2 Templar of 3 mapped
+        Assert.Equal(3, detection.MappedAbilities);
+        Assert.Equal(4, detection.TotalAbilities);
+
+        // Source tagging.
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Divine Strike III", "Templar"));
+        Assert.Equal(AbilitySource.Raid, identifier.ClassifySource("Perfection of the Maestro", "Templar"));
+        Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Wildfire", "Templar"));
+        Assert.Equal(AbilitySource.System, identifier.ClassifySource(Grammar.EnglishGrammar.AutoAttackAbility, "Templar"));
+    }
+
+    [Fact]
+    public void No_Mapped_Abilities_Means_Unknown()
+    {
+        var engine = new ParserEngine("log", "Menlu");
+        Assert.True(engine.SetEncounter(T0, "Puncher", "a gnoll"));
+        engine.AddSwing(SwingCategory.Melee, false, "None", "Puncher", Grammar.EnglishGrammar.AutoAttackAbility, 10, T0, "a gnoll", "crushing");
+        engine.EndCombat();
+
+        var detection = new ClassIdentifier(Fixture).Detect(engine.History[^1].Combatants["PUNCHER"]);
+        Assert.Null(detection.ClassName);
+        Assert.Equal(0, detection.MappedAbilities);
+    }
+
+    [Fact]
+    public void Embedded_Map_Loads()
+    {
+        var map = SpellClassMap.LoadEmbedded();
+        Assert.True(map.Count > 3000);
+        Assert.Equal(["Templar"], map.ClassesFor("Divine Strike VI"));
+        Assert.Empty(map.ClassesFor("Absolute Vitae"));
+    }
+
+    [Fact]
+    public void Class_Report_For_A_Real_Fight()
+    {
+        var path = Environment.GetEnvironmentVariable("EQ2PARSER_SAMPLE_LOG");
+        var bossFilter = Environment.GetEnvironmentVariable("EQ2PARSER_BOSS") ?? "Wuoshi";
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+        {
+            output.WriteLine("EQ2PARSER_SAMPLE_LOG not set — skipped.");
+            return;
+        }
+        var owner = Path.GetFileNameWithoutExtension(path).Replace("eq2log_", "").Split('.')[0];
+        var engine = new ParserEngine(path, owner);
+        var processor = new LogLineProcessor(engine);
+        foreach (var raw in File.ReadLines(path))
+            if (LogLine.TryParse(raw, out var line))
+                processor.Process(line);
+        engine.EndCombat();
+
+        var identifier = new ClassIdentifier(SpellClassMap.LoadEmbedded());
+        foreach (var encounter in engine.History.Where(e => e.Title.Contains(bossFilter, StringComparison.OrdinalIgnoreCase)))
+        {
+            output.WriteLine($"[{encounter.Zone}] {encounter.Title} — {encounter.Duration.TotalSeconds:F0}s, success {encounter.GetSuccessLevel()}");
+            foreach (var ally in encounter.GetAllies().OrderByDescending(a => a.Damage))
+            {
+                var d = identifier.Detect(ally);
+                output.WriteLine($"  {ally.Name,-16} {d.ClassName ?? "?",-13} conf {d.Confidence:P0}  ({d.MappedAbilities}/{d.TotalAbilities} abilities)  dmg {ally.Damage:N0}");
+            }
+        }
+    }
+}
