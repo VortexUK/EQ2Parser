@@ -84,6 +84,45 @@ public class EnglishGrammarTests
         Assert.Equal(DamageValue.ParryNumber, s.Damage.Number);
     }
 
+    [Theory]
+    // Avoided melee specials (Ariadneh EoF raid log): the ability rides on
+    // the victim as "with <ability>" and must be split off — the victim gets
+    // the incoming swing, the attacker's swing is the named special.
+    [InlineData("Ancient Grovebeast tries to slash Mempayc with Barrage, but Mempayc parries.",
+        "Ancient Grovebeast", "Barrage", "Mempayc", DamageValue.ParryNumber)]
+    [InlineData("a gladehoof protector tries to crush YOU with Barrage, but YOU parry.",
+        "a gladehoof protector", "Barrage", "YOU", DamageValue.ParryNumber)]
+    [InlineData("Musician tries to slash Wuoshi with Demoralizing Processional, but Wuoshi parries.",
+        "Musician", "Demoralizing Processional", "Wuoshi", DamageValue.ParryNumber)]
+    [InlineData("Ancient Grovebeast tries to slash Mempayc with Barrage, but misses.",
+        "Ancient Grovebeast", "Barrage", "Mempayc", DamageValue.MissNumber)]
+    public void Avoided_Melee_Special_Splits_The_Ability(
+        string line, string attacker, string ability, string victim, long sentinel)
+    {
+        var s = Swing(line);
+        Assert.Equal((attacker, ability, victim, sentinel), (s.Attacker, s.Ability, s.Victim, s.Damage.Number));
+    }
+
+    [Fact]
+    public void Anonymous_Hit_Attributes_To_Unknown()
+    {
+        var s = Swing("a creepfern is hit by Acid Spray for 447 poison damage.");
+        Assert.Equal(("Unknown", "Acid Spray", "a creepfern", 447L), (s.Attacker, s.Ability, s.Victim, s.Damage.Number));
+        Assert.Equal(SwingCategory.NonMelee, s.Category);
+        Assert.Equal("poison", s.DamageType);
+        // The no-damage flavor variant is not a combat line.
+        Assert.Null(EnglishGrammar.TryParse("A creepfern is hit by celestial fire!"));
+    }
+
+    [Fact]
+    public void Dumbfire_Expiry_Is_Not_A_Death()
+    {
+        // "sputters and dies" is a dumbfire pet expiring, not a combat death;
+        // it must not feed the "X dies." shape as victim "…sputters and".
+        Assert.Null(EnglishGrammar.TryParse("Rusk's fae fire sputters and dies."));
+        Assert.IsType<DeathEvent>(EnglishGrammar.TryParse("Mayong Mistmoore dies."));
+    }
+
     [Fact]
     public void Heals()
     {

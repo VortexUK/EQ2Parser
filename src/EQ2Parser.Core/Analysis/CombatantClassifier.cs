@@ -11,6 +11,11 @@ public enum CombatantKind
     /// EQ2Lexicon pipeline persists as is_player = false).</summary>
     Pet,
     Enemy,
+    /// <summary>Present in the encounter window but never interacted with
+    /// the graph — e.g. an out-of-group character whose only event is an
+    /// "Alas, X has died" line (the killer "Unknown" carries no polarity).
+    /// Not an enemy; likely another player from the log owner's blind spot.</summary>
+    Bystander,
 }
 
 /// <summary>One combatant's verdict: kind, resolved pet owner (possessive
@@ -70,7 +75,8 @@ public sealed partial class CombatantClassifier(ClassIdentifier identifier)
             var detection = Identifier.Detect(combatant);
             if (!allyKeys.Contains(combatant.Key))
             {
-                tags[combatant.Key] = new CombatantTag(CombatantKind.Enemy, null, detection);
+                var kind = combatant.Allies.Count == 0 ? CombatantKind.Bystander : CombatantKind.Enemy;
+                tags[combatant.Key] = new CombatantTag(kind, null, detection);
             }
             else if (IsPetName(combatant.Name))
             {

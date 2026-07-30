@@ -45,6 +45,10 @@ public class CombatantClassifierTests
         engine.AddSwing(SwingCategory.Melee, false, "None", "Menlu's warder", Grammar.EnglishGrammar.AutoAttackAbility, 40, T0, "a gnoll", "slashing");
         engine.AddSwing(SwingCategory.Melee, false, "None", "Gibab", Grammar.EnglishGrammar.AutoAttackAbility, 30, T0, "a gnoll", "crushing");
         engine.AddSwing(SwingCategory.Melee, false, "None", "a gnoll", Grammar.EnglishGrammar.AutoAttackAbility, 25, T0, "Menlu", "crushing");
+        // An out-of-group death witnessed mid-fight ("Alas, Crit has died…"):
+        // the Unknown killer carries no ally polarity, so Crit never joins
+        // the interaction graph.
+        engine.AddSwing(SwingCategory.Melee, false, "None", "Unknown", Combatant.KillingAbility, DamageValue.Death, T0, "Crit", "death");
         engine.EndCombat();
 
         var tags = new CombatantClassifier(new ClassIdentifier(Fixture)).Classify(engine.History[^1]);
@@ -59,6 +63,7 @@ public class CombatantClassifierTests
         Assert.Null(tags["GIBAB"].PetOwner); // auto-named — no owner in the name
 
         Assert.Equal(CombatantKind.Enemy, tags["A GNOLL"].Kind);
+        Assert.Equal(CombatantKind.Bystander, tags["CRIT"].Kind);
     }
 
     [Fact]

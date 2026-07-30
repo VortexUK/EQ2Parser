@@ -48,6 +48,13 @@ public static partial class EnglishGrammar
     [GeneratedRegex($@"^(?<attacker>.+?) (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) (?<school>\w+) damage\.$")]
     private static partial Regex PlainDamage();
 
+    // a creepfern is hit by Acid Spray for 447 poison damage.  (anonymous
+    // source — dumbfires/ground effects; attributed to "Unknown". Must be
+    // tried before PlainDamage, which would split this into a phantom
+    // attacker "a creepfern is" and victim "by Acid Spray".)
+    [GeneratedRegex(@"^(?<victim>.+?) is hit by (?<ability>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) (?<school>\w+) damage\.$")]
+    private static partial Regex AnonymousHit();
+
     // ── Avoids ──────────────────────────────────────────────────────────────
     // a krait patriarch tries to pierce YOU, but misses.
     // a krait patriarch tries to crush Menludiir, but Menludiir parries.
@@ -171,6 +178,8 @@ public static partial class EnglishGrammar
             return Damage(m, m.Groups["attacker"].Value, m.Groups["ability"].Value);
         if ((m = AvoidLine().Match(message)).Success)
             return Avoid(m);
+        if ((m = AnonymousHit().Match(message)).Success)
+            return Damage(m, "Unknown", m.Groups["ability"].Value);
         if ((m = PlainDamage().Match(message)).Success)
             return Damage(m, m.Groups["attacker"].Value, AutoAttackAbility);
         if ((m = YourHeal().Match(message)).Success)
@@ -211,6 +220,10 @@ public static partial class EnglishGrammar
             return new DeathEvent(m.Groups["killer"].Value, m.Groups["victim"].Value);
         if ((m = HasKilled().Match(message)).Success)
             return new DeathEvent(m.Groups["killer"].Value, m.Groups["victim"].Value);
+        // "Rusk's fae fire sputters and dies." — a dumbfire expiring
+        // naturally, not a combat death; must not feed the Dies() shape.
+        if (message.EndsWith(" sputters and dies.", StringComparison.Ordinal))
+            return null;
         if ((m = Dies().Match(message)).Success)
             return new DeathEvent("Unknown", m.Groups["victim"].Value);
         if ((m = Banished().Match(message)).Success)
@@ -300,14 +313,35 @@ public static partial class EnglishGrammar
             "resists" or "resist" => new DamageValue(DamageValue.ResistNumber),
             _ => DamageValue.Unknown("Dodge"),
         };
+
+        // "tries to slash Mempayc with Barrage, but Mempayc parries." — a
+        // melee special: split the ability off the victim. The outcome actor
+        // is the true victim name when present, so prefer that cross-check
+        // (it keeps abilities that themselves contain " with " intact);
+        // otherwise split at the first " with " ("but misses" carries no
+        // actor, and weapon-avoids name the weapon rather than the victim).
+        var victim = m.Groups["victim"].Value;
+        var ability = AutoAttackAbility;
+        var actor = m.Groups["outcomeactor"].Value;
+        if (actor.Length > 0 && victim.StartsWith(actor + " with ", StringComparison.Ordinal))
+        {
+            ability = victim[(actor.Length + " with ".Length)..];
+            victim = actor;
+        }
+        else if (victim.IndexOf(" with ", StringComparison.Ordinal) is var idx and > 0)
+        {
+            ability = victim[(idx + " with ".Length)..];
+            victim = victim[..idx];
+        }
+
         return new SwingEvent(
             SwingCategory.Melee,
             Critical: false,
             Special: "None",
             Attacker: attacker,
-            Ability: AutoAttackAbility,
+            Ability: ability,
             Damage: damage,
-            Victim: m.Groups["victim"].Value,
+            Victim: victim,
             DamageType: "avoided");
     }
 

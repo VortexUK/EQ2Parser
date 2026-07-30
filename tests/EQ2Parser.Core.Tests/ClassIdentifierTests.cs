@@ -93,7 +93,7 @@ public class ClassIdentifierTests(ITestOutputHelper output)
             var tags = classifier.Classify(encounter);
             var byDamage = encounter.Combatants.Values.OrderByDescending(c => c.Damage).ToList();
 
-            foreach (var kind in new[] { CombatantKind.Player, CombatantKind.Pet, CombatantKind.Enemy })
+            foreach (var kind in new[] { CombatantKind.Player, CombatantKind.Pet, CombatantKind.Enemy, CombatantKind.Bystander })
             {
                 var group = byDamage.Where(c => tags[c.Key].Kind == kind).ToList();
                 output.WriteLine($" {kind} ({group.Count}):");
