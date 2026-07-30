@@ -96,6 +96,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [ObservableProperty]
     private string _petHeader = "Pets (0)";
 
+    [ObservableProperty]
+    private string _enemyHeader = "Enemies (0)";
+
     // ── Drill-down state (combatant → bucket → ability → swings) ───────────
 
     [ObservableProperty]
@@ -423,6 +426,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         Breadcrumb = breadcrumb;
         InCombat = live;
         PetHeader = $"Pets ({pets.Count})";
+        EnemyHeader = $"Enemies ({enemies.Count})";
         Apply(AllyRows, Sort(allies));
         Apply(PetRows, Sort(pets));
         Apply(EnemyRows, Sort(enemies));

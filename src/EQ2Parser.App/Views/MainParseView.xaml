@@ -168,9 +168,6 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!-- Breadcrumb -->
@@ -234,36 +231,38 @@
                         Command="{Binding SortByCommand}" CommandParameter="Deaths" />
             </Grid>
 
-            <!-- Allies -->
-            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="6">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding AllyRows}" ItemTemplate="{StaticResource GridRowTemplate}" />
-                </ScrollViewer>
-            </Border>
+            <!-- Allies, then pets/enemies flowing directly beneath the last
+                 ally row (one shared scroll — nothing pinned to the bottom). -->
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <Border Style="{StaticResource Card}" Padding="6">
+                        <ItemsControl ItemsSource="{Binding AllyRows}" ItemTemplate="{StaticResource GridRowTemplate}" />
+                    </Border>
 
-            <!-- Pets (collapsed by default) -->
-            <Expander Grid.Row="3" Margin="0,10,0,0" IsExpanded="False"
-                      Foreground="{StaticResource GoldBrush}">
-                <Expander.Header>
-                    <TextBlock Text="{Binding PetHeader}" Style="{StaticResource SectionLabel}" Margin="0" />
-                </Expander.Header>
-                <Border Style="{StaticResource Card}" Padding="6" Margin="0,6,0,0" MaxHeight="200">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding PetRows}" ItemTemplate="{StaticResource GridRowTemplate}" />
-                    </ScrollViewer>
-                </Border>
-            </Expander>
+                    <Expander Margin="0,10,0,0" IsExpanded="False"
+                              Foreground="{StaticResource GoldBrush}">
+                        <Expander.Header>
+                            <TextBlock Text="{Binding PetHeader}" Style="{StaticResource SectionLabel}" Margin="0" />
+                        </Expander.Header>
+                        <Border Style="{StaticResource Card}" Padding="6" Margin="0,6,0,0">
+                            <ItemsControl ItemsSource="{Binding PetRows}" ItemTemplate="{StaticResource GridRowTemplate}" />
+                        </Border>
+                    </Expander>
 
-            <!-- Enemies -->
-            <TextBlock Grid.Row="4" Text="Enemies" Style="{StaticResource SectionLabel}" Margin="2,12,0,6" />
-            <Border Grid.Row="5" Style="{StaticResource Card}" Padding="6" MaxHeight="170">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding EnemyRows}" ItemTemplate="{StaticResource GridRowTemplate}" />
-                </ScrollViewer>
-            </Border>
+                    <Expander Margin="0,6,0,0" IsExpanded="True"
+                              Foreground="{StaticResource GoldBrush}">
+                        <Expander.Header>
+                            <TextBlock Text="{Binding EnemyHeader}" Style="{StaticResource SectionLabel}" Margin="0" />
+                        </Expander.Header>
+                        <Border Style="{StaticResource Card}" Padding="6" Margin="0,6,0,0">
+                            <ItemsControl ItemsSource="{Binding EnemyRows}" ItemTemplate="{StaticResource GridRowTemplate}" />
+                        </Border>
+                    </Expander>
+                </StackPanel>
+            </ScrollViewer>
 
             <!-- Drill-down overlay (covers everything below the breadcrumb) -->
-            <Grid Grid.Row="1" Grid.RowSpan="5" Background="{StaticResource BgBrush}"
+            <Grid Grid.Row="1" Grid.RowSpan="2" Background="{StaticResource BgBrush}"
                   Visibility="{Binding DetailOpen, Converter={StaticResource BoolToVis}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
