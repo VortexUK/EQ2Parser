@@ -212,7 +212,8 @@
 "Wizard"
 ],
 "adrenal flow": [
-"Beastlord"
+"Beastlord",
+"Berserker"
 ],
 "adrenaline": [
 "Berserker"
@@ -467,6 +468,10 @@
 ],
 "ancient bulwark": [
 "Defiler"
+],
+"ancient claws": [
+"Defiler",
+"Mystic"
 ],
 "ancient demise": [
 "Mystic"
@@ -1246,6 +1251,9 @@
 "awestruck": [
 "Templar"
 ],
+"ayonic hymn": [
+"Troubador"
+],
 "ayonic inspiration": [
 "Troubador"
 ],
@@ -1412,6 +1420,9 @@
 "Dirge",
 "Guardian"
 ],
+"battle dressing": [
+"Inquisitor"
+],
 "battle endurance": [
 "Brigand",
 "Swashbuckler"
@@ -1494,10 +1505,6 @@
 ],
 "beneficence": [
 "Templar"
-],
-"berserk": [
-"Berserker",
-"Necromancer"
 ],
 "berserk fury": [
 "Berserker"
@@ -1652,6 +1659,9 @@
 "blessed armament": [
 "Inquisitor",
 "Templar"
+],
+"blessed strike": [
+"Paladin"
 ],
 "blessed warding": [
 "Paladin"
@@ -2041,6 +2051,10 @@
 "Brigand",
 "Swashbuckler"
 ],
+"bop the nose": [
+"Conjuror",
+"Necromancer"
+],
 "bouncy beast'r egg": [
 "Berserker",
 "Brigand",
@@ -2097,6 +2111,9 @@
 ],
 "brambles": [
 "Fury"
+],
+"bravado": [
+"Swashbuckler"
 ],
 "brawler's tenacity": [
 "Bruiser",
@@ -2867,6 +2884,9 @@
 "Paladin",
 "Shadowknight"
 ],
+"cavalier's cry": [
+"Paladin"
+],
 "cavalier's shout": [
 "Paladin"
 ],
@@ -2933,6 +2953,9 @@
 "Channeler"
 ],
 "channeled transference": [
+"Channeler"
+],
+"channeled wrath": [
 "Channeler"
 ],
 "channeler's sight": [
@@ -3079,6 +3102,9 @@
 "claw reversal": [
 "Bruiser",
 "Monk"
+],
+"clawing of the soul": [
+"Necromancer"
 ],
 "claws of the war boar": [
 "Mystic"
@@ -3549,6 +3575,10 @@
 "crimson swath": [
 "Brigand"
 ],
+"cripple": [
+"Berserker",
+"Guardian"
+],
 "crippling arrow": [
 "Ranger"
 ],
@@ -3911,6 +3941,9 @@
 "death and destruction": [
 "Shadowknight"
 ],
+"death barrier": [
+"Dirge"
+],
 "death blow": [
 "Assassin"
 ],
@@ -3996,6 +4029,10 @@
 ],
 "defensive haven": [
 "Conjuror"
+],
+"defensive instinct": [
+"Defiler",
+"Mystic"
 ],
 "defensive minded": [
 "Guardian"
@@ -4265,6 +4302,9 @@
 ],
 "dire balm": [
 "Defiler"
+],
+"dire frost": [
+"Wizard"
 ],
 "direct assault": [
 "Assassin"
@@ -5098,6 +5138,9 @@
 ],
 "enchanted barrier": [
 "Beastlord"
+],
+"enchanted overflow": [
+"Warlock"
 ],
 "enchanted vigor": [
 "Coercer",
@@ -7278,6 +7321,12 @@
 "explosive arrow": [
 "Ranger"
 ],
+"exposed elements": [
+"Conjuror"
+],
+"exposed noxious": [
+"Necromancer"
+],
 "exposed weaknesses": [
 "Beastlord"
 ],
@@ -7692,6 +7741,12 @@
 "Monk",
 "Shadowknight"
 ],
+"field commander's charge": [
+"Bruiser",
+"Guardian",
+"Monk",
+"Shadowknight"
+],
 "fields of the grey": [
 "Mystic"
 ],
@@ -7768,6 +7823,9 @@
 "find the jugular": [
 "Bruiser",
 "Shadowknight"
+],
+"fire of intellect": [
+"Wizard"
 ],
 "fire seed": [
 "Conjuror"
@@ -7886,6 +7944,9 @@
 ],
 "flurry of claws": [
 "Beastlord"
+],
+"flurry of poison": [
+"Assassin"
 ],
 "flying scissors": [
 "Monk"
@@ -10301,6 +10362,11 @@
 "indomitable will": [
 "Bruiser"
 ],
+"inferno": [
+"Conjuror",
+"Fury",
+"Warden"
+],
 "infuriating thorns": [
 "Warden"
 ],
@@ -10407,6 +10473,9 @@
 "insolent cry": [
 "Berserker"
 ],
+"insolent gibe": [
+"Berserker"
+],
 "inspired daring": [
 "Swashbuckler"
 ],
@@ -10464,6 +10533,10 @@
 "Brigand",
 "Swashbuckler"
 ],
+"interrupt barrier": [
+"Coercer",
+"Illusionist"
+],
 "intimidate": [
 "Bruiser"
 ],
@@ -10477,6 +10550,9 @@
 ],
 "intoxication": [
 "Ranger"
+],
+"intrepid strike": [
+"Dirge"
 ],
 "invective": [
 "Defiler"
@@ -10509,7 +10585,9 @@
 "Warden"
 ],
 "invigorated": [
-"Guardian"
+"Guardian",
+"Inquisitor",
+"Warden"
 ],
 "invigorating ballad": [
 "Troubador"
@@ -10686,6 +10764,9 @@
 "knight's stance": [
 "Paladin",
 "Shadowknight"
+],
+"knockdown": [
+"Brigand"
 ],
 "knockout combination": [
 "Bruiser"
@@ -11217,6 +11298,9 @@
 "marr's favor": [
 "Paladin"
 ],
+"marr's fury": [
+"Paladin"
+],
 "marr's strength": [
 "Monk"
 ],
@@ -11576,6 +11660,9 @@
 "Templar",
 "Troubador",
 "Wizard"
+],
+"mongoose dodge": [
+"Monk"
 ],
 "monkey dodge": [
 "Monk"
@@ -12328,6 +12415,10 @@
 "penitent kick": [
 "Paladin"
 ],
+"penitent smite": [
+"Inquisitor",
+"Warlock"
+],
 "peppy beast'r egg": [
 "Berserker",
 "Brigand",
@@ -12538,6 +12629,9 @@
 "piercing reverberation": [
 "Troubador"
 ],
+"pin": [
+"Guardian"
+],
 "pirate stab": [
 "Brigand",
 "Swashbuckler"
@@ -12592,10 +12686,22 @@
 "planar dominator": [
 "Conjuror"
 ],
+"planar downpour": [
+"Conjuror"
+],
+"planar igneous flames": [
+"Conjuror"
+],
 "planar infusion": [
 "Conjuror"
 ],
 "planar motion": [
+"Conjuror"
+],
+"planar telluric strike": [
+"Conjuror"
+],
+"planar thunderous roar": [
 "Conjuror"
 ],
 "planar wrack": [
@@ -12827,6 +12933,7 @@
 "Fury"
 ],
 "primal rage": [
+"Beastlord",
 "Warden"
 ],
 "primal reflexes": [
@@ -12949,6 +13056,9 @@
 "provoking stance": [
 "Monk"
 ],
+"prowess": [
+"Brigand"
+],
 "prowler's cunning": [
 "Assassin",
 "Ranger"
@@ -12961,7 +13071,8 @@
 "Wizard"
 ],
 "pummel": [
-"Bruiser"
+"Bruiser",
+"Channeler"
 ],
 "puncture": [
 "Brigand"
@@ -13012,6 +13123,9 @@
 ],
 "quick regeneration": [
 "Shadowknight"
+],
+"quick shot": [
+"Ranger"
 ],
 "quick strike": [
 "Assassin"
@@ -13348,6 +13462,9 @@
 "Paladin",
 "Shadowknight",
 "Warden"
+],
+"reflexes": [
+"Brigand"
 ],
 "reformation": [
 "Warden"
@@ -13724,6 +13841,9 @@
 "ro's blade": [
 "Wizard"
 ],
+"ro's flames": [
+"Wizard"
+],
 "ro's fury": [
 "Wizard"
 ],
@@ -13757,6 +13877,9 @@
 ],
 "rotting flesh": [
 "Necromancer"
+],
+"roughhousing": [
+"Bruiser"
 ],
 "round bash": [
 "Dirge",
@@ -14160,6 +14283,9 @@
 "scourge": [
 "Defiler"
 ],
+"scouted target": [
+"Brigand"
+],
 "scream of death": [
 "Dirge"
 ],
@@ -14313,6 +14439,9 @@
 "Warden"
 ],
 "serene motions": [
+"Monk"
+],
+"serene strike": [
 "Monk"
 ],
 "serene symbol": [
@@ -14902,6 +15031,9 @@
 "solist's dark flame": [
 "Wizard"
 ],
+"song barrier": [
+"Troubador"
+],
 "song of conservation": [
 "Troubador"
 ],
@@ -15006,6 +15138,9 @@
 ],
 "soulstarved wraiths": [
 "Defiler"
+],
+"soulsuck": [
+"Necromancer"
 ],
 "soulsucker": [
 "Necromancer"
@@ -15261,6 +15396,9 @@
 "spirituality": [
 "Beastlord",
 "Mystic"
+],
+"splash of nature": [
+"Warden"
 ],
 "split channeling": [
 "Coercer",
@@ -15526,6 +15664,15 @@
 "storming tempest": [
 "Wizard"
 ],
+"storming thoughts": [
+"Channeler",
+"Defiler",
+"Fury",
+"Templar",
+"Warden",
+"Warlock",
+"Wizard"
+],
 "stormlord": [
 "Fury"
 ],
@@ -15566,6 +15713,9 @@
 "strengthened links": [
 "Dirge",
 "Troubador"
+],
+"strike of anger": [
+"Bruiser"
 ],
 "strike of consistency": [
 "Assassin",
@@ -16477,6 +16627,9 @@
 "swanky beast'r egg": [
 "Dirge"
 ],
+"swarthy chaos": [
+"Swashbuckler"
+],
 "swarthy deception": [
 "Swashbuckler"
 ],
@@ -16716,6 +16869,11 @@
 "Necromancer",
 "Templar",
 "Warden"
+],
+"talon strike": [
+"Bruiser",
+"Monk",
+"Ranger"
 ],
 "tame exotic warder": [
 "Beastlord"
@@ -16977,6 +17135,9 @@
 ],
 "thought snap": [
 "Illusionist"
+],
+"thug's poison": [
+"Brigand"
 ],
 "thug's power": [
 "Brigand"
@@ -17430,6 +17591,9 @@
 "Channeler"
 ],
 "truespirit energy": [
+"Beastlord"
+],
+"truespirit power": [
 "Beastlord"
 ],
 "truespirit restoration": [
@@ -17960,6 +18124,9 @@
 "Brigand",
 "Swashbuckler"
 ],
+"vital surge": [
+"Channeler"
+],
 "vital transfer": [
 "Wizard"
 ],
@@ -18154,6 +18321,9 @@
 ],
 "wayfarer's watch": [
 "Dirge"
+],
+"weakness": [
+"Beastlord"
 ],
 "wealthring": [
 "Brigand",
@@ -18439,6 +18609,9 @@
 "wrath of the undead servant": [
 "Necromancer"
 ],
+"wrath of the warrior": [
+"Guardian"
+],
 "wrath of vel'arek": [
 "Guardian"
 ],
@@ -18593,17 +18766,30 @@
 "agonizing pain": [
 "Assassin"
 ],
+"animalistic intent": [
+"Beastlord"
+],
+"assassin's hemotoxin": [
+"Assassin"
+],
 "atoning faith": [
 "Inquisitor"
 ],
 "aura of pain": [
 "Warlock"
 ],
+"battle fury": [
+"Fury"
+],
 "beg": [
 "Brigand"
 ],
 "benefaction": [
 "Templar"
+],
+"berserk": [
+"Berserker",
+"Necromancer"
 ],
 "blade chime": [
 "Dirge"
@@ -18652,11 +18838,17 @@
 "calming assault": [
 "Illusionist"
 ],
+"cat-like reflexes": [
+"Ranger"
+],
 "champion's sight": [
 "Guardian"
 ],
 "channeler's protection": [
 "Channeler"
+],
+"chilling claws": [
+"Beastlord"
 ],
 "chilling invigoration": [
 "Inquisitor"
@@ -18677,15 +18869,36 @@
 "concurrence": [
 "Wizard"
 ],
+"conjure elements": [
+"Conjuror"
+],
 "convulsions": [
 "Illusionist"
+],
+"cooperative strike": [
+"Guardian"
 ],
 "crane twirl": [
 "Bruiser",
 "Monk"
 ],
+"crypt's revenge": [
+"Dirge"
+],
+"crystallize soul": [
+"Defiler"
+],
 "curse of darkness": [
 "Warlock"
+],
+"curse of shielding": [
+"Defiler"
+],
+"dark broodlings": [
+"Warlock"
+],
+"deadly invective": [
+"Defiler"
 ],
 "defiling hex ward": [
 "Defiler"
@@ -18718,8 +18931,14 @@
 "Templar",
 "Warden"
 ],
+"divine shield": [
+"Templar"
+],
 "divine strike": [
 "Paladin"
+],
+"dust storm": [
+"Warden"
 ],
 "dynamism": [
 "Coercer"
@@ -18739,6 +18958,9 @@
 "equilibrium": [
 "Inquisitor",
 "Templar"
+],
+"ether balance": [
+"Illusionist"
 ],
 "fae fires": [
 "Fury"
@@ -18791,6 +19013,9 @@
 "heretical strike": [
 "Inquisitor"
 ],
+"hexation": [
+"Defiler"
+],
 "ice lash": [
 "Wizard"
 ],
@@ -18803,10 +19028,16 @@
 "insurmountable will": [
 "Guardian"
 ],
+"involuntary cure": [
+"Templar"
+],
 "lash": [
 "Illusionist"
 ],
 "linked agony": [
+"Illusionist"
+],
+"linked pain": [
 "Illusionist"
 ],
 "mana boon": [
@@ -18819,6 +19050,15 @@
 "mantis aggression": [
 "Bruiser",
 "Monk"
+],
+"mark of nobility": [
+"Templar"
+],
+"marked": [
+"Assassin"
+],
+"measured blows": [
+"Guardian"
 ],
 "mystic illusion": [
 "Coercer"
@@ -18838,7 +19078,11 @@
 "Warden"
 ],
 "nature's touch": [
+"Fury",
 "Warden"
+],
+"nihilistics": [
+"Warlock"
 ],
 "noxious influx": [
 "Warlock"
@@ -18959,11 +19203,42 @@
 "Dirge",
 "Troubador"
 ],
+"raging cry": [
+"Dirge",
+"Guardian"
+],
 "ralissk's perception": [
 "Beastlord"
 ],
 "rebuke death": [
 "Guardian"
+],
+"recapture": [
+"Assassin",
+"Beastlord",
+"Berserker",
+"Brigand",
+"Bruiser",
+"Coercer",
+"Conjuror",
+"Defiler",
+"Dirge",
+"Fury",
+"Guardian",
+"Illusionist",
+"Inquisitor",
+"Monk",
+"Mystic",
+"Necromancer",
+"Paladin",
+"Ranger",
+"Shadowknight",
+"Swashbuckler",
+"Templar",
+"Troubador",
+"Warden",
+"Warlock",
+"Wizard"
 ],
 "redemption": [
 "Inquisitor"
@@ -18973,6 +19248,12 @@
 ],
 "repenting strike": [
 "Inquisitor"
+],
+"requiem of reflection": [
+"Troubador"
+],
+"restoring soul": [
+"Beastlord"
 ],
 "revocation of life": [
 "Assassin",
@@ -19080,11 +19361,24 @@
 "Beastlord",
 "Mystic"
 ],
+"spores": [
+"Warden"
+],
 "stampede": [
 "Mystic"
 ],
+"stoneskin": [
+"Berserker",
+"Bruiser",
+"Dirge",
+"Guardian"
+],
 "strike of faith": [
 "Inquisitor"
+],
+"sunder": [
+"Brigand",
+"Swashbuckler"
 ],
 "supplicant's prayer": [
 "Templar"
@@ -19121,6 +19415,12 @@
 ],
 "tear": [
 "Fury"
+],
+"tendrils of fear": [
+"Defiler"
+],
+"the pain of confession": [
+"Inquisitor"
 ],
 "theorems": [
 "Coercer"
@@ -19214,6 +19514,9 @@
 ],
 "voracious soul": [
 "Shadowknight"
+],
+"windblade": [
+"Warden"
 ]
 }
 }
