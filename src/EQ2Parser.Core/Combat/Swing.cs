@@ -32,6 +32,10 @@ public enum SwingCategory
 /// <param name="Extra">Optional structured extras the line carried beyond the
 /// core stats (e.g. "remaining=4041" on a ward absorb) — kept so future app
 /// features can derive richer views without re-parsing logs.</param>
+/// <param name="ObservedAt">Wall-clock arrival stamp (live tailing only; null
+/// on imports). Sub-second rich data for replay spacing and cross-log
+/// alignment — NEVER used in ACT/site-compatible stat math, which stays on
+/// the whole-second <paramref name="Time"/>.</param>
 public sealed record Swing(
     SwingCategory Category,
     bool Critical,
@@ -43,7 +47,8 @@ public sealed record Swing(
     int TimeSorter,
     string Victim,
     string DamageType,
-    string? Extra = null)
+    string? Extra = null,
+    DateTimeOffset? ObservedAt = null)
 {
     /// <summary>The name heuristic ACT uses everywhere: a name containing a
     /// space is an NPC/pet, not a player.</summary>

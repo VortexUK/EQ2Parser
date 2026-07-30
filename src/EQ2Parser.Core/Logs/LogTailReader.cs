@@ -20,7 +20,18 @@ public sealed record LogTailOptions
     /// the decoder never throws (invalid sequences become U+FFFD) so a wrong
     /// guess degrades display, not parsing.</summary>
     public Encoding Encoding { get; init; } = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false);
+
+    /// <summary>Wall-clock source for arrival stamps (injectable for tests).</summary>
+    public Func<DateTimeOffset> Clock { get; init; } = static () => DateTimeOffset.UtcNow;
 }
+
+/// <summary>A raw line plus the wall-clock moment its read batch was observed.
+/// The arrival stamp is the app's SECOND clock: log timestamps (whole-second)
+/// stay authoritative for all ACT/site-compatible stats; arrival time powers
+/// sub-second concerns — timer anchoring, live-DPS smoothness, replay spacing,
+/// cross-log alignment. Lines flushed together share one stamp (that is the
+/// physical truth of buffered log writes, not a limitation to hide).</summary>
+public readonly record struct TailedLine(string Raw, DateTimeOffset ObservedAt);
 
 /// <summary>
 /// Tails an EQ2 log file, yielding complete lines as they are written.
@@ -36,8 +47,9 @@ public sealed class LogTailReader(string path, LogTailOptions? options = null)
 {
     private readonly LogTailOptions _options = options ?? new LogTailOptions();
 
-    /// <summary>Raw complete lines (no trailing CR/LF), forever until cancelled.</summary>
-    public async IAsyncEnumerable<string> ReadLinesAsync([EnumeratorCancellation] CancellationToken ct = default)
+    /// <summary>Raw complete lines (no trailing CR/LF) with arrival stamps,
+    /// forever until cancelled.</summary>
+    public async IAsyncEnumerable<TailedLine> ReadLinesAsync([EnumeratorCancellation] CancellationToken ct = default)
     {
         long position = -1; // -1 = not yet initialised (resolve on first sight of the file)
         var carry = Array.Empty<byte>(); // partial-line bytes from the previous read
@@ -77,13 +89,16 @@ public sealed class LogTailReader(string path, LogTailOptions? options = null)
                             var fresh = new byte[stream.Length - position];
                             var read = await stream.ReadAsync(fresh.AsMemory(), ct).ConfigureAwait(false);
                             position += read;
+                            // One arrival stamp per read batch: lines flushed
+                            // together genuinely arrived together.
+                            var observedAt = _options.Clock();
 
                             var buffer = Concat(carry, fresh.AsSpan(0, read));
                             var consumed = 0;
                             foreach (var (start, length) in CompleteLines(buffer))
                             {
                                 consumed = start + length;
-                                yield return DecodeLine(buffer.AsSpan(start, length));
+                                yield return new TailedLine(DecodeLine(buffer.AsSpan(start, length)), observedAt);
                             }
                             // Skip the newline byte(s) belonging to the last line.
                             while (consumed < buffer.Length && (buffer[consumed] == (byte)'\n' || buffer[consumed] == (byte)'\r'))

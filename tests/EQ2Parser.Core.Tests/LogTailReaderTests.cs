@@ -23,9 +23,9 @@ public sealed class LogTailReaderTests : IDisposable
         PollInterval = TimeSpan.FromMilliseconds(20),
     };
 
-    private ConcurrentQueue<string> StartReader(LogTailOptions options)
+    private ConcurrentQueue<TailedLine> StartReader(LogTailOptions options)
     {
-        var lines = new ConcurrentQueue<string>();
+        var lines = new ConcurrentQueue<TailedLine>();
         var reader = new LogTailReader(LogPath, options);
         _ = Task.Run(async () =>
         {
@@ -62,7 +62,7 @@ public sealed class LogTailReaderTests : IDisposable
 
         AppendText("(2)[stamp] second\n");
         await WaitFor(() => lines.Count == 2, "appended line");
-        Assert.Equal(["(1)[stamp] first", "(2)[stamp] second"], lines.ToArray());
+        Assert.Equal(["(1)[stamp] first", "(2)[stamp] second"], lines.Select(l => l.Raw).ToArray());
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public sealed class LogTailReaderTests : IDisposable
 
         AppendText("(2)[stamp] live line\n");
         await WaitFor(() => !lines.IsEmpty, "live line");
-        Assert.Equal(["(2)[stamp] live line"], lines.ToArray());
+        Assert.Equal(["(2)[stamp] live line"], lines.Select(l => l.Raw).ToArray());
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public sealed class LogTailReaderTests : IDisposable
 
         AppendText(" and the rest\r\n");
         await WaitFor(() => !lines.IsEmpty, "completed line");
-        Assert.Equal(["(1)[stamp] half and the rest"], lines.ToArray());
+        Assert.Equal(["(1)[stamp] half and the rest"], lines.Select(l => l.Raw).ToArray());
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public sealed class LogTailReaderTests : IDisposable
         AppendBytes(full[^3..]);
 
         await WaitFor(() => !lines.IsEmpty, "reassembled line");
-        Assert.Equal(["(1)[stamp] Menludiir застигнут"], lines.ToArray());
+        Assert.Equal(["(1)[stamp] Menludiir застигнут"], lines.Select(l => l.Raw).ToArray());
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public sealed class LogTailReaderTests : IDisposable
         // Simulate log rotation: replace with a shorter file.
         File.WriteAllText(LogPath, "(2)[stamp] after rotation\n");
         await WaitFor(() => lines.Count == 2, "post-rotation line");
-        Assert.Equal("(2)[stamp] after rotation", lines.Last());
+        Assert.Equal("(2)[stamp] after rotation", lines.Last().Raw);
     }
 
     [Fact]
@@ -127,6 +127,6 @@ public sealed class LogTailReaderTests : IDisposable
         await Task.Delay(100); // reader polling a missing file must not throw
         AppendText("(1)[stamp] born late\n");
         await WaitFor(() => !lines.IsEmpty, "line from late-created file");
-        Assert.Equal(["(1)[stamp] born late"], lines.ToArray());
+        Assert.Equal(["(1)[stamp] born late"], lines.Select(l => l.Raw).ToArray());
     }
 }

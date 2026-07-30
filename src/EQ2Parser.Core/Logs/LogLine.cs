@@ -9,6 +9,11 @@ namespace EQ2Parser.Core.Logs;
 /// </summary>
 public readonly record struct LogLine(long Epoch, string LocalStamp, string Message)
 {
+    /// <summary>Wall-clock arrival stamp from the tail reader (the app's
+    /// second clock — sub-second, live mode only). Null on imports. Never
+    /// feeds ACT/site-compatible stat math; see TailedLine.</summary>
+    public DateTimeOffset? ObservedAt { get; init; }
+
     /// <summary>
     /// Parse a raw log line. Returns false for anything that doesn't match the
     /// EQ2 shape (corrupt tail reads, BOMs, other games' logs) — callers skip

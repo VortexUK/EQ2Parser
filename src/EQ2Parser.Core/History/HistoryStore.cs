@@ -94,7 +94,8 @@ public sealed class HistoryStore : IDisposable
                 time_sorter   INTEGER NOT NULL,
                 victim        TEXT NOT NULL,
                 damage_type   TEXT NOT NULL,
-                extra         TEXT
+                extra         TEXT,
+                observed_at_ms INTEGER
             );
             CREATE INDEX IF NOT EXISTS idx_swings_encounter ON swings(encounter_id, time_sorter);
 
@@ -151,8 +152,8 @@ public sealed class HistoryStore : IDisposable
         using var insertSwing = _conn.CreateCommand();
         insertSwing.Transaction = tx;
         insertSwing.CommandText = """
-            INSERT INTO swings (encounter_id, category, critical, special, attacker, ability, damage_number, damage_text, time_ts, time_sorter, victim, damage_type, extra)
-            VALUES ($enc, $cat, $crit, $special, $attacker, $ability, $num, $text, $time, $sorter, $victim, $type, $extra);
+            INSERT INTO swings (encounter_id, category, critical, special, attacker, ability, damage_number, damage_text, time_ts, time_sorter, victim, damage_type, extra, observed_at_ms)
+            VALUES ($enc, $cat, $crit, $special, $attacker, $ability, $num, $text, $time, $sorter, $victim, $type, $extra, $observed);
             """;
         foreach (var swing in UniqueSwings(encounter))
         {
@@ -170,6 +171,7 @@ public sealed class HistoryStore : IDisposable
             insertSwing.Parameters.AddWithValue("$victim", swing.Victim);
             insertSwing.Parameters.AddWithValue("$type", swing.DamageType);
             insertSwing.Parameters.AddWithValue("$extra", (object?)swing.Extra ?? DBNull.Value);
+            insertSwing.Parameters.AddWithValue("$observed", (object?)swing.ObservedAt?.ToUnixTimeMilliseconds() ?? DBNull.Value);
             insertSwing.ExecuteNonQuery();
         }
 
@@ -236,7 +238,7 @@ public sealed class HistoryStore : IDisposable
     {
         using var cmd = _conn.CreateCommand();
         cmd.CommandText = """
-            SELECT category, critical, special, attacker, ability, damage_number, damage_text, time_ts, time_sorter, victim, damage_type, extra
+            SELECT category, critical, special, attacker, ability, damage_number, damage_text, time_ts, time_sorter, victim, damage_type, extra, observed_at_ms
             FROM swings WHERE encounter_id = $enc ORDER BY time_sorter;
             """;
         cmd.Parameters.AddWithValue("$enc", encounterId);
@@ -255,7 +257,8 @@ public sealed class HistoryStore : IDisposable
                 reader.GetInt32(8),
                 reader.GetString(9),
                 reader.GetString(10),
-                reader.IsDBNull(11) ? null : reader.GetString(11)));
+                reader.IsDBNull(11) ? null : reader.GetString(11),
+                reader.IsDBNull(12) ? null : DateTimeOffset.FromUnixTimeMilliseconds(reader.GetInt64(12))));
         }
         return results;
     }

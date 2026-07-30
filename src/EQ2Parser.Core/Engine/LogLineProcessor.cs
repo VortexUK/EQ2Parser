@@ -49,9 +49,12 @@ public sealed class LogLineProcessor
     public void Process(in LogLine line)
     {
         LinesSeen++;
-        LastLineTime = line.Timestamp;
+        // The alert/timer anchor: arrival stamp when live, log time on import.
+        // Stat math below stays on line.Timestamp (the compatibility clock).
+        var anchor = line.ObservedAt ?? line.Timestamp;
+        LastLineTime = anchor;
         Engine.OnLineTime(line.Timestamp);
-        _triggers?.Process(line.Message, line.Timestamp);
+        _triggers?.Process(line.Message, anchor);
 
         var parsed = EnglishGrammar.TryParse(line.Message);
         if (parsed is null)
@@ -74,13 +77,15 @@ public sealed class LogLineProcessor
                 Engine.AddSwing(
                     swing.Category, swing.Critical, swing.Special,
                     attacker, swing.Ability, swing.Damage,
-                    line.Timestamp, victim, swing.DamageType, swing.Extra);
+                    line.Timestamp, victim, swing.DamageType, swing.Extra, line.ObservedAt);
                 // Every combat action notifies the spell timers by ability
-                // name (ACT semantics) — how cast-driven timers start.
+                // name (ACT semantics) — how cast-driven timers start. Timers
+                // anchor to the arrival stamp so bars start the instant the
+                // line lands, not on the next whole second.
                 _timers?.Notify(
                     attacker, swing.Ability,
                     self: attacker == Engine.OwnerName || victim == Engine.OwnerName,
-                    victim, line.Timestamp, Engine.CurrentZone);
+                    victim, anchor, Engine.CurrentZone);
                 break;
             }
 
@@ -93,7 +98,7 @@ public sealed class LogLineProcessor
                 Engine.AddSwing(
                     SwingCategory.Melee, false, "None",
                     killer, Combatant.KillingAbility, DamageValue.Death,
-                    line.Timestamp, victim, "death");
+                    line.Timestamp, victim, "death", extra: null, observedAt: line.ObservedAt);
                 break;
             }
         }
