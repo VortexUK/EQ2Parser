@@ -24,7 +24,7 @@ public sealed record AggregateFights(string Zone, string Label, IReadOnlyList<Co
 /// <summary>One row of a drill-down table (ability or attacker breakdown).</summary>
 public sealed partial class AbilityRow : ObservableObject
 {
-    public required string Key { get; init; }
+    public required string Key { get; set; }
 
     [ObservableProperty]
     private string _name = "";
@@ -571,6 +571,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 row = new AbilityRow { Key = data.Name };
                 rows.Add(row);
             }
+            row.Key = data.Name;
             row.Name = data.Name;
             if (data.Swings < 0)
             {
@@ -780,6 +781,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 row = new CombatantRow { Key = data.Key };
                 rows.Add(row);
             }
+            row.Key = data.Key;
             row.Name = data.Name;
             row.ClassName = data.Cls;
             row.ClassBrush = data.Brush;

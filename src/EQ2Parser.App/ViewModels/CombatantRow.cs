@@ -10,7 +10,7 @@ namespace EQ2Parser.App.ViewModels;
 /// numeric fields drive sorting; formatted strings drive display.</summary>
 public sealed partial class CombatantRow : ObservableObject
 {
-    public required string Key { get; init; }
+    public required string Key { get; set; }
 
     [ObservableProperty]
     private string _name = "";
