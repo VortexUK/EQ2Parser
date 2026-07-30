@@ -5,6 +5,10 @@ using EQ2Parser.App.Services;
 using EQ2Parser.Core.Analysis;
 using EQ2Parser.Core.Combat;
 using EQ2Parser.Core.Correlation;
+using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting;
+using SkiaSharp;
 
 namespace EQ2Parser.App.ViewModels;
 
@@ -105,6 +109,26 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     [ObservableProperty]
     private string _enemyHeader = "Enemies (0)";
+
+    // ── Chart (per-combatant timeline of the sorted metric) ─────────────────
+
+    [ObservableProperty]
+    private bool _chartVisible;
+
+    [ObservableProperty]
+    private ISeries[] _chartSeries = [];
+
+    [ObservableProperty]
+    private Axis[] _chartXAxes = [];
+
+    [ObservableProperty]
+    private Axis[] _chartYAxes = [];
+
+    public SolidColorPaint LegendPaint { get; } = new(new SKColor(0x8B, 0x90, 0xAB));
+
+    private (object? Fight, string Metric) _chartKey;
+    private long _chartVersion;
+    private long _lastChartBuildMs;
 
     // ── Drill-down state (combatant → bucket → ability → swings) ───────────
 
@@ -396,12 +420,15 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         string breadcrumb;
         var live = false;
         DetailData? detail = null;
+        ChartData? chart = null;
+        object? resolvedFight;
 
         lock (manager.Sync)
         {
             var fight = ResolveFight();
             if (fight is null)
                 return;
+            resolvedFight = fight;
             if (DetailOpen && _detailKey is not null)
                 detail = SnapshotDetail(fight, _detailKey);
 
@@ -429,12 +456,16 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 default:
                     return;
             }
+
+            chart = MaybeSnapshotChart(resolvedFight, allies);
         }
 
         Breadcrumb = breadcrumb;
         InCombat = live;
         PetHeader = $"Pets ({pets.Count})";
         EnemyHeader = $"Enemies ({enemies.Count})";
+        if (chart is not null)
+            ApplyChart(chart);
         Apply(AllyRows, Sort(allies));
         Apply(PetRows, Sort(pets));
         Apply(EnemyRows, Sort(enemies));
@@ -454,6 +485,187 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                     SwingRows.Add(swing);
             }
         }
+    }
+
+    // ── Chart snapshot ──────────────────────────────────────────────────────
+
+    private sealed record ChartLine(string Name, SKColor Color, double[] Rates);
+
+    private sealed record ChartData(
+        string MetricLabel, double BucketSeconds,
+        List<ChartLine>? Lines, List<(string Label, double Value)>? Columns);
+
+    private string ChartMetric => SortColumn switch
+    {
+        "Hps" => "HPS",
+        "Taken" => "Taken/s",
+        _ => "DPS",
+    };
+
+    /// <summary>Runs under the manager lock. Rebuilds the chart data when the
+    /// fight or metric changes, or (throttled to ~1s) when a live fight has
+    /// new data — ended fights never rebuild.</summary>
+    private ChartData? MaybeSnapshotChart(object fight, List<RowData> allies)
+    {
+        var metric = ChartMetric;
+        var version = allies.Sum(r => r.Damage + r.Taken) + (long)allies.Sum(r => r.Hps * 100);
+        var keyChanged = !ReferenceEquals(_chartKey.Fight, fight) || _chartKey.Metric != metric;
+        var now = Environment.TickCount64;
+        if (!keyChanged && (version == _chartVersion || now - _lastChartBuildMs < 1000))
+            return null;
+        _chartKey = (fight, metric);
+        _chartVersion = version;
+        _lastChartBuildMs = now;
+
+        if (fight is AggregateFights aggregate)
+        {
+            List<(string, double)> columns = [];
+            foreach (var f in aggregate.Fights)
+            {
+                var seconds = Math.Max(1, f.Duration.TotalSeconds);
+                double total = 0;
+                foreach (var (key, entry) in f.MergedCombatants)
+                {
+                    if (!f.MergedAllyKeys.Contains(key))
+                        continue;
+                    total += metric switch
+                    {
+                        "HPS" => entry.Combatant.Healed,
+                        "Taken/s" => entry.Combatant.DamageTaken,
+                        _ => entry.Combatant.Damage,
+                    };
+                }
+                var title = f.Title.Length > 16 ? f.Title[..15] + "…" : f.Title;
+                columns.Add((title, total / seconds));
+            }
+            return new ChartData(metric, 0, null, columns);
+        }
+
+        // Timeline for a single fight: top-8 allies by the metric.
+        DateTimeOffset start, end;
+        Func<string, Combatant?> resolve;
+        switch (fight)
+        {
+            case Encounter encounter:
+                start = encounter.StartTime;
+                end = encounter.EndTime;
+                resolve = key => encounter.Combatants.GetValueOrDefault(key);
+                break;
+            case CorrelatedEncounter merged:
+                start = merged.StartTime;
+                end = merged.EndTime;
+                resolve = key => merged.MergedCombatants.TryGetValue(key, out var mc) ? mc.Combatant : null;
+                break;
+            default:
+                return null;
+        }
+        var duration = Math.Max(1, (end - start).TotalSeconds);
+        var bucketSeconds = Math.Clamp(Math.Ceiling(duration / 60), 2, 30);
+        var slots = (int)(duration / bucketSeconds) + 1;
+
+        var top = allies
+            .OrderByDescending(r => metric switch { "HPS" => r.Hps, "Taken/s" => r.Taken, _ => (double)r.Damage })
+            .Take(8);
+        List<ChartLine> lines = [];
+        foreach (var row in top)
+        {
+            if (resolve(row.Key) is not { } combatant)
+                continue;
+            var bucket = metric switch
+            {
+                "HPS" => combatant.OutgoingBuckets.GetValueOrDefault(BucketConfig.HealedOut),
+                "Taken/s" => combatant.IncomingBuckets.GetValueOrDefault(BucketConfig.IncomingDamage),
+                _ => combatant.OutgoingBuckets.GetValueOrDefault(BucketConfig.OutgoingDamage),
+            };
+            if (bucket is null)
+                continue;
+            var rates = new double[slots];
+            foreach (var swing in bucket.All.Swings)
+            {
+                if (swing.Damage.Number <= 0)
+                    continue;
+                var slot = (int)((swing.Time - start).TotalSeconds / bucketSeconds);
+                if (slot >= 0 && slot < slots)
+                    rates[slot] += swing.Damage.Number;
+            }
+            for (var i = 0; i < slots; i++)
+                rates[i] /= bucketSeconds;
+            var media = ((System.Windows.Media.SolidColorBrush)row.Brush).Color;
+            lines.Add(new ChartLine(row.Name, new SKColor(media.R, media.G, media.B), rates));
+        }
+        return new ChartData(metric, bucketSeconds, lines, null);
+    }
+
+    private static readonly SolidColorPaint AxisLabelPaint = new(new SKColor(0x8B, 0x90, 0xAB));
+    private static readonly SolidColorPaint AxisSeparatorPaint = new(new SKColor(0x2E, 0x31, 0x50, 0x90));
+
+    private void ApplyChart(ChartData chart)
+    {
+        if (chart.Columns is { } columns)
+        {
+            ChartSeries =
+            [
+                new ColumnSeries<double>
+                {
+                    Values = columns.Select(c => c.Value).ToArray(),
+                    Name = chart.MetricLabel,
+                    Fill = new SolidColorPaint(new SKColor(0xC8, 0xA9, 0x6E, 0xA0)),
+                    Rx = 3,
+                    Ry = 3,
+                },
+            ];
+            ChartXAxes =
+            [
+                new Axis
+                {
+                    Labels = columns.Select(c => c.Label).ToArray(),
+                    LabelsPaint = AxisLabelPaint,
+                    LabelsRotation = -25,
+                    TextSize = 11,
+                    SeparatorsPaint = null,
+                },
+            ];
+        }
+        else if (chart.Lines is { } lines)
+        {
+            var bucket = chart.BucketSeconds;
+            ChartSeries = [.. lines.Select(ISeries (line) => new LineSeries<double>
+            {
+                Values = line.Rates,
+                Name = line.Name,
+                Stroke = new SolidColorPaint(line.Color) { StrokeThickness = 2 },
+                Fill = null,
+                GeometrySize = 0,
+                GeometryStroke = null,
+                GeometryFill = null,
+                LineSmoothness = 0.5,
+            })];
+            ChartXAxes =
+            [
+                new Axis
+                {
+                    Labeler = v => TimeSpan.FromSeconds(v * bucket).ToString(@"m\:ss"),
+                    LabelsPaint = AxisLabelPaint,
+                    TextSize = 11,
+                    SeparatorsPaint = null,
+                },
+            ];
+        }
+        ChartYAxes =
+        [
+            new Axis
+            {
+                Name = chart.MetricLabel,
+                NamePaint = AxisLabelPaint,
+                NameTextSize = 11,
+                LabelsPaint = AxisLabelPaint,
+                TextSize = 11,
+                Labeler = v => CombatantRow.Compact(v),
+                SeparatorsPaint = AxisSeparatorPaint,
+                MinLimit = 0,
+            },
+        ];
+        ChartVisible = ChartSeries.Length > 0;
     }
 
     // ── Drill-down snapshot ─────────────────────────────────────────────────

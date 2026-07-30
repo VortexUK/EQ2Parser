@@ -6,8 +6,11 @@
     <UseWPF>true</UseWPF>
     <StartupObject>EQ2Parser.App.Program</StartupObject>
     <!-- WPF0001: ThemeMode (Fluent) is marked experimental in .NET 9/10 —
-         it's the documented opt-in; suppress so warnings-as-errors passes. -->
-    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+         it's the documented opt-in; suppress so warnings-as-errors passes.
+         NU1701: LiveCharts2's SkiaSharp.Views.WPF/OpenTK dependencies only
+         declare .NET Framework TFMs but are assembly-compatible with modern
+         WPF — standard suppression for that chart stack. -->
+    <NoWarn>$(NoWarn);WPF0001;NU1701</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +19,7 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.0-rc5.4" />
     <PackageReference Include="Velopack" Version="1.2.0" />
   </ItemGroup>
 
