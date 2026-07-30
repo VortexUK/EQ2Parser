@@ -221,16 +221,25 @@
                  ally row (one shared scroll — nothing pinned to the bottom). -->
             <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <!-- Metric timeline (follows the sorted column) -->
-                    <Border Style="{StaticResource Card}" Padding="8" Margin="0,0,0,10" Height="240"
+                    <!-- Encounter-summary doughnut (follows the sorted column) -->
+                    <Border Style="{StaticResource Card}" Padding="4" Margin="0,0,0,10" Height="290"
                             Visibility="{Binding ChartVisible, Converter={StaticResource BoolToVis}}">
-                        <lvc:CartesianChart Series="{Binding ChartSeries}"
-                                            XAxes="{Binding ChartXAxes}"
-                                            YAxes="{Binding ChartYAxes}"
-                                            LegendPosition="Bottom"
-                                            LegendTextPaint="{Binding LegendPaint}"
-                                            TooltipPosition="Top"
-                                            AnimationsSpeed="0:0:0.25" />
+                        <Grid>
+                            <lvc:PieChart Series="{Binding ChartSeries}"
+                                          InitialRotation="-90"
+                                          TooltipPosition="Top"
+                                          LegendPosition="Hidden"
+                                          AnimationsSpeed="0:0:0.35" />
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        IsHitTestVisible="False">
+                                <TextBlock Text="{Binding ChartCenterValue}" TextAlignment="Center"
+                                           Foreground="{StaticResource GoldBrightBrush}"
+                                           FontFamily="{StaticResource HeadingFont}" FontSize="22" />
+                                <TextBlock Text="{Binding ChartCenterLabel}" TextAlignment="Center"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           FontFamily="{StaticResource BodyFont}" FontSize="11" />
+                            </StackPanel>
+                        </Grid>
                     </Border>
 
                     <Border Style="{StaticResource Card}" Padding="6">
