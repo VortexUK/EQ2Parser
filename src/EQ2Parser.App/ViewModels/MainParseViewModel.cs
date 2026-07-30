@@ -110,7 +110,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [ObservableProperty]
     private string _enemyHeader = "Enemies (0)";
 
-    // ── Chart (encounter-summary doughnut of the sorted metric) ─────────────
+    // ── Chart (encounter-summary bars + average line) ───────────────────────
 
     [ObservableProperty]
     private bool _chartVisible;
@@ -119,14 +119,42 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     private ISeries[] _chartSeries = [];
 
     [ObservableProperty]
-    private string _chartCenterValue = "";
+    private Axis[] _chartXAxes = [];
 
     [ObservableProperty]
-    private string _chartCenterLabel = "";
+    private Axis[] _chartYAxes = [];
 
     private (object? Fight, string Metric) _chartKey;
     private long _chartVersion;
     private long _lastChartBuildMs;
+
+    // ── Drill charts (per depth: bucket lines / ability doughnut / heat) ────
+
+    [ObservableProperty]
+    private bool _drillChartVisible;
+
+    [ObservableProperty]
+    private bool _drillCartesianVisible;
+
+    [ObservableProperty]
+    private bool _drillDonutVisible;
+
+    [ObservableProperty]
+    private ISeries[] _drillCartesianSeries = [];
+
+    [ObservableProperty]
+    private Axis[] _drillXAxes = [];
+
+    [ObservableProperty]
+    private Axis[] _drillYAxes = [];
+
+    [ObservableProperty]
+    private ISeries[] _drillDonutSeries = [];
+
+    public SolidColorPaint LegendPaint { get; } = new(new SKColor(0xB0, 0xB4, 0xC8));
+
+    private (string?, string?, string?) _drillChartKey = ("\0", null, null);
+    private long _drillChartMs;
 
     // ── Drill-down state (combatant → bucket → ability → swings) ───────────
 
@@ -482,6 +510,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 foreach (var swing in detail.Swings)
                     SwingRows.Add(swing);
             }
+            if (detail.Chart is { } drillChart)
+                ApplyDrillChart(drillChart);
         }
     }
 
@@ -556,42 +586,253 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         return new ChartData(metric, IsRollup: false, columns);
     }
 
-    private static readonly SolidColorPaint SliceLabelPaint = new(new SKColor(0xE2, 0xE4, 0xF0));
-
-    /// <summary>Shade-vary a colour so adjacent same-archetype slices stay
-    /// distinguishable (six mages ≠ one blue blob).</summary>
-    private static SKColor Shade(SKColor color, int index)
-    {
-        var factor = 1f + ((index % 5) - 2) * 0.13f;
-        byte Scale(byte channel) => (byte)Math.Clamp(channel * factor, 0, 255);
-        return new SKColor(Scale(color.Red), Scale(color.Green), Scale(color.Blue), color.Alpha);
-    }
+    private static readonly SolidColorPaint AxisLabelPaint = new(new SKColor(0x8B, 0x90, 0xAB));
+    private static readonly SolidColorPaint AxisSeparatorPaint = new(new SKColor(0x2E, 0x31, 0x50, 0x90));
 
     private void ApplyChart(ChartData chart)
     {
-        var total = Math.Max(1, chart.Columns.Sum(c => c.Value));
-        ChartSeries = [.. chart.Columns.Select(ISeries (c, i) =>
-        {
-            var share = c.Value / total;
-            return new PieSeries<double>
+        // Per-column colours: one full-width series per distinct colour with
+        // nulls elsewhere (IgnoresBarPosition keeps every bar centred), plus
+        // a dashed gold average line across the set.
+        var count = chart.Columns.Count;
+        List<ISeries> series = [.. chart.Columns
+            .Select((c, i) => (c, i))
+            .GroupBy(t => t.c.Color)
+            .Select(ISeries (group) =>
             {
-                Values = new[] { Math.Round(c.Value) },
-                Name = c.Label,
-                Fill = new SolidColorPaint(Shade(c.Color, i)),
-                InnerRadius = 58,
-                HoverPushout = 8,
-                // Big slices get an outer name label; the rest rely on hover.
-                DataLabelsPaint = share >= 0.045 ? SliceLabelPaint : null,
-                DataLabelsSize = 11,
-                DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Outer,
-                DataLabelsFormatter = _ => c.Label,
-                ToolTipLabelFormatter = _ => $"{CombatantRow.Compact(c.Value)}  ·  {share:P0}",
-            };
-        })];
-        ChartCenterValue = chart.IsRollup ? $"{chart.Columns.Count}" : CombatantRow.Compact(total);
-        ChartCenterLabel = chart.IsRollup ? "fights" : $"raid {chart.MetricLabel}";
+                var values = new double?[count];
+                foreach (var (c, i) in group)
+                    values[i] = Math.Round(c.Value);
+                return new ColumnSeries<double?>
+                {
+                    Values = values,
+                    Name = chart.MetricLabel,
+                    Fill = new SolidColorPaint(group.Key),
+                    IgnoresBarPosition = true,
+                    MaxBarWidth = 34,
+                    Rx = 3,
+                    Ry = 3,
+                };
+            })];
+        if (count > 1)
+        {
+            var average = Math.Round(chart.Columns.Average(c => c.Value));
+            series.Add(new LineSeries<double>
+            {
+                Values = [.. Enumerable.Repeat(average, count)],
+                Name = "average",
+                Stroke = new SolidColorPaint(new SKColor(0xE8, 0xD5, 0xA3, 0xC0))
+                {
+                    StrokeThickness = 1.6f,
+                    PathEffect = new LiveChartsCore.SkiaSharpView.Painting.Effects.DashEffect([6f, 5f]),
+                },
+                Fill = null,
+                GeometrySize = 0,
+                GeometryStroke = null,
+                GeometryFill = null,
+                LineSmoothness = 0,
+            });
+        }
+        ChartSeries = [.. series];
+        ChartXAxes =
+        [
+            new Axis
+            {
+                Labels = chart.Columns.Select(c => c.Label).ToArray(),
+                LabelsPaint = AxisLabelPaint,
+                LabelsRotation = -35,
+                TextSize = 10.5,
+                SeparatorsPaint = null,
+            },
+        ];
+        ChartYAxes =
+        [
+            new Axis
+            {
+                Name = chart.IsRollup ? $"raid {chart.MetricLabel}" : chart.MetricLabel,
+                NamePaint = AxisLabelPaint,
+                NameTextSize = 11,
+                LabelsPaint = AxisLabelPaint,
+                TextSize = 11,
+                Labeler = v => CombatantRow.Compact(v),
+                SeparatorsPaint = AxisSeparatorPaint,
+                MinLimit = 0,
+            },
+        ];
         ChartVisible = ChartSeries.Length > 0;
     }
+
+    // ── Drill chart data + rendering ────────────────────────────────────────
+
+    /// <summary>Mode 0 = hidden, 1 = bucket activity lines over time,
+    /// 2 = ability doughnut, 3 = heat strip over time.</summary>
+    private sealed record DrillChart(
+        int Mode,
+        List<(string Name, SKColor Color, double[] Rates)>? Lines,
+        double BucketSeconds,
+        List<(string Label, double Value)>? Slices,
+        double[]? Heat);
+
+    private static readonly (string Bucket, SKColor Color)[] DrillLineBuckets =
+    [
+        (BucketConfig.AutoAttackOut, new SKColor(0xC8, 0xA9, 0x6E)),
+        (BucketConfig.SkillOut, new SKColor(0x93, 0xB4, 0xFF)),
+        (BucketConfig.HealedOut, new SKColor(0x4A, 0xDE, 0x80)),
+        (BucketConfig.PowerDrainOut, new SKColor(0x00, 0xE5, 0xFF)),
+        (BucketConfig.PowerReplenishOut, new SKColor(0x22, 0xD3, 0xEE)),
+        (BucketConfig.CureOut, new SKColor(0xE8, 0xBB, 0xFF)),
+        (BucketConfig.ThreatOut, new SKColor(0xF8, 0x71, 0x71)),
+    ];
+
+    private static (DateTimeOffset Start, double BucketSeconds, int Slots)? FightWindow(object fight)
+    {
+        DateTimeOffset start, end;
+        switch (fight)
+        {
+            case Encounter encounter:
+                start = encounter.StartTime;
+                end = encounter.EndTime;
+                break;
+            case CorrelatedEncounter merged:
+                start = merged.StartTime;
+                end = merged.EndTime;
+                break;
+            default:
+                return null;
+        }
+        var duration = Math.Max(1, (end - start).TotalSeconds);
+        var bucketSeconds = Math.Clamp(Math.Ceiling(duration / 60), 2, 30);
+        return (start, bucketSeconds, (int)(duration / bucketSeconds) + 1);
+    }
+
+    /// <summary>Throttle: rebuild on drill-path change, else at most ~1s.</summary>
+    private bool ShouldBuildDrillChart()
+    {
+        var key = (_detailKey, _detailBucket, _detailAbility);
+        var now = Environment.TickCount64;
+        if (key != _drillChartKey)
+        {
+            _drillChartKey = key;
+            _drillChartMs = now;
+            return true;
+        }
+        if (now - _drillChartMs < 1000)
+            return false;
+        _drillChartMs = now;
+        return true;
+    }
+
+    private static readonly DrillChart HiddenDrillChart = new(0, null, 0, null, null);
+
+    private static void AccumulateRates(double[] rates, IEnumerable<Core.Combat.Swing> swings, DateTimeOffset start, double bucketSeconds)
+    {
+        foreach (var swing in swings)
+        {
+            if (swing.Damage.Number <= 0)
+                continue;
+            var slot = (int)((swing.Time - start).TotalSeconds / bucketSeconds);
+            if (slot >= 0 && slot < rates.Length)
+                rates[slot] += swing.Damage.Number;
+        }
+    }
+
+    private void ApplyDrillChart(DrillChart chart)
+    {
+        switch (chart.Mode)
+        {
+            case 1 when chart.Lines is { } lines:
+            {
+                var bucket = chart.BucketSeconds;
+                DrillCartesianSeries = [.. lines.Select(ISeries (line) => new LineSeries<double>
+                {
+                    Values = line.Rates,
+                    Name = line.Name,
+                    Stroke = new SolidColorPaint(line.Color) { StrokeThickness = 2 },
+                    Fill = null,
+                    GeometrySize = 0,
+                    GeometryStroke = null,
+                    GeometryFill = null,
+                    LineSmoothness = 0.4,
+                })];
+                DrillXAxes = [TimeAxis(bucket)];
+                DrillYAxes =
+                [
+                    new Axis
+                    {
+                        LabelsPaint = AxisLabelPaint,
+                        TextSize = 11,
+                        Labeler = v => CombatantRow.Compact(v),
+                        SeparatorsPaint = AxisSeparatorPaint,
+                        MinLimit = 0,
+                    },
+                ];
+                DrillCartesianVisible = true;
+                DrillDonutVisible = false;
+                break;
+            }
+            case 2 when chart.Slices is { } slices:
+            {
+                var total = Math.Max(1, slices.Sum(s => s.Value));
+                DrillDonutSeries = [.. slices.Select(ISeries (slice, i) =>
+                {
+                    var share = slice.Value / total;
+                    return new PieSeries<double>
+                    {
+                        Values = new[] { Math.Round(slice.Value) },
+                        Name = slice.Label,
+                        Fill = new SolidColorPaint(SKColor.FromHsv(i * 360f / Math.Max(1, slices.Count), 44f, 82f)),
+                        InnerRadius = 50,
+                        HoverPushout = 7,
+                        ToolTipLabelFormatter = _ => $"{CombatantRow.Compact(slice.Value)}  ·  {share:P0}",
+                    };
+                })];
+                DrillCartesianVisible = false;
+                DrillDonutVisible = true;
+                break;
+            }
+            case 3 when chart.Heat is { } heat:
+            {
+                // Heat strip: time on X, intensity = the skill's output in
+                // that window (stone → gold → red).
+                var points = new LiveChartsCore.Defaults.WeightedPoint[heat.Length];
+                for (var i = 0; i < heat.Length; i++)
+                    points[i] = new(i, 0, heat[i]);
+                DrillCartesianSeries =
+                [
+                    new HeatSeries<LiveChartsCore.Defaults.WeightedPoint>
+                    {
+                        Values = points,
+                        Name = "output",
+                        HeatMap =
+                        [
+                            new LiveChartsCore.Drawing.LvcColor(28, 31, 46),
+                            new LiveChartsCore.Drawing.LvcColor(200, 169, 110),
+                            new LiveChartsCore.Drawing.LvcColor(248, 113, 113),
+                        ],
+                    },
+                ];
+                DrillXAxes = [TimeAxis(chart.BucketSeconds)];
+                DrillYAxes = [new Axis { Labels = [""], LabelsPaint = null, SeparatorsPaint = null }];
+                DrillCartesianVisible = true;
+                DrillDonutVisible = false;
+                break;
+            }
+            default:
+                DrillChartVisible = false;
+                DrillCartesianVisible = false;
+                DrillDonutVisible = false;
+                return;
+        }
+        DrillChartVisible = true;
+    }
+
+    private static Axis TimeAxis(double bucketSeconds) => new()
+    {
+        Labeler = v => TimeSpan.FromSeconds(Math.Max(0, v) * bucketSeconds).ToString(@"m\:ss"),
+        LabelsPaint = AxisLabelPaint,
+        TextSize = 11,
+        SeparatorsPaint = null,
+    };
 
     // ── Drill-down snapshot ─────────────────────────────────────────────────
 
@@ -600,7 +841,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     private sealed record DetailData(
         string Title, string NameHeader, bool SortTable, bool Bars, bool IsSwingLevel,
-        List<AbilityData>? Table, List<SwingRow>? Swings);
+        List<AbilityData>? Table, List<SwingRow>? Swings, DrillChart? Chart = null);
 
     private sealed class AbilityAcc
     {
@@ -731,7 +972,34 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                     table.Add(acc.ToData(bucketName, "", seconds));
                 }
             }
-            return new DetailData($"{name}{cls}", "BUCKET", SortTable: false, Bars: false, IsSwingLevel: false, table, null);
+
+            DrillChart? bucketChart = null;
+            if (ShouldBuildDrillChart())
+            {
+                bucketChart = HiddenDrillChart;
+                if (FightWindow(fight) is { } window)
+                {
+                    List<(string Name, SKColor Color, double[] Rates)> chartLines = [];
+                    foreach (var (lineBucket, color) in DrillLineBuckets)
+                    {
+                        var rates = new double[window.Slots];
+                        foreach (var combatant in instances)
+                        {
+                            if (combatant.OutgoingBuckets.GetValueOrDefault(lineBucket) is { } b)
+                                AccumulateRates(rates, b.All.Swings, window.Start, window.BucketSeconds);
+                        }
+                        if (rates.Any(r => r > 0))
+                        {
+                            for (var i = 0; i < rates.Length; i++)
+                                rates[i] /= window.BucketSeconds;
+                            chartLines.Add((lineBucket.Replace(" (Out)", ""), color, rates));
+                        }
+                    }
+                    if (chartLines.Count > 0)
+                        bucketChart = new DrillChart(1, chartLines, window.BucketSeconds, null, null);
+                }
+            }
+            return new DetailData($"{name}{cls}", "BUCKET", SortTable: false, Bars: false, IsSwingLevel: false, table, null, bucketChart);
         }
 
         // Depth 2 — inside the Auto-Attack bucket, group by attack kind
@@ -757,7 +1025,17 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 if (acc.Swings > 0)
                     table.Add(acc.ToData(group, "", seconds));
             }
-            return new DetailData($"{name}{cls} › {_detailBucket}", "ATTACK", SortTable: false, Bars: true, IsSwingLevel: false, table, null);
+            DrillChart? autoChart = null;
+            if (ShouldBuildDrillChart())
+            {
+                List<(string, double)> slices = [.. table
+                    .Where(t => t.Name != "All" && t.Total > 0)
+                    .Select(t => (t.Name, (double)t.Total))];
+                autoChart = slices.Count > 0
+                    ? new DrillChart(2, null, 0, slices, null)
+                    : HiddenDrillChart;
+            }
+            return new DetailData($"{name}{cls} › {_detailBucket}", "ATTACK", SortTable: false, Bars: true, IsSwingLevel: false, table, null, autoChart);
         }
 
         // Depth 2 — abilities within the chosen bucket.
@@ -787,7 +1065,19 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                             .ToString().ToLowerInvariant()
                         : "",
                 seconds))];
-            return new DetailData($"{name}{cls} › {_detailBucket}", "ABILITY", SortTable: true, Bars: true, IsSwingLevel: false, table, null);
+            DrillChart? abilityChart = null;
+            if (ShouldBuildDrillChart())
+            {
+                var ranked = table.Where(t => t.Total > 0).OrderByDescending(t => t.Total).ToList();
+                List<(string, double)> slices = [.. ranked.Take(11).Select(t => (t.Name, (double)t.Total))];
+                var rest = ranked.Skip(11).Sum(t => t.Total);
+                if (rest > 0)
+                    slices.Add(("(other)", rest));
+                abilityChart = slices.Count > 0
+                    ? new DrillChart(2, null, 0, slices, null)
+                    : HiddenDrillChart;
+            }
+            return new DetailData($"{name}{cls} › {_detailBucket}", "ABILITY", SortTable: true, Bars: true, IsSwingLevel: false, table, null, abilityChart);
         }
 
         // Depth 3 — the individual swings of one ability (or one attack kind
@@ -812,9 +1102,21 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 collected.AddRange(stats.Swings);
             }
         }
+        DrillChart? heatChart = null;
+        if (ShouldBuildDrillChart())
+        {
+            heatChart = HiddenDrillChart;
+            if (FightWindow(fight) is { } window)
+            {
+                var heat = new double[window.Slots];
+                AccumulateRates(heat, collected, window.Start, window.BucketSeconds);
+                heatChart = new DrillChart(3, null, window.BucketSeconds, null, heat);
+            }
+        }
+
         var signature = (key, _detailBucket, _detailAbility, collected.Count);
         if (signature == _swingSignature && SwingRows.Count > 0)
-            return new DetailData(title, "ABILITY", SortTable: false, Bars: true, IsSwingLevel: true, null, null);
+            return new DetailData(title, "ABILITY", SortTable: false, Bars: true, IsSwingLevel: true, null, null, heatChart);
         _swingSignature = signature;
 
         collected.Sort((a, b) =>
@@ -829,7 +1131,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             s.Special == "None" ? "" : s.Special,
             s.DamageType,
             incoming ? s.Attacker : s.Victim))];
-        return new DetailData(title, "ABILITY", SortTable: false, Bars: true, IsSwingLevel: true, null, swings);
+        return new DetailData(title, "ABILITY", SortTable: false, Bars: true, IsSwingLevel: true, null, swings, heatChart);
     }
 
     private static AbilityAcc GetOrAdd(Dictionary<string, AbilityAcc> accs, string key)
