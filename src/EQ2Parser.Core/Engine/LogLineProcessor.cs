@@ -44,7 +44,7 @@ public sealed class LogLineProcessor(ParserEngine engine)
                 Engine.AddSwing(
                     swing.Category, swing.Critical, swing.Special,
                     attacker, swing.Ability, swing.Damage,
-                    line.Timestamp, victim, swing.DamageType);
+                    line.Timestamp, victim, swing.DamageType, swing.Extra);
                 break;
             }
 

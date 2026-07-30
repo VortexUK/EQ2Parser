@@ -29,6 +29,9 @@ public enum SwingCategory
 /// <param name="TimeSorter">Monotonic per-line sequence — disambiguates same-second ordering.</param>
 /// <param name="Victim">Target name.</param>
 /// <param name="DamageType">Damage school / sub-classification.</param>
+/// <param name="Extra">Optional structured extras the line carried beyond the
+/// core stats (e.g. "remaining=4041" on a ward absorb) — kept so future app
+/// features can derive richer views without re-parsing logs.</param>
 public sealed record Swing(
     SwingCategory Category,
     bool Critical,
@@ -39,7 +42,8 @@ public sealed record Swing(
     DateTimeOffset Time,
     int TimeSorter,
     string Victim,
-    string DamageType)
+    string DamageType,
+    string? Extra = null)
 {
     /// <summary>The name heuristic ACT uses everywhere: a name containing a
     /// space is an NPC/pet, not a player.</summary>

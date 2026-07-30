@@ -66,6 +66,62 @@ public static partial class EnglishGrammar
     [GeneratedRegex(@"^(?<attacker>.+?)'s (?<ability>.+?) heals (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) hit points?\.$")]
     private static partial Regex PossessiveHeal();
 
+    // ── Zero-damage hits ────────────────────────────────────────────────────
+    // Shyoh's Vampiric Requiem hits Shyoh but fails to inflict any damage.
+    // YOUR Smite hits a blood colossus but fails to inflict any damage.
+
+    [GeneratedRegex(@"^YOUR (?<ability>.+?) hits (?<victim>.+?) but fails to inflict any damage\.$")]
+    private static partial Regex YourNoDamage();
+
+    [GeneratedRegex(@"^(?<attacker>.+?)'s (?<ability>.+?) hits (?<victim>.+?) but fails to inflict any damage\.$")]
+    private static partial Regex PossessiveNoDamage();
+
+    [GeneratedRegex(@"^(?<attacker>.+?) hits (?<victim>.+?) but fails to inflict any damage\.$")]
+    private static partial Regex PlainNoDamage();
+
+    // ── First-person avoids ─────────────────────────────────────────────────
+    // YOU try to pierce Malkonis D'Morte but miss.
+
+    [GeneratedRegex(@"^YOU try to (?<verb>\w+) (?<victim>.+?),? but (?:(?<outcomeactor>.+?) )?(?<outcome>miss|misses|parries|ripostes|blocks|resists|dodges)\.$")]
+    private static partial Regex YouAvoid();
+
+    // ── Wards ───────────────────────────────────────────────────────────────
+    // Alexsian's Abhorrent Shroud absorbs 443 points of damage from being done to Mempayc. (4041 points remaining)
+    // ACT convention: a ward absorb is a HEAL with damage type "Ward (Absorb)".
+
+    public const string WardAbsorbType = "Ward (Absorb)";
+
+    [GeneratedRegex(@"^(?<attacker>.+?)'s (?<ability>.+?) absorbs (?<amount>[\d,]+) points? of damage from being done to (?<victim>.+?)\.(?: \((?<remaining>[\d,]+) points? remaining\))?$")]
+    private static partial Regex WardAbsorb();
+
+    // ── Power ───────────────────────────────────────────────────────────────
+    // Tsuna's Empower Servant refreshes Tsuna for 59 mana points.
+
+    [GeneratedRegex(@"^(?<attacker>.+?)'s (?<ability>.+?) refreshes (?<victim>.+?) for (?<amount>[\d,]+) (?:mana|power) points?\.$")]
+    private static partial Regex PowerRefresh();
+
+    [GeneratedRegex(@"^YOUR (?<ability>.+?) refreshes (?<victim>.+?) for (?<amount>[\d,]+) (?:mana|power) points?\.$")]
+    private static partial Regex YourPowerRefresh();
+
+    // ── Threat ──────────────────────────────────────────────────────────────
+    // Badbang's Insolent Gibe increases THEIR hate with a dragonspawn whelp for 1,234 threat.
+    // Noxyi's Dynamism reduces THEIR hate with a blood colossus for 567 threat.
+
+    [GeneratedRegex(@"^(?<attacker>.+?)'s (?<ability>.+?) (?<direction>increases|reduces) (?:THEIR|YOUR) hate with (?<victim>.+?) for (?<amount>[\d,]+) threat\.$")]
+    private static partial Regex ThreatChange();
+
+    [GeneratedRegex(@"^YOUR (?<ability>.+?) (?<direction>increases|reduces) YOUR hate with (?<victim>.+?) for (?<amount>[\d,]+) threat\.$")]
+    private static partial Regex YourThreatChange();
+
+    // ── Cures ───────────────────────────────────────────────────────────────
+    // Catofur's Cure Trauma relieves Eviscerate from Badbang.
+
+    [GeneratedRegex(@"^(?<attacker>.+?)'s (?<ability>.+?) relieves (?<effect>.+?) from (?<victim>.+?)\.$")]
+    private static partial Regex CureRelieves();
+
+    [GeneratedRegex(@"^YOUR (?<ability>.+?) relieves (?<effect>.+?) from (?<victim>.+?)\.$")]
+    private static partial Regex YourCureRelieves();
+
     // ── Deaths ──────────────────────────────────────────────────────────────
     // You have killed a glacial tunneler.
     // Alas, a Thurgadin watcher has died from pain and suffering.
@@ -107,6 +163,32 @@ public static partial class EnglishGrammar
             return Heal(m, You);
         if ((m = PossessiveHeal().Match(message)).Success)
             return Heal(m, m.Groups["attacker"].Value);
+        if ((m = YouAvoid().Match(message)).Success)
+            return AvoidFrom(m, You);
+        if ((m = YourNoDamage().Match(message)).Success)
+            return NoDamageHit(m, You, m.Groups["ability"].Value);
+        if ((m = PossessiveNoDamage().Match(message)).Success)
+            return NoDamageHit(m, m.Groups["attacker"].Value, m.Groups["ability"].Value);
+        if ((m = PlainNoDamage().Match(message)).Success)
+            return NoDamageHit(m, m.Groups["attacker"].Value, AutoAttackAbility);
+        if ((m = WardAbsorb().Match(message)).Success)
+            return new SwingEvent(
+                SwingCategory.Healing, false, "None",
+                m.Groups["attacker"].Value, m.Groups["ability"].Value,
+                ParseAmount(m.Groups["amount"].Value), m.Groups["victim"].Value, WardAbsorbType,
+                Extra: m.Groups["remaining"].Success ? $"remaining={m.Groups["remaining"].Value.Replace(",", "")}" : null);
+        if ((m = YourPowerRefresh().Match(message)).Success)
+            return PowerReplenish(m, You);
+        if ((m = PowerRefresh().Match(message)).Success)
+            return PowerReplenish(m, m.Groups["attacker"].Value);
+        if ((m = YourThreatChange().Match(message)).Success)
+            return Threat(m, You);
+        if ((m = ThreatChange().Match(message)).Success)
+            return Threat(m, m.Groups["attacker"].Value);
+        if ((m = YourCureRelieves().Match(message)).Success)
+            return Cure(m, You);
+        if ((m = CureRelieves().Match(message)).Success)
+            return Cure(m, m.Groups["attacker"].Value);
         if ((m = YouKilled().Match(message)).Success)
             return new DeathEvent(You, m.Groups["victim"].Value);
         if ((m = AlasDied().Match(message)).Success)
@@ -144,12 +226,54 @@ public static partial class EnglishGrammar
         Victim: m.Groups["victim"].Value,
         DamageType: "heal");
 
-    private static SwingEvent Avoid(Match m)
+    private static SwingEvent NoDamageHit(Match m, string attacker, string ability) => new(
+        ability == AutoAttackAbility ? SwingCategory.Melee : SwingCategory.NonMelee,
+        Critical: false,
+        Special: "None",
+        Attacker: attacker,
+        Ability: ability,
+        Damage: DamageValue.NoDamage,
+        Victim: m.Groups["victim"].Value,
+        DamageType: "none");
+
+    private static SwingEvent PowerReplenish(Match m, string attacker) => new(
+        SwingCategory.PowerReplenish,
+        Critical: false,
+        Special: "None",
+        Attacker: attacker,
+        Ability: m.Groups["ability"].Value,
+        Damage: ParseAmount(m.Groups["amount"].Value),
+        Victim: m.Groups["victim"].Value,
+        DamageType: "power");
+
+    private static SwingEvent Threat(Match m, string attacker) => new(
+        SwingCategory.Threat,
+        Critical: false,
+        Special: "None",
+        Attacker: attacker,
+        Ability: m.Groups["ability"].Value,
+        Damage: ParseAmount(m.Groups["amount"].Value),
+        Victim: m.Groups["victim"].Value,
+        DamageType: m.Groups["direction"].Value == "reduces" ? "threat-reduce" : "threat");
+
+    private static SwingEvent Cure(Match m, string attacker) => new(
+        SwingCategory.CureDispel,
+        Critical: false,
+        Special: "None",
+        Attacker: attacker,
+        Ability: m.Groups["ability"].Value,
+        Damage: DamageValue.NoDamage,
+        Victim: m.Groups["victim"].Value,
+        DamageType: m.Groups["effect"].Value);
+
+    private static SwingEvent Avoid(Match m) => AvoidFrom(m, m.Groups["attacker"].Value);
+
+    private static SwingEvent AvoidFrom(Match m, string attacker)
     {
         var outcome = m.Groups["outcome"].Value;
         DamageValue damage = outcome switch
         {
-            "misses" => DamageValue.Miss,
+            "misses" or "miss" => DamageValue.Miss,
             "parries" or "parry" => new DamageValue(DamageValue.ParryNumber),
             "ripostes" or "riposte" => new DamageValue(DamageValue.RiposteNumber),
             "blocks" or "block" => new DamageValue(DamageValue.BlockNumber),
@@ -160,7 +284,7 @@ public static partial class EnglishGrammar
             SwingCategory.Melee,
             Critical: false,
             Special: "None",
-            Attacker: m.Groups["attacker"].Value,
+            Attacker: attacker,
             Ability: AutoAttackAbility,
             Damage: damage,
             Victim: m.Groups["victim"].Value,

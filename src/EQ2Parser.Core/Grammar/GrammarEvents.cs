@@ -14,7 +14,8 @@ public sealed record SwingEvent(
     string Ability,
     DamageValue Damage,
     string Victim,
-    string DamageType) : GrammarEvent;
+    string DamageType,
+    string? Extra = null) : GrammarEvent;
 
 /// <summary>A kill/death line → a Death swing under the Killing pseudo-ability.</summary>
 public sealed record DeathEvent(string Killer, string Victim) : GrammarEvent;

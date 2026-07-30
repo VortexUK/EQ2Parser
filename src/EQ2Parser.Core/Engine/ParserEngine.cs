@@ -88,7 +88,8 @@ public sealed class ParserEngine(string sourceId, string ownerName, EngineOption
         DamageValue damage,
         DateTimeOffset time,
         string victim,
-        string damageType)
+        string damageType,
+        string? extra = null)
     {
         if (!InCombat || ActiveEncounter is null)
             throw new InvalidOperationException("AddSwing requires an active encounter — call SetEncounter first.");
@@ -98,7 +99,7 @@ public sealed class ParserEngine(string sourceId, string ownerName, EngineOption
         var swing = new Swing(
             category, critical, special,
             attacker.Trim(), ability.Trim(), damage,
-            time, NextTimeSorter(), victim.Trim(), damageType);
+            time, NextTimeSorter(), victim.Trim(), damageType, extra);
 
         ActiveEncounter.AddSwing(swing);
     }
