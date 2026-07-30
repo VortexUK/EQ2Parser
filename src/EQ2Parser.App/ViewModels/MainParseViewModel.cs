@@ -582,10 +582,12 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             var classify = !IsIncomingBucket(_detailBucket);
             List<AbilityData> table = [.. abilities.Select(kv => kv.Value.ToData(
                 kv.Key,
-                classify
-                    ? manager.Classifier.Identifier.ClassifySource(kv.Key, detection.ClassName)
-                        .ToString().ToLowerInvariant()
-                    : "",
+                kv.Key == Core.Grammar.EnglishGrammar.AutoAttackAbility
+                    ? "autoattack"
+                    : classify
+                        ? manager.Classifier.Identifier.ClassifySource(kv.Key, detection.ClassName)
+                            .ToString().ToLowerInvariant()
+                        : "",
                 seconds))];
             return new DetailData($"{name}{cls} › {_detailBucket}", "ABILITY", SortTable: true, Bars: true, IsSwingLevel: false, table, null);
         }

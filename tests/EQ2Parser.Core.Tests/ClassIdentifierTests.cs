@@ -64,7 +64,7 @@ public class ClassIdentifierTests(ITestOutputHelper output)
         // era-named Conjuror kit) must not produce a confident verdict.
         var engine = new ParserEngine("log", "Menlu");
         Assert.True(engine.SetEncounter(T0, "Senn", "a gnoll"));
-        engine.AddSwing(SwingCategory.NonMelee, false, "None", "Senn", "Reverence", 50, T0, "Senn", "heal");
+        engine.AddSwing(SwingCategory.Healing, false, "None", "Senn", "Reverence", 50, T0, "Senn", "heal");
         engine.AddSwing(SwingCategory.NonMelee, false, "None", "Senn", "Storm of Flames", 300, T0, "a gnoll", "heat");
         engine.EndCombat();
 

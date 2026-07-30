@@ -51,7 +51,14 @@ public sealed class Encounter(string sourceId, string ownerName, string zone)
             Active = true;
         }
         _alliesCache = null;
-        GetOrCreate(swing.Attacker).AddOutgoing(swing);
+        // Self-damage (lifetap procs like Vampiric Requiem hitting the
+        // caster) records on the TAKEN side only — ACT never credits it as
+        // outgoing, or it would inflate the attacker's own DPS. Self-heals
+        // and self-buffs still count as outgoing.
+        var selfDamage = swing.Category is SwingCategory.Melee or SwingCategory.NonMelee
+            && string.Equals(swing.Attacker, swing.Victim, StringComparison.OrdinalIgnoreCase);
+        if (!selfDamage)
+            GetOrCreate(swing.Attacker).AddOutgoing(swing);
         GetOrCreate(swing.Victim).AddIncoming(swing);
     }
 

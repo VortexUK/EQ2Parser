@@ -72,7 +72,10 @@ public sealed class LogLineProcessor
             {
                 var attacker = Resolve(swing.Attacker);
                 var victim = Resolve(swing.Victim);
-                var hostile = swing.Category is SwingCategory.Melee or SwingCategory.NonMelee;
+                // Self-damage procs are not hostile action — they must not
+                // start a fight or keep one alive.
+                var hostile = swing.Category is SwingCategory.Melee or SwingCategory.NonMelee
+                    && !string.Equals(attacker, victim, StringComparison.OrdinalIgnoreCase);
                 if (!Engine.SetEncounter(line.Timestamp, attacker, victim, hostile))
                     break;
                 Engine.AddSwing(

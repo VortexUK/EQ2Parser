@@ -58,6 +58,25 @@ public class EncounterTests
     }
 
     [Fact]
+    public void Self_Damage_Counts_As_Taken_Not_Outgoing()
+    {
+        // Lifetap procs ("Menludiir's Vampiric Requiem hits Menludiir for
+        // 373 focus damage.") must not inflate the caster's own DPS — ACT
+        // records them on the taken side only. Self-heals still count out.
+        var engine = Engine();
+        Swing(engine, 0, SwingCategory.Melee, "Menludiir", "a gnoll", 100);
+        Swing(engine, 1, SwingCategory.NonMelee, "Menludiir", "Menludiir", 373, "Vampiric Requiem", damageType: "focus");
+        engine.AddSwing(SwingCategory.Healing, false, "None", "Menludiir", "Reverence", 50, At(2), "Menludiir", "heal");
+        engine.EndCombat();
+
+        var menlu = engine.History[^1].Combatants["MENLUDIIR"];
+        Assert.Equal(100, menlu.Damage);
+        Assert.Equal(373, menlu.DamageTaken);
+        Assert.Equal(50, menlu.Healed);
+        Assert.False(menlu.OutgoingBuckets[BucketConfig.OutgoingDamage].Abilities.ContainsKey("Vampiric Requiem"));
+    }
+
+    [Fact]
     public void AddSwing_Without_SetEncounter_Throws()
     {
         var engine = Engine();
