@@ -62,7 +62,7 @@ public class ClassIdentifierTests(ITestOutputHelper output)
     {
         // One stray mapped ability (e.g. an item-granted Breeze on an
         // era-named Conjuror kit) must not produce a confident verdict.
-        var engine = new ParserEngine("log", "Menlu");
+        var engine = new ParserEngine("log", "Senn");
         Assert.True(engine.SetEncounter(T0, "Senn", "a gnoll"));
         engine.AddSwing(SwingCategory.Healing, false, "None", "Senn", "Reverence", 50, T0, "Senn", "heal");
         engine.AddSwing(SwingCategory.NonMelee, false, "None", "Senn", "Storm of Flames", 300, T0, "a gnoll", "heat");
@@ -77,7 +77,7 @@ public class ClassIdentifierTests(ITestOutputHelper output)
     [Fact]
     public void No_Mapped_Abilities_Means_Unknown()
     {
-        var engine = new ParserEngine("log", "Menlu");
+        var engine = new ParserEngine("log", "Puncher");
         Assert.True(engine.SetEncounter(T0, "Puncher", "a gnoll"));
         engine.AddSwing(SwingCategory.Melee, false, "None", "Puncher", Grammar.EnglishGrammar.AutoAttackAbility, 10, T0, "a gnoll", "crushing");
         engine.EndCombat();

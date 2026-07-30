@@ -58,6 +58,28 @@ public class EncounterTests
     }
 
     [Fact]
+    public void Placeholder_Titled_Scraps_Are_Discarded()
+    {
+        // A fight with no identifiable enemy (here: the log owner never
+        // participates, so the ally graph is empty and no title resolves)
+        // is dropped from history on end — ACT discards these too.
+        var engine = Engine();
+        var ended = 0;
+        engine.EncounterEnded += _ => ended++;
+        Swing(engine, 0, SwingCategory.Melee, "SomeoneElse", "AnotherGuy", 100);
+        engine.EndCombat();
+        Assert.Empty(engine.History);
+        Assert.Equal(0, ended);
+
+        // A real fight still survives and announces.
+        Swing(engine, 10, SwingCategory.Melee, "Menludiir", "a gnoll", 100);
+        engine.EndCombat();
+        Assert.Single(engine.History);
+        Assert.Equal("a gnoll", engine.History[0].Title);
+        Assert.Equal(1, ended);
+    }
+
+    [Fact]
     public void Self_Damage_Counts_As_Taken_Not_Outgoing()
     {
         // Lifetap procs ("Menludiir's Vampiric Requiem hits Menludiir for
@@ -158,13 +180,15 @@ public class EncounterTests
     {
         var engine = Engine();
         Swing(engine, 0, SwingCategory.Melee, "Somebodyelse", "a gnoll", 100);
+        var encounter = engine.ActiveEncounter!;
         engine.EndCombat();
 
-        var encounter = engine.History[^1];
         Assert.Empty(encounter.GetAllies());
         Assert.Equal(0, encounter.Damage);
         Assert.Equal(Encounter.PlaceholderTitle, encounter.Title);
         Assert.Equal(SuccessLevel.Indeterminate, encounter.GetSuccessLevel());
+        // …and precisely because it resolved no title, it was discarded.
+        Assert.Empty(engine.History);
     }
 
     [Fact]

@@ -122,6 +122,14 @@ public sealed class ParserEngine(string sourceId, string ownerName, EngineOption
         var encounter = ActiveEncounter;
         ActiveEncounter = null;
         encounter.End();
+        // A fight that never resolved a real enemy title ("Encounter") is a
+        // scrap — no identifiable opponent, usually owner-less. ACT discards
+        // these too; drop it from history and never announce it.
+        if (encounter.Title == Encounter.PlaceholderTitle)
+        {
+            _history.Remove(encounter);
+            return;
+        }
         EncounterEnded?.Invoke(encounter);
     }
 }
