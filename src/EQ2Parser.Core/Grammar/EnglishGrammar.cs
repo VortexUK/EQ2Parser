@@ -239,7 +239,16 @@ public static partial class EnglishGrammar
     private static SwingEvent Damage(Match m, string attacker, string ability)
     {
         var school = m.Groups["school"].Value;
-        var category = MeleeSchools.Contains(school) ? SwingCategory.Melee : SwingCategory.NonMelee;
+        // Auto-attack vs skill follows the ABILITY, not the school: named
+        // abilities are skills even when they deal crushing/piercing/slashing
+        // (an Assassin's whole kit is melee-school), while plain attacks and
+        // the multi/double/flurry/AoE autoattack verbs are melee. Matches
+        // ACT's Auto-Attack (Out) / Skill/Ability (Out) split.
+        var special = SpecialFromVerb(m.Groups["verb"].Value);
+        var isAutoAttack = ability == AutoAttackAbility || special != "None";
+        var category = isAutoAttack && MeleeSchools.Contains(school)
+            ? SwingCategory.Melee
+            : SwingCategory.NonMelee;
         return new SwingEvent(
             category,
             Critical: m.Groups["crit"].Success,
@@ -343,7 +352,7 @@ public static partial class EnglishGrammar
         }
 
         return new SwingEvent(
-            SwingCategory.Melee,
+            ability == AutoAttackAbility ? SwingCategory.Melee : SwingCategory.NonMelee,
             Critical: false,
             Special: "None",
             Attacker: attacker,

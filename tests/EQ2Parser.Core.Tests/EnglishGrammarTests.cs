@@ -130,6 +130,17 @@ public class EnglishGrammarTests
         Assert.Equal(("Malkonis D'Morte", EnglishGrammar.AutoAttackAbility), (plain.Attacker, plain.Ability));
     }
 
+    [Theory]
+    // Auto-attack vs skill follows the ABILITY, not the damage school:
+    // a named combat art dealing slashing is a SKILL (ACT's split), while
+    // plain hits and multi/double/flurry autoattack verbs stay melee.
+    [InlineData("Asame's Impale hits a bloom custodian for 4,000 piercing damage.", SwingCategory.NonMelee)]
+    [InlineData("Asame hits a bloom custodian for 1,200 slashing damage.", SwingCategory.Melee)]
+    [InlineData("Menludiir's unswerving hammer multi attacks a krait patriarch for a critical of 2,378 crushing damage.", SwingCategory.Melee)]
+    [InlineData("YOUR Divine Strike hits a bog slug for a critical of 15,032 divine damage.", SwingCategory.NonMelee)]
+    public void AutoAttack_Versus_Skill_Follows_The_Ability(string line, SwingCategory expected) =>
+        Assert.Equal(expected, Swing(line).Category);
+
     [Fact]
     public void Your_Ward_Absorb_On_Yourself()
     {

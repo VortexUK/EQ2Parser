@@ -376,9 +376,10 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         {
             DetailTitle = detail.Title;
             DrillNameHeader = detail.NameHeader;
-            SwingLevel = detail.Swings is not null;
+            SwingLevel = detail.IsSwingLevel;
             if (detail.Table is not null)
-                ApplyAbilityRows(DrillRows, detail.Table, sort: detail.SortTable);
+                ApplyAbilityRows(DrillRows, detail.Table, sort: detail.SortTable, bars: detail.Bars);
+            // Swings == null at swing level means "unchanged — keep rows".
             if (detail.Swings is not null)
             {
                 SwingRows.Clear();
@@ -392,7 +393,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     private sealed record AbilityData(string Name, string Source, int Swings, int Hits, int Crits, long Max, long Total);
 
-    private sealed record DetailData(string Title, string NameHeader, bool SortTable, List<AbilityData>? Table, List<SwingRow>? Swings);
+    private sealed record DetailData(
+        string Title, string NameHeader, bool SortTable, bool Bars, bool IsSwingLevel,
+        List<AbilityData>? Table, List<SwingRow>? Swings);
 
     private sealed class AbilityAcc
     {
@@ -479,7 +482,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                     table.Add(new AbilityData(bucketName, "", acc.Swings, acc.Hits, acc.Crits, acc.Max, acc.Total));
                 }
             }
-            return new DetailData($"{name}{cls}", "BUCKET", SortTable: false, table, null);
+            return new DetailData($"{name}{cls}", "BUCKET", SortTable: false, Bars: false, IsSwingLevel: false, table, null);
         }
 
         // Depth 2 — abilities within the chosen bucket.
@@ -510,7 +513,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                         .ToString().ToLowerInvariant()
                     : "",
                 kv.Value.Swings, kv.Value.Hits, kv.Value.Crits, kv.Value.Max, kv.Value.Total))];
-            return new DetailData($"{name}{cls} › {_detailBucket}", "ABILITY", SortTable: true, table, null);
+            return new DetailData($"{name}{cls} › {_detailBucket}", "ABILITY", SortTable: true, Bars: true, IsSwingLevel: false, table, null);
         }
 
         // Depth 3 — the individual swings of one ability.
@@ -526,7 +529,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         }
         var signature = (key, _detailBucket, _detailAbility, collected.Count);
         if (signature == _swingSignature && SwingRows.Count > 0)
-            return new DetailData(title, "ABILITY", SortTable: false, null, null);
+            return new DetailData(title, "ABILITY", SortTable: false, Bars: true, IsSwingLevel: true, null, null);
         _swingSignature = signature;
 
         collected.Sort((a, b) =>
@@ -541,7 +544,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             s.Special == "None" ? "" : s.Special,
             s.DamageType,
             incoming ? s.Attacker : s.Victim))];
-        return new DetailData(title, "ABILITY", SortTable: false, null, swings);
+        return new DetailData(title, "ABILITY", SortTable: false, Bars: true, IsSwingLevel: true, null, swings);
     }
 
     private static AbilityAcc GetOrAdd(Dictionary<string, AbilityAcc> accs, string key)
@@ -551,7 +554,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         return acc;
     }
 
-    private static void ApplyAbilityRows(ObservableCollection<AbilityRow> rows, List<AbilityData> snapshot, bool sort)
+    private static void ApplyAbilityRows(ObservableCollection<AbilityRow> rows, List<AbilityData> snapshot, bool sort, bool bars)
     {
         if (sort)
             snapshot.Sort((a, b) => b.Total.CompareTo(a.Total));
@@ -604,7 +607,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             row.Max = data.Max > 0 ? CombatantRow.Compact(data.Max) : "";
             row.Total = CombatantRow.Compact(data.Total);
             row.Percent = $"{100.0 * data.Total / total:F0}%";
-            row.BarFraction = (double)data.Total / top;
+            row.BarFraction = bars ? (double)data.Total / top : 0;
         }
         while (rows.Count > snapshot.Count)
             rows.RemoveAt(rows.Count - 1);
