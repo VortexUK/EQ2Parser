@@ -47,6 +47,7 @@ public class CombatantClassifierTests
         engine.AddSwing(SwingCategory.Melee, false, "None", "Menlu's warder", Grammar.EnglishGrammar.AutoAttackAbility, 40, T0, "a gnoll", "slashing");
         engine.AddSwing(SwingCategory.Melee, false, "None", "Gibab", Grammar.EnglishGrammar.AutoAttackAbility, 30, T0, "a gnoll", "crushing");
         engine.AddSwing(SwingCategory.Melee, false, "None", "a gnoll", Grammar.EnglishGrammar.AutoAttackAbility, 25, T0, "Menlu", "crushing");
+        engine.AddSwing(SwingCategory.Melee, false, "None", "a gnoll's whelp", Grammar.EnglishGrammar.AutoAttackAbility, 15, T0, "Menlu", "piercing");
         // An out-of-group death witnessed mid-fight ("Alas, Crit has died…"):
         // the Unknown killer carries no ally polarity, so Crit never joins
         // the interaction graph.
@@ -65,7 +66,12 @@ public class CombatantClassifierTests
         Assert.Null(tags["GIBAB"].PetOwner); // auto-named — no owner in the name
 
         Assert.Equal(CombatantKind.Enemy, tags["A GNOLL"].Kind);
+        // Enemy possessives resolve their owner too, so the UI can nest them.
+        Assert.Equal(CombatantKind.Enemy, tags["A GNOLL'S WHELP"].Kind);
+        Assert.Equal("a gnoll", tags["A GNOLL'S WHELP"].PetOwner);
         Assert.Equal(CombatantKind.Bystander, tags["CRIT"].Kind);
+        // The anonymous-source pseudo-combatant is bookkeeping, not a participant.
+        Assert.Equal(CombatantKind.System, tags["UNKNOWN"].Kind);
     }
 
     [Fact]

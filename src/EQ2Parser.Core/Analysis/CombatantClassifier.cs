@@ -16,6 +16,9 @@ public enum CombatantKind
     /// "Alas, X has died" line (the killer "Unknown" carries no polarity).
     /// Not an enemy; likely another player from the log owner's blind spot.</summary>
     Bystander,
+    /// <summary>The "Unknown" pseudo-combatant (anonymous-source damage,
+    /// unattributed deaths). Bookkeeping only — ignore in displays.</summary>
+    System,
 }
 
 /// <summary>One combatant's verdict: kind, resolved pet owner (possessive
@@ -73,10 +76,14 @@ public sealed partial class CombatantClassifier(ClassIdentifier identifier)
         foreach (var combatant in encounter.Combatants.Values)
         {
             var detection = Identifier.Detect(combatant);
-            if (!allyKeys.Contains(combatant.Key))
+            if (combatant.Name == "Unknown")
+            {
+                tags[combatant.Key] = new CombatantTag(CombatantKind.System, null, detection);
+            }
+            else if (!allyKeys.Contains(combatant.Key))
             {
                 var kind = combatant.Allies.Count == 0 ? CombatantKind.Bystander : CombatantKind.Enemy;
-                tags[combatant.Key] = new CombatantTag(kind, null, detection);
+                tags[combatant.Key] = new CombatantTag(kind, ResolveOwner(combatant.Name, encounter), detection);
             }
             else if (IsPetName(combatant.Name))
             {
