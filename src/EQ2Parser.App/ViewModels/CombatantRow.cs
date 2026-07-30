@@ -1,10 +1,13 @@
+using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using EQ2Parser.App.Services;
 using EQ2Parser.Core.Analysis;
 
 namespace EQ2Parser.App.ViewModels;
 
-/// <summary>One row of the damage/heal meter. Updated in place each refresh
-/// tick so WPF only repaints changed cells.</summary>
+/// <summary>One row of the combatant grid (ally or enemy section). Updated
+/// in place each refresh tick so WPF only repaints changed cells. Raw
+/// numeric fields drive sorting; formatted strings drive display.</summary>
 public sealed partial class CombatantRow : ObservableObject
 {
     public required string Key { get; init; }
@@ -16,10 +19,16 @@ public sealed partial class CombatantRow : ObservableObject
     private string _className = "";
 
     [ObservableProperty]
+    private Brush _classBrush = ClassColors.Neutral;
+
+    [ObservableProperty]
     private CombatantKind _kind;
 
     [ObservableProperty]
-    private string _dps = "";
+    private bool _isPet;
+
+    [ObservableProperty]
+    private string _duration = "";
 
     [ObservableProperty]
     private string _damage = "";
@@ -27,12 +36,21 @@ public sealed partial class CombatantRow : ObservableObject
     [ObservableProperty]
     private string _percent = "";
 
-    /// <summary>0..1 share of the top row's value — drives the meter bar.</summary>
     [ObservableProperty]
-    private double _barFraction;
+    private string _dps = "";
 
     [ObservableProperty]
-    private bool _isPet;
+    private string _hps = "";
+
+    [ObservableProperty]
+    private string _taken = "";
+
+    [ObservableProperty]
+    private string _deaths = "";
+
+    /// <summary>0..1 share of the top row's damage — drives the row bar.</summary>
+    [ObservableProperty]
+    private double _barFraction;
 
     public static string Compact(double value) => value switch
     {

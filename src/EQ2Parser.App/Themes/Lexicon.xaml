@@ -73,6 +73,33 @@
         <Setter Property="Padding" Value="14" />
     </Style>
 
+    <!-- Top tab (ACT-style tab strip, site TabButton look: gold underline). -->
+    <Style x:Key="TopTabStyle" TargetType="ListBoxItem">
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource BodySemiBoldFont}" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Root" Background="Transparent" Padding="16,10,16,8"
+                            BorderThickness="0,0,0,2" BorderBrush="Transparent">
+                        <ContentPresenter VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource GoldBrightBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource GoldBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource GoldBrightBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Left-rail navigation item (applied as a ListBox ItemContainerStyle). -->
     <Style x:Key="NavItemStyle" TargetType="ListBoxItem">
         <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />

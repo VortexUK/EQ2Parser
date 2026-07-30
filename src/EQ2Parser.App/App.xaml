@@ -11,17 +11,14 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Themes/Lexicon.xaml" />
-                <ResourceDictionary Source="Views/MeterRows.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <views:InverseBoolToVisConverter x:Key="InverseBoolToVis" />
 
             <!-- ViewModel → View wiring. -->
-            <DataTemplate DataType="{x:Type vm:LiveViewModel}">
-                <views:LiveView />
-            </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
-                <views:HistoryView />
+            <DataTemplate DataType="{x:Type vm:MainParseViewModel}">
+                <views:MainParseView />
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:SourcesViewModel}">
                 <views:SourcesView />
