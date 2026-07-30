@@ -1,0 +1,55 @@
+<UserControl x:Class="EQ2Parser.App.Views.SourcesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Log Sources" Style="{StaticResource PageTitle}" />
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+            <Button Content="Add live tail" Style="{StaticResource GoldButton}" Command="{Binding AddLiveCommand}" />
+            <Button Content="Add + parse existing" Style="{StaticResource GoldButton}" Margin="8,0,0,0"
+                    Command="{Binding AddWithHistoryCommand}" />
+            <TextBlock Text="Live tail starts at the end of the file; parse existing chews through the whole log first."
+                       Style="{StaticResource MutedText}" FontSize="12" Margin="16,6,0,0" />
+        </StackPanel>
+
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8">
+            <ItemsControl ItemsSource="{Binding Rows}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="6,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Owner}" Foreground="{StaticResource GoldBrightBrush}"
+                                                   FontFamily="{StaticResource BodySemiBoldFont}" FontSize="15" />
+                                        <Border Background="#26C8A96E" CornerRadius="99" Padding="8,1" Margin="10,2,0,0">
+                                            <TextBlock Text="{Binding Mode}" FontSize="10" Foreground="{StaticResource GoldBrush}" />
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Path}" Style="{StaticResource MutedText}" FontSize="11"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Status}" Style="{StaticResource MutedText}" FontSize="12"
+                                               Foreground="{StaticResource TextBrush}" Margin="0,2,0,0" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="Remove" Style="{StaticResource GoldButton}"
+                                        VerticalAlignment="Center"
+                                        Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+    </Grid>
+</UserControl>
