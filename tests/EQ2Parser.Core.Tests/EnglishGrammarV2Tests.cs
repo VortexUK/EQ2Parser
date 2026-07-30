@@ -71,6 +71,21 @@ public class EnglishGrammarV2Tests
     }
 
     [Fact]
+    public void ThirdPerson_Death_Shapes()
+    {
+        // The generic death line is how raid members witness a boss kill.
+        var dies = Assert.IsType<DeathEvent>(EnglishGrammar.TryParse("Mayong Mistmoore dies."));
+        Assert.Equal(("Unknown", "Mayong Mistmoore"), (dies.Killer, dies.Victim));
+
+        var killed = Assert.IsType<DeathEvent>(EnglishGrammar.TryParse("Wuoshi has killed Lozzy."));
+        Assert.Equal(("Wuoshi", "Lozzy"), (killed.Killer, killed.Victim));
+
+        // Epic-mob death flavor, tolerant of the game's stray possessive.
+        var banished = Assert.IsType<DeathEvent>(EnglishGrammar.TryParse("Wuoshi's has been banished!"));
+        Assert.Equal("Wuoshi", banished.Victim);
+    }
+
+    [Fact]
     public void FirstPerson_Avoid_Without_Comma()
     {
         var s = Swing("YOU try to pierce Malkonis D'Morte but miss.");

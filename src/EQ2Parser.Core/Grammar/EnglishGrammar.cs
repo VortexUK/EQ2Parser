@@ -136,6 +136,20 @@ public static partial class EnglishGrammar
     [GeneratedRegex(@"^(?<victim>.+?) has been slain by (?<killer>.+?)!$")]
     private static partial Regex SlainBy();
 
+    // Mayong Mistmoore dies.  (the generic third-person death — how raid
+    // members witness a boss kill; no killer attribution on the line)
+    [GeneratedRegex(@"^(?<victim>.+?) dies\.$")]
+    private static partial Regex Dies();
+
+    // Wuoshi has killed Lozzy.  (third-person kill attribution)
+    [GeneratedRegex(@"^(?<killer>.+?) has killed (?<victim>.+?)\.$")]
+    private static partial Regex HasKilled();
+
+    // Wuoshi's has been banished!  (epic-mob death flavor; the stray
+    // possessive is a game typo we tolerate)
+    [GeneratedRegex(@"^(?<victim>.+?)(?:'s)? has been banished!$")]
+    private static partial Regex Banished();
+
     // ── Zone ────────────────────────────────────────────────────────────────
 
     [GeneratedRegex(@"^You have entered (?<zone>.+?)\.$")]
@@ -195,6 +209,12 @@ public static partial class EnglishGrammar
             return new DeathEvent("Unknown", m.Groups["victim"].Value);
         if ((m = SlainBy().Match(message)).Success)
             return new DeathEvent(m.Groups["killer"].Value, m.Groups["victim"].Value);
+        if ((m = HasKilled().Match(message)).Success)
+            return new DeathEvent(m.Groups["killer"].Value, m.Groups["victim"].Value);
+        if ((m = Dies().Match(message)).Success)
+            return new DeathEvent("Unknown", m.Groups["victim"].Value);
+        if ((m = Banished().Match(message)).Success)
+            return new DeathEvent("Unknown", m.Groups["victim"].Value);
         if ((m = ZoneEntered().Match(message)).Success)
             return new ZoneEvent(m.Groups["zone"].Value);
 
