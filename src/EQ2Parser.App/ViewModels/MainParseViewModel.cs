@@ -60,12 +60,8 @@ public sealed partial class AbilityRow : ObservableObject
     private double _barFraction;
 }
 
-/// <summary>One titled table of the drill-down.</summary>
-public sealed class AbilitySection(string header)
-{
-    public string Header { get; } = header;
-    public ObservableCollection<AbilityRow> Rows { get; } = [];
-}
+/// <summary>One swing of the deepest drill level.</summary>
+public sealed record SwingRow(string Time, string Result, string Crit, string Special, string Type, string Other);
 
 /// <summary>
 /// The ACT-style Main page: zone/fight tree on the left, sortable combatant
@@ -85,7 +81,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [ObservableProperty]
     private string _petHeader = "Pets (0)";
 
-    // ── Drill-down state ────────────────────────────────────────────────────
+    // ── Drill-down state (combatant → bucket → ability → swings) ───────────
 
     [ObservableProperty]
     private bool _detailOpen;
@@ -93,12 +89,19 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [ObservableProperty]
     private string _detailTitle = "";
 
-    private string? _detailKey;
+    [ObservableProperty]
+    private bool _swingLevel;
 
-    public AbilitySection DamageSection { get; } = new("Damage by ability");
-    public AbilitySection HealingSection { get; } = new("Healing by ability");
-    public AbilitySection TakenSection { get; } = new("Damage taken by attacker");
-    public IReadOnlyList<AbilitySection> DetailSections { get; private set; } = [];
+    [ObservableProperty]
+    private string _drillNameHeader = "BUCKET";
+
+    private string? _detailKey;
+    private string? _detailBucket;
+    private string? _detailAbility;
+    private (string, string, string, int) _swingSignature;
+
+    public ObservableCollection<AbilityRow> DrillRows { get; } = [];
+    public ObservableCollection<SwingRow> SwingRows { get; } = [];
 
     [RelayCommand]
     private void OpenDetail(CombatantRow? row)
@@ -106,17 +109,44 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         if (row is null)
             return;
         _detailKey = row.Key;
-        DetailSections = [DamageSection, HealingSection, TakenSection];
-        OnPropertyChanged(nameof(DetailSections));
+        _detailBucket = null;
+        _detailAbility = null;
         DetailOpen = true;
         RefreshGrid();
     }
 
+    /// <summary>Row click inside the drill: bucket → its abilities → swings.</summary>
+    [RelayCommand]
+    private void DrillInto(AbilityRow? row)
+    {
+        if (row is null)
+            return;
+        if (_detailBucket is null)
+            _detailBucket = row.Name;
+        else
+            _detailAbility ??= row.Name;
+        RefreshGrid();
+    }
+
+    /// <summary>Back: pop one drill level; closes at the top.</summary>
     [RelayCommand]
     private void CloseDetail()
     {
-        DetailOpen = false;
-        _detailKey = null;
+        if (_detailAbility is not null)
+        {
+            _detailAbility = null;
+        }
+        else if (_detailBucket is not null)
+        {
+            _detailBucket = null;
+        }
+        else
+        {
+            DetailOpen = false;
+            _detailKey = null;
+            return;
+        }
+        RefreshGrid();
     }
 
     [ObservableProperty]
@@ -340,9 +370,16 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         if (detail is not null)
         {
             DetailTitle = detail.Title;
-            ApplyAbilityRows(DamageSection.Rows, detail.Damage);
-            ApplyAbilityRows(HealingSection.Rows, detail.Healing);
-            ApplyAbilityRows(TakenSection.Rows, detail.Taken);
+            DrillNameHeader = detail.NameHeader;
+            SwingLevel = detail.Swings is not null;
+            if (detail.Table is not null)
+                ApplyAbilityRows(DrillRows, detail.Table, sort: detail.SortTable);
+            if (detail.Swings is not null)
+            {
+                SwingRows.Clear();
+                foreach (var swing in detail.Swings)
+                    SwingRows.Add(swing);
+            }
         }
     }
 
@@ -350,7 +387,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     private sealed record AbilityData(string Name, string Source, int Swings, int Hits, int Crits, long Max, long Total);
 
-    private sealed record DetailData(string Title, List<AbilityData> Damage, List<AbilityData> Healing, List<AbilityData> Taken);
+    private sealed record DetailData(string Title, string NameHeader, bool SortTable, List<AbilityData>? Table, List<SwingRow>? Swings);
 
     private sealed class AbilityAcc
     {
@@ -361,8 +398,27 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         public long Total;
     }
 
+    /// <summary>ACT's bucket order, outgoing then incoming.</summary>
+    private static readonly string[] BucketOrder =
+    [
+        BucketConfig.AutoAttackOut, BucketConfig.SkillOut, BucketConfig.OutgoingDamage,
+        BucketConfig.HealedOut, BucketConfig.PowerDrainOut, BucketConfig.PowerReplenishOut,
+        BucketConfig.CureOut, BucketConfig.ThreatOut, BucketConfig.AllOutgoingRef,
+        BucketConfig.IncomingDamage, BucketConfig.HealedInc, BucketConfig.PowerDrainInc,
+        BucketConfig.PowerReplenishInc, BucketConfig.CureInc, BucketConfig.ThreatInc,
+        BucketConfig.AllIncomingRef,
+    ];
+
+    private static bool IsIncomingBucket(string name) =>
+        name is BucketConfig.IncomingDamage or BucketConfig.AllIncomingRef || name.EndsWith("(Inc)", StringComparison.Ordinal);
+
+    private static Bucket? FindBucket(Combatant combatant, string name) =>
+        IsIncomingBucket(name)
+            ? combatant.IncomingBuckets.GetValueOrDefault(name)
+            : combatant.OutgoingBuckets.GetValueOrDefault(name);
+
     /// <summary>Runs under the manager lock — copies primitive stats out of
-    /// the live buckets for the drilled combatant.</summary>
+    /// the live buckets for the current drill depth.</summary>
     private DetailData? SnapshotDetail(object fight, string key)
     {
         List<Combatant> instances = fight switch
@@ -381,65 +437,94 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         if (instances.Count == 0)
             return null;
 
+        var name = instances[0].Name;
         var detection = manager.Classifier.Identifier.Detect(instances[0]);
-        var damage = new Dictionary<string, AbilityAcc>(StringComparer.Ordinal);
-        var healing = new Dictionary<string, AbilityAcc>(StringComparer.Ordinal);
-        var taken = new Dictionary<string, AbilityAcc>(StringComparer.Ordinal);
+        var cls = detection.ClassName is not null ? $" · {detection.ClassName}" : "";
 
-        foreach (var combatant in instances)
+        // Depth 1 — the combatant's buckets, canonical ACT order.
+        if (_detailBucket is null)
         {
-            AccumulateBucket(combatant, BucketConfig.OutgoingDamage, damage);
-            AccumulateBucket(combatant, BucketConfig.HealedOut, healing);
-            if (combatant.IncomingBuckets.TryGetValue(BucketConfig.IncomingDamage, out var incoming))
+            List<AbilityData> table = [];
+            foreach (var bucketName in BucketOrder)
             {
-                foreach (var swing in incoming.All.Swings)
+                var acc = new AbilityAcc();
+                foreach (var combatant in instances)
                 {
-                    var acc = GetOrAdd(taken, swing.Attacker);
-                    acc.Swings++;
-                    if (swing.Damage.Number >= 0)
-                    {
-                        acc.Hits++;
-                        if (swing.Critical)
-                            acc.Crits++;
-                        acc.Max = Math.Max(acc.Max, swing.Damage.Number);
-                        acc.Total += Math.Max(0, swing.Damage.Number);
-                    }
+                    if (FindBucket(combatant, bucketName) is not { } bucket)
+                        continue;
+                    var all = bucket.All;
+                    acc.Swings += all.SwingCount;
+                    acc.Hits += all.Hits;
+                    acc.Crits += all.CritHits;
+                    acc.Max = Math.Max(acc.Max, all.MaxHit);
+                    acc.Total += all.Damage;
                 }
+                if (acc.Swings > 0)
+                    table.Add(new AbilityData(bucketName, "", acc.Swings, acc.Hits, acc.Crits, acc.Max, acc.Total));
             }
+            return new DetailData($"{name}{cls}", "BUCKET", SortTable: false, table, null);
         }
 
-        List<AbilityData> ToList(Dictionary<string, AbilityAcc> accs, bool classify) =>
-            [.. accs.Select(kv => new AbilityData(
+        // Depth 2 — abilities within the chosen bucket.
+        if (_detailAbility is null)
+        {
+            var abilities = new Dictionary<string, AbilityAcc>(StringComparer.Ordinal);
+            foreach (var combatant in instances)
+            {
+                if (FindBucket(combatant, _detailBucket) is not { } bucket)
+                    continue;
+                foreach (var (abilityName, stats) in bucket.Abilities)
+                {
+                    if (abilityName == Bucket.AllAbility)
+                        continue;
+                    var acc = GetOrAdd(abilities, abilityName);
+                    acc.Swings += stats.SwingCount;
+                    acc.Hits += stats.Hits;
+                    acc.Crits += stats.CritHits;
+                    acc.Max = Math.Max(acc.Max, stats.MaxHit);
+                    acc.Total += stats.Damage;
+                }
+            }
+            var classify = !IsIncomingBucket(_detailBucket);
+            List<AbilityData> table = [.. abilities.Select(kv => new AbilityData(
                 kv.Key,
                 classify
                     ? manager.Classifier.Identifier.ClassifySource(kv.Key, detection.ClassName)
                         .ToString().ToLowerInvariant()
                     : "",
                 kv.Value.Swings, kv.Value.Hits, kv.Value.Crits, kv.Value.Max, kv.Value.Total))];
-
-        var cls = detection.ClassName is not null ? $"  ·  {detection.ClassName}" : "";
-        return new DetailData(
-            $"{instances[0].Name}{cls}",
-            ToList(damage, classify: true),
-            ToList(healing, classify: true),
-            ToList(taken, classify: false));
-    }
-
-    private static void AccumulateBucket(Combatant combatant, string bucketName, Dictionary<string, AbilityAcc> into)
-    {
-        if (!combatant.OutgoingBuckets.TryGetValue(bucketName, out var bucket))
-            return;
-        foreach (var (name, stats) in bucket.Abilities)
-        {
-            if (name == Bucket.AllAbility)
-                continue;
-            var acc = GetOrAdd(into, name);
-            acc.Swings += stats.SwingCount;
-            acc.Hits += stats.Hits;
-            acc.Crits += stats.CritHits;
-            acc.Max = Math.Max(acc.Max, stats.MaxHit);
-            acc.Total += stats.Damage;
+            return new DetailData($"{name}{cls} › {_detailBucket}", "ABILITY", SortTable: true, table, null);
         }
+
+        // Depth 3 — the individual swings of one ability.
+        var title = $"{name}{cls} › {_detailBucket} › {_detailAbility}";
+        var incoming = IsIncomingBucket(_detailBucket);
+        List<Core.Combat.Swing> collected = [];
+        foreach (var combatant in instances)
+        {
+            if (FindBucket(combatant, _detailBucket) is not { } bucket)
+                continue;
+            if (bucket.Abilities.TryGetValue(_detailAbility, out var stats))
+                collected.AddRange(stats.Swings);
+        }
+        var signature = (key, _detailBucket, _detailAbility, collected.Count);
+        if (signature == _swingSignature && SwingRows.Count > 0)
+            return new DetailData(title, "ABILITY", SortTable: false, null, null);
+        _swingSignature = signature;
+
+        collected.Sort((a, b) =>
+        {
+            var byTime = a.Time.CompareTo(b.Time);
+            return byTime != 0 ? byTime : a.TimeSorter.CompareTo(b.TimeSorter);
+        });
+        List<SwingRow> swings = [.. collected.Select(s => new SwingRow(
+            s.Time.ToLocalTime().ToString("HH:mm:ss"),
+            s.Damage.ToString(),
+            s.Critical ? "crit" : "",
+            s.Special == "None" ? "" : s.Special,
+            s.DamageType,
+            incoming ? s.Attacker : s.Victim))];
+        return new DetailData(title, "ABILITY", SortTable: false, null, swings);
     }
 
     private static AbilityAcc GetOrAdd(Dictionary<string, AbilityAcc> accs, string key)
@@ -449,10 +534,11 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         return acc;
     }
 
-    private static void ApplyAbilityRows(ObservableCollection<AbilityRow> rows, List<AbilityData> snapshot)
+    private static void ApplyAbilityRows(ObservableCollection<AbilityRow> rows, List<AbilityData> snapshot, bool sort)
     {
-        snapshot.Sort((a, b) => b.Total.CompareTo(a.Total));
-        var top = snapshot.Count > 0 ? Math.Max(1, snapshot[0].Total) : 1;
+        if (sort)
+            snapshot.Sort((a, b) => b.Total.CompareTo(a.Total));
+        var top = snapshot.Count > 0 ? Math.Max(1, snapshot.Max(r => r.Total)) : 1;
         var total = Math.Max(1, snapshot.Sum(r => r.Total));
         for (var i = 0; i < snapshot.Count; i++)
         {
