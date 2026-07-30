@@ -101,6 +101,10 @@ public static partial class EnglishGrammar
     [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) absorbs (?<amount>[\d,]+) points? of damage from being done to (?<victim>.+?)\.(?: \((?<remaining>[\d,]+) points? remaining\))?$")]
     private static partial Regex WardAbsorb();
 
+    // YOUR Stonewill absorbs 720 points of damage from being done to YOURSELF. (479 points remaining)
+    [GeneratedRegex(@"^YOUR (?<ability>.+?) absorbs (?<amount>[\d,]+) points? of damage from being done to (?<victim>.+?)\.(?: \((?<remaining>[\d,]+) points? remaining\))?$")]
+    private static partial Regex YourWardAbsorb();
+
     // ── Power ───────────────────────────────────────────────────────────────
     // Tsuna's Empower Servant refreshes Tsuna for 59 mana points.
 
@@ -194,12 +198,10 @@ public static partial class EnglishGrammar
             return NoDamageHit(m, m.Groups["attacker"].Value, m.Groups["ability"].Value);
         if ((m = PlainNoDamage().Match(message)).Success)
             return NoDamageHit(m, m.Groups["attacker"].Value, AutoAttackAbility);
+        if ((m = YourWardAbsorb().Match(message)).Success)
+            return Ward(m, You);
         if ((m = WardAbsorb().Match(message)).Success)
-            return new SwingEvent(
-                SwingCategory.Healing, false, "None",
-                m.Groups["attacker"].Value, m.Groups["ability"].Value,
-                ParseAmount(m.Groups["amount"].Value), m.Groups["victim"].Value, WardAbsorbType,
-                Extra: m.Groups["remaining"].Success ? $"remaining={m.Groups["remaining"].Value.Replace(",", "")}" : null);
+            return Ward(m, m.Groups["attacker"].Value);
         if ((m = YourPowerRefresh().Match(message)).Success)
             return PowerReplenish(m, You);
         if ((m = PowerRefresh().Match(message)).Success)
@@ -298,6 +300,12 @@ public static partial class EnglishGrammar
         Damage: DamageValue.NoDamage,
         Victim: m.Groups["victim"].Value,
         DamageType: m.Groups["effect"].Value);
+
+    private static SwingEvent Ward(Match m, string attacker) => new(
+        SwingCategory.Healing, false, "None",
+        attacker, m.Groups["ability"].Value,
+        ParseAmount(m.Groups["amount"].Value), m.Groups["victim"].Value, WardAbsorbType,
+        Extra: m.Groups["remaining"].Success ? $"remaining={m.Groups["remaining"].Value.Replace(",", "")}" : null);
 
     private static SwingEvent Avoid(Match m) => AvoidFrom(m, m.Groups["attacker"].Value);
 

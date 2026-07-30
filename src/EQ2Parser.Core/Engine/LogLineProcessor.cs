@@ -107,6 +107,8 @@ public sealed class LogLineProcessor
         }
     }
 
+    // "YOURSELF" appears as the victim of self-targeted lines ("…absorbs 720
+    // points of damage from being done to YOURSELF.") — same person as YOU.
     private string Resolve(string name) =>
-        name is EnglishGrammar.You or "You" ? Engine.OwnerName : name;
+        name is EnglishGrammar.You or "You" or "YOURSELF" or "Yourself" ? Engine.OwnerName : name;
 }

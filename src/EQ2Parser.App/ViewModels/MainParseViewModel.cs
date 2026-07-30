@@ -30,7 +30,11 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     public ObservableCollection<ParseNode> TreeNodes { get; } = [];
     public ObservableCollection<CombatantRow> AllyRows { get; } = [];
+    public ObservableCollection<CombatantRow> PetRows { get; } = [];
     public ObservableCollection<CombatantRow> EnemyRows { get; } = [];
+
+    [ObservableProperty]
+    private string _petHeader = "Pets (0)";
 
     [ObservableProperty]
     private string _breadcrumb = "No encounters yet — add a log under Sources.";
@@ -167,6 +171,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     private void RefreshGrid()
     {
         List<RowData> allies = [];
+        List<RowData> pets = [];
         List<RowData> enemies = [];
         string breadcrumb;
         var live = false;
@@ -182,11 +187,11 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 case Encounter encounter:
                     live = encounter.Active;
                     breadcrumb = Describe(encounter.Zone, encounter.Title, encounter.Duration, encounter.EncDps, live);
-                    SnapshotEncounter(encounter, allies, enemies);
+                    SnapshotEncounter(encounter, allies, pets, enemies);
                     break;
                 case CorrelatedEncounter merged:
                     breadcrumb = Describe(merged.Zone, merged.Title, merged.Duration, merged.EncDps, live: false);
-                    SnapshotMerged(merged, allies, enemies);
+                    SnapshotMerged(merged, allies, pets, enemies);
                     break;
                 default:
                     return;
@@ -195,7 +200,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
         Breadcrumb = breadcrumb;
         InCombat = live;
+        PetHeader = $"Pets ({pets.Count})";
         Apply(AllyRows, Sort(allies));
+        Apply(PetRows, Sort(pets));
         Apply(EnemyRows, Sort(enemies));
     }
 
@@ -220,7 +227,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         return $"{zonePart}{shownTitle}  ·  {duration.TotalSeconds:F0}s  ·  raid {CombatantRow.Compact(dps)} dps";
     }
 
-    private void SnapshotEncounter(Encounter encounter, List<RowData> allies, List<RowData> enemies)
+    private void SnapshotEncounter(Encounter encounter, List<RowData> allies, List<RowData> pets, List<RowData> enemies)
     {
         var tags = manager.Classifier.Classify(encounter);
         foreach (var combatant in encounter.Combatants.Values)
@@ -236,11 +243,11 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 combatant.Duration.TotalSeconds, combatant.Damage,
                 encounter.EncDpsOf(combatant), encounter.EncHpsOf(combatant),
                 combatant.DamageTaken, combatant.Deaths);
-            (tag.Kind == CombatantKind.Enemy ? enemies : allies).Add(row);
+            Bucket(tag, row, allies, pets, enemies);
         }
     }
 
-    private void SnapshotMerged(CorrelatedEncounter merged, List<RowData> allies, List<RowData> enemies)
+    private void SnapshotMerged(CorrelatedEncounter merged, List<RowData> allies, List<RowData> pets, List<RowData> enemies)
     {
         var tags = manager.Classifier.Classify(merged.Primary);
         var seconds = Math.Max(1, merged.Duration.TotalSeconds);
@@ -258,8 +265,19 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 combatant.Duration.TotalSeconds, combatant.Damage,
                 combatant.Damage / seconds, combatant.Healed / seconds,
                 combatant.DamageTaken, combatant.Deaths);
-            (tag.Kind == CombatantKind.Enemy ? enemies : allies).Add(row);
+            Bucket(tag, row, allies, pets, enemies);
         }
+    }
+
+    private static void Bucket(CombatantTag tag, RowData row, List<RowData> allies, List<RowData> pets, List<RowData> enemies)
+    {
+        var target = tag.Kind switch
+        {
+            CombatantKind.Enemy => enemies,
+            CombatantKind.Pet => pets,
+            _ => allies,
+        };
+        target.Add(row);
     }
 
     private static RowData BuildRow(

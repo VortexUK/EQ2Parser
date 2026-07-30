@@ -131,6 +131,39 @@ public class EnglishGrammarTests
     }
 
     [Fact]
+    public void Your_Ward_Absorb_On_Yourself()
+    {
+        // Real line (Menludiir log): first-person wards were unparsed and
+        // third-person wards on YOU created a phantom "YOURSELF" combatant.
+        var s = Swing("YOUR Stonewill absorbs 720 points of damage from being done to YOURSELF. (479 points remaining)");
+        Assert.Equal((SwingCategory.Healing, "YOU", "Stonewill", "YOURSELF"), (s.Category, s.Attacker, s.Ability, s.Victim));
+        Assert.Equal(720, s.Damage.Number);
+        Assert.Equal(EnglishGrammar.WardAbsorbType, s.DamageType);
+        Assert.Equal("remaining=479", s.Extra);
+    }
+
+    [Fact]
+    public void Yourself_Resolves_To_The_Log_Owner()
+    {
+        var engine = new Engine.ParserEngine("log", "Menludiir");
+        var processor = new Engine.LogLineProcessor(engine);
+        foreach (var raw in new[]
+        {
+            "(1779270720)[Wed May 20 10:52:00 2026] a gnoll hits YOU for 500 crushing damage.",
+            "(1779270721)[Wed May 20 10:52:01 2026] Mexxy's Ward of Faith absorbs 300 points of damage from being done to YOURSELF.",
+        })
+        {
+            Assert.True(Logs.LogLine.TryParse(raw, out var line));
+            processor.Process(line);
+        }
+        engine.EndCombat();
+        var encounter = engine.History[^1];
+        Assert.False(encounter.Combatants.ContainsKey("YOURSELF"));
+        Assert.True(encounter.Combatants.ContainsKey("MENLUDIIR"));
+        Assert.Equal(300, encounter.Combatants["MEXXY"].Healed);
+    }
+
+    [Fact]
     public void Dumbfire_Expiry_Is_Not_A_Death()
     {
         // "sputters and dies" is a dumbfire pet expiring, not a combat death;
