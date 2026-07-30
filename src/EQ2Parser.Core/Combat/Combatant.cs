@@ -85,6 +85,13 @@ public sealed class Combatant(string name)
     public long PowerReplenish => AllOf(_outgoing, BucketConfig.PowerReplenishOut)?.Damage ?? 0;
     public int CureDispels => AllOf(_outgoing, BucketConfig.CureOut)?.SwingCount ?? 0;
 
+    /// <summary>How many swings this source observed for this combatant
+    /// (both directions) — the multi-log correlator's coverage measure for
+    /// choosing the authoritative source per combatant.</summary>
+    public int ObservedSwingCount =>
+        (AllOf(_outgoing, BucketConfig.AllOutgoingRef)?.Swings.Count ?? 0)
+        + (AllOf(_incoming, BucketConfig.AllIncomingRef)?.Swings.Count ?? 0);
+
     /// <summary>Personal window start: the first outgoing action of any kind.</summary>
     public DateTimeOffset StartTime => AllOf(_outgoing, BucketConfig.AllOutgoingRef)?.StartTime ?? DateTimeOffset.MaxValue;
 
