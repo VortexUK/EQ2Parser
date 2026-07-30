@@ -171,32 +171,17 @@
             </Grid.RowDefinitions>
 
             <!-- Breadcrumb -->
-            <Grid Margin="0,0,0,10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding Breadcrumb}" Foreground="{StaticResource GoldBrightBrush}"
-                               FontFamily="{StaticResource HeadingFont}" FontSize="15"
-                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <Border Margin="10,0,0,0" VerticalAlignment="Center" CornerRadius="99"
-                            Background="#334ADE80" Padding="8,2"
-                            Visibility="{Binding InCombat, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="LIVE" FontSize="10" Foreground="{StaticResource SuccessBrush}"
-                                   FontFamily="{StaticResource BodySemiBoldFont}" />
-                    </Border>
-                </StackPanel>
-                <Button Grid.Column="1" Content="⏵ Follow live" Style="{StaticResource GoldButton}"
-                        Margin="0,0,8,0" Command="{Binding ResumeLiveCommand}">
-                    <Button.Visibility>
-                        <Binding Path="FollowLive" Converter="{StaticResource InverseBoolToVis}" />
-                    </Button.Visibility>
-                </Button>
-                <Button Grid.Column="2" Content="End combat" Style="{StaticResource GoldButton}"
-                        Command="{Binding EndCombatCommand}" />
-            </Grid>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBlock Text="{Binding Breadcrumb}" Foreground="{StaticResource GoldBrightBrush}"
+                           FontFamily="{StaticResource HeadingFont}" FontSize="15"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <Border Margin="10,0,0,0" VerticalAlignment="Center" CornerRadius="99"
+                        Background="#334ADE80" Padding="8,2"
+                        Visibility="{Binding InCombat, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="LIVE" FontSize="10" Foreground="{StaticResource SuccessBrush}"
+                               FontFamily="{StaticResource BodySemiBoldFont}" />
+                </Border>
+            </StackPanel>
 
             <!-- Column headers -->
             <Grid Grid.Row="1" Margin="8,0,26,4">

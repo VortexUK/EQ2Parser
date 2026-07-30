@@ -25,6 +25,13 @@ public sealed class ParseNode
 /// <summary>A zone rollup selection: combined stats over several fights.</summary>
 public sealed record AggregateFights(string Zone, string Label, IReadOnlyList<CorrelatedEncounter> Fights);
 
+/// <summary>Tree-node sentinel: "follow the live fight" selection.</summary>
+public sealed class LiveFollow
+{
+    public static readonly LiveFollow Instance = new();
+    private LiveFollow() { }
+}
+
 /// <summary>One row of a drill-down table (ability or attacker breakdown).</summary>
 public sealed partial class AbilityRow : ObservableObject
 {
@@ -207,28 +214,18 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         }
         if (value.Fight is null)
             return;
-        _pinnedFight = value.Fight;
-        FollowLive = false;
-        RefreshGrid();
-    }
-
-    [RelayCommand]
-    private void ResumeLive()
-    {
-        FollowLive = true;
-        _pinnedFight = null;
-        RefreshGrid();
-    }
-
-    [RelayCommand]
-    private void EndCombat()
-    {
-        lock (manager.Sync)
+        if (value.Fight is LiveFollow)
         {
-            foreach (var source in manager.Sources)
-                source.Engine.EndCombat();
+            // The "⚔ Live" tree node: resume following the active fight.
+            FollowLive = true;
+            _pinnedFight = null;
         }
-        Refresh();
+        else
+        {
+            _pinnedFight = value.Fight;
+            FollowLive = false;
+        }
+        RefreshGrid();
     }
 
     [RelayCommand]
@@ -286,6 +283,17 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         List<ParseNode> nodes = [];
         lock (manager.Sync)
         {
+            // Active combat: a Live node at the very top — clicking it
+            // resumes following the current fight after browsing history.
+            if (manager.Sources.Any(s => s.Engine.InCombat))
+            {
+                nodes.Add(new ParseNode
+                {
+                    Title = "⚔ Live combat",
+                    Fight = LiveFollow.Instance,
+                    TitleBrush = ClassColors.OutcomeWin,
+                });
+            }
             // Newest first: group consecutive same-zone fights, ACT-sidebar
             // style ("The Emerald Halls - [25] 18:57:04") with per-zone
             // "All" / "All Bosses" rollup nodes. Zone headers collapse on
