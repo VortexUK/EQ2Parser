@@ -96,6 +96,12 @@ public class ClassIdentifierTests(ITestOutputHelper output)
         // Effect-cast mining: "Holy Intercession V" logs as its triggered
         // effect "Divine Prayer" — the map must know the effect name.
         Assert.Contains("Templar", map.ClassesFor("Divine Prayer"));
+        // Group-granted effects tag but never vote…
+        Assert.Empty(map.VotingClassesFor("Divine Prayer"));
+        Assert.Empty(map.VotingClassesFor("Precise Note"));
+        // …while self-buff effects vote (Elemental Unity → Force of the
+        // Elements — how the EoF Conjurors resolve).
+        Assert.Equal(["Conjuror"], map.VotingClassesFor("Force of the Elements"));
         Assert.Empty(map.ClassesFor("Absolute Vitae"));
     }
 
