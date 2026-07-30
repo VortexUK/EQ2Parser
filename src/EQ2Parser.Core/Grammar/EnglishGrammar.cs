@@ -42,7 +42,7 @@ public static partial class EnglishGrammar
     [GeneratedRegex($@"^YOU (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) (?<school>\w+) damage\.$")]
     private static partial Regex YouAutoDamage();
 
-    [GeneratedRegex($@"^(?<attacker>.+?)'s (?<ability>.+?) (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) (?<school>\w+) damage\.$")]
+    [GeneratedRegex($@"^(?<attacker>.+?)'s? (?<ability>.+?) (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) (?<school>\w+) damage\.$")]
     private static partial Regex PossessiveAbilityDamage();
 
     [GeneratedRegex($@"^(?<attacker>.+?) (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) (?<school>\w+) damage\.$")]
@@ -70,7 +70,7 @@ public static partial class EnglishGrammar
     [GeneratedRegex(@"^YOUR (?<ability>.+?) heals (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) hit points?\.$")]
     private static partial Regex YourHeal();
 
-    [GeneratedRegex(@"^(?<attacker>.+?)'s (?<ability>.+?) heals (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) hit points?\.$")]
+    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) heals (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) hit points?\.$")]
     private static partial Regex PossessiveHeal();
 
     // ── Zero-damage hits ────────────────────────────────────────────────────
@@ -80,7 +80,7 @@ public static partial class EnglishGrammar
     [GeneratedRegex(@"^YOUR (?<ability>.+?) hits (?<victim>.+?) but fails to inflict any damage\.$")]
     private static partial Regex YourNoDamage();
 
-    [GeneratedRegex(@"^(?<attacker>.+?)'s (?<ability>.+?) hits (?<victim>.+?) but fails to inflict any damage\.$")]
+    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) hits (?<victim>.+?) but fails to inflict any damage\.$")]
     private static partial Regex PossessiveNoDamage();
 
     [GeneratedRegex(@"^(?<attacker>.+?) hits (?<victim>.+?) but fails to inflict any damage\.$")]
@@ -98,13 +98,13 @@ public static partial class EnglishGrammar
 
     public const string WardAbsorbType = "Ward (Absorb)";
 
-    [GeneratedRegex(@"^(?<attacker>.+?)'s (?<ability>.+?) absorbs (?<amount>[\d,]+) points? of damage from being done to (?<victim>.+?)\.(?: \((?<remaining>[\d,]+) points? remaining\))?$")]
+    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) absorbs (?<amount>[\d,]+) points? of damage from being done to (?<victim>.+?)\.(?: \((?<remaining>[\d,]+) points? remaining\))?$")]
     private static partial Regex WardAbsorb();
 
     // ── Power ───────────────────────────────────────────────────────────────
     // Tsuna's Empower Servant refreshes Tsuna for 59 mana points.
 
-    [GeneratedRegex(@"^(?<attacker>.+?)'s (?<ability>.+?) refreshes (?<victim>.+?) for (?<amount>[\d,]+) (?:mana|power) points?\.$")]
+    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) refreshes (?<victim>.+?) for (?<amount>[\d,]+) (?:mana|power) points?\.$")]
     private static partial Regex PowerRefresh();
 
     [GeneratedRegex(@"^YOUR (?<ability>.+?) refreshes (?<victim>.+?) for (?<amount>[\d,]+) (?:mana|power) points?\.$")]
@@ -114,7 +114,7 @@ public static partial class EnglishGrammar
     // Badbang's Insolent Gibe increases THEIR hate with a dragonspawn whelp for 1,234 threat.
     // Noxyi's Dynamism reduces THEIR hate with a blood colossus for 567 threat.
 
-    [GeneratedRegex(@"^(?<attacker>.+?)'s (?<ability>.+?) (?<direction>increases|reduces) (?:THEIR|YOUR) hate with (?<victim>.+?) for (?<amount>[\d,]+) threat\.$")]
+    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) (?<direction>increases|reduces) (?:THEIR|YOUR) hate with (?<victim>.+?) for (?<amount>[\d,]+) threat\.$")]
     private static partial Regex ThreatChange();
 
     [GeneratedRegex(@"^YOUR (?<ability>.+?) (?<direction>increases|reduces) YOUR hate with (?<victim>.+?) for (?<amount>[\d,]+) threat\.$")]
@@ -123,7 +123,7 @@ public static partial class EnglishGrammar
     // ── Cures ───────────────────────────────────────────────────────────────
     // Catofur's Cure Trauma relieves Eviscerate from Badbang.
 
-    [GeneratedRegex(@"^(?<attacker>.+?)'s (?<ability>.+?) relieves (?<effect>.+?) from (?<victim>.+?)\.$")]
+    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) relieves (?<effect>.+?) from (?<victim>.+?)\.$")]
     private static partial Regex CureRelieves();
 
     [GeneratedRegex(@"^YOUR (?<ability>.+?) relieves (?<effect>.+?) from (?<victim>.+?)\.$")]

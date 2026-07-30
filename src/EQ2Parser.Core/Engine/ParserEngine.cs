@@ -62,17 +62,26 @@ public sealed class ParserEngine(string sourceId, string ownerName, EngineOption
     }
 
     /// <summary>Start-or-continue contract: call before every parsed action.
-    /// Returns false when the action should be dropped.</summary>
-    public bool SetEncounter(DateTimeOffset time, string attacker, string victim)
+    /// Returns false when the action should be dropped.
+    ///
+    /// Only HOSTILE actions (attack attempts — melee/non-melee swings and
+    /// their avoids) start an encounter or extend its idle clock. Heals,
+    /// wards, power, threat, cures and deaths are recorded while a fight is
+    /// live but never prolong it — post-fight healing used to keep the
+    /// encounter open long enough for the next pull to bleed in.</summary>
+    public bool SetEncounter(DateTimeOffset time, string attacker, string victim, bool hostile = true)
     {
         if (!InCombat)
         {
+            if (!hostile)
+                return false;
             ActiveEncounter = new Encounter(SourceId, OwnerName, CurrentZone);
             _history.Add(ActiveEncounter);
             InCombat = true;
             EncounterStarted?.Invoke(ActiveEncounter);
         }
-        _lastHostileTime = time;
+        if (hostile)
+            _lastHostileTime = time;
         return true;
     }
 

@@ -139,11 +139,14 @@ public sealed partial class CombatantClassifier(ClassIdentifier identifier)
         return tags;
     }
 
-    /// <summary>"Broomm's attack hawk" → Broomm, when the owner is present
-    /// in the encounter. Auto-named pets carry no owner in the name.</summary>
+    /// <summary>"Broomm's attack hawk" → Broomm (or "Duress' warder" →
+    /// Duress — s-ending owners possessivise without the extra s), when the
+    /// owner is present in the encounter. Auto-named pets carry no owner.</summary>
     private static string? ResolveOwner(string petName, Encounter encounter)
     {
         var idx = petName.IndexOf("'s ", StringComparison.Ordinal);
+        if (idx <= 0)
+            idx = petName.IndexOf("' ", StringComparison.Ordinal);
         if (idx <= 0)
             return null;
         var owner = petName[..idx];

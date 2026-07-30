@@ -30,6 +30,34 @@ public class EncounterTests
     }
 
     [Fact]
+    public void Only_Damage_Starts_Or_Extends_A_Fight()
+    {
+        var engine = Engine();
+
+        // A heal out of combat is dropped — no junk encounter.
+        Assert.False(engine.SetEncounter(At(0), "Sofja", "Menludiir", hostile: false));
+        Assert.False(engine.InCombat);
+
+        // Fight starts on damage; post-fight healing does NOT extend it —
+        // the idle clock runs from the last HOSTILE swing, so the next
+        // line past the timeout closes the fight even if heals landed
+        // in between (the "one encounter bleeding into another" bug).
+        Swing(engine, 10, SwingCategory.Melee, "Menludiir", "a gnoll", 100);
+        Assert.True(engine.SetEncounter(At(13), "Sofja", "Menludiir", hostile: false));
+        engine.AddSwing(SwingCategory.Healing, false, "None", "Sofja", "Mend", 50, At(13), "Menludiir", "heal");
+
+        engine.OnLineTime(At(17)); // 7s after the damage, 4s after the heal
+        Assert.False(engine.InCombat);
+
+        // The closed fight is cut back to its last damaging swing.
+        Assert.Equal(At(10), engine.History[0].EndTime);
+
+        // The next pull opens a NEW encounter instead of bleeding in.
+        Swing(engine, 17, SwingCategory.Melee, "Menludiir", "a second gnoll", 100);
+        Assert.Equal(2, engine.History.Count);
+    }
+
+    [Fact]
     public void AddSwing_Without_SetEncounter_Throws()
     {
         var engine = Engine();

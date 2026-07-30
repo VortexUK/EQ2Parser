@@ -115,6 +115,22 @@ public class EnglishGrammarTests
     }
 
     [Fact]
+    public void S_Ending_Names_Possessivise_Without_The_Extra_S()
+    {
+        // "Duress' Thunderous Overture …" — the possessive shapes must fold
+        // these under the owner, not spawn a phantom combatant per ability.
+        var s = Swing("Duress' Thunderous Overture hits a training dummy for 1,234 mental damage.");
+        Assert.Equal(("Duress", "Thunderous Overture", "a training dummy"), (s.Attacker, s.Ability, s.Victim));
+
+        var heal = Swing("Duress' Bria's Inspiring Ballad heals Duress for 88 hit points.");
+        Assert.Equal(("Duress", "Bria's Inspiring Ballad"), (heal.Attacker, heal.Ability));
+
+        // Apostrophes inside plain names still parse as plain attacks.
+        var plain = Swing("Malkonis D'Morte hits Menludiir for 500 crushing damage.");
+        Assert.Equal(("Malkonis D'Morte", EnglishGrammar.AutoAttackAbility), (plain.Attacker, plain.Ability));
+    }
+
+    [Fact]
     public void Dumbfire_Expiry_Is_Not_A_Death()
     {
         // "sputters and dies" is a dumbfire pet expiring, not a combat death;

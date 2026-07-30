@@ -72,7 +72,8 @@ public sealed class LogLineProcessor
             {
                 var attacker = Resolve(swing.Attacker);
                 var victim = Resolve(swing.Victim);
-                if (!Engine.SetEncounter(line.Timestamp, attacker, victim))
+                var hostile = swing.Category is SwingCategory.Melee or SwingCategory.NonMelee;
+                if (!Engine.SetEncounter(line.Timestamp, attacker, victim, hostile))
                     break;
                 Engine.AddSwing(
                     swing.Category, swing.Critical, swing.Special,
@@ -93,7 +94,9 @@ public sealed class LogLineProcessor
             {
                 var killer = Resolve(death.Killer);
                 var victim = Resolve(death.Victim);
-                if (!Engine.SetEncounter(line.Timestamp, killer, victim))
+                // Deaths are recorded into a live fight but never start one —
+                // an out-of-combat "Alas, X has died" is not an encounter.
+                if (!Engine.SetEncounter(line.Timestamp, killer, victim, hostile: false))
                     break;
                 Engine.AddSwing(
                     SwingCategory.Melee, false, "None",
