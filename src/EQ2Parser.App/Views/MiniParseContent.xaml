@@ -42,27 +42,24 @@
                         </Border>
                         <Grid Margin="6,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="16" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding RankText}" FontSize="10" Foreground="#697091"
-                                       VerticalAlignment="Center" FontFamily="Consolas" />
-                            <TextBlock Grid.Column="1" FontSize="12" VerticalAlignment="Center"
+                            <TextBlock FontSize="12" VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis" FontFamily="Segoe UI">
                                 <Run Text="{Binding Name, Mode=OneWay}" Foreground="{Binding NameBrush}" FontWeight="SemiBold" /><Run Text="{Binding ClassText, Mode=OneWay}" Foreground="#D6DAE6" FontSize="10.5" />
                                 <TextBlock.Effect>
                                     <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
                                 </TextBlock.Effect>
                             </TextBlock>
-                            <TextBlock Grid.Column="2" Text="{Binding ValueText}" FontSize="12" Foreground="#F0F2FA"
+                            <TextBlock Grid.Column="1" Text="{Binding ValueText}" FontSize="12" Foreground="#F0F2FA"
                                        VerticalAlignment="Center" FontFamily="Consolas" FontWeight="Bold">
                                 <TextBlock.Effect>
                                     <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
                                 </TextBlock.Effect>
                             </TextBlock>
-                            <TextBlock Grid.Column="3" Text="{Binding ShareText}" FontSize="10" Foreground="#8B90AB"
+                            <TextBlock Grid.Column="2" Text="{Binding ShareText}" FontSize="10" Foreground="#8B90AB"
                                        VerticalAlignment="Center" FontFamily="Consolas" Margin="7,1,0,0" />
                         </Grid>
                     </Grid>

@@ -11,9 +11,6 @@ namespace EQ2Parser.App.Views;
 public sealed partial class MiniParseRowVm : ObservableObject
 {
     [ObservableProperty]
-    private string _rankText = "";
-
-    [ObservableProperty]
     private string _name = "";
 
     [ObservableProperty]
@@ -70,7 +67,6 @@ public partial class MiniParseContent : IOverlayContent
         {
             var row = data.Rows[i];
             var vm = _rows[i];
-            vm.RankText = row.Rank.ToString();
             vm.Name = row.Name;
             vm.ClassText = row.ClassName is { Length: > 0 } cls ? $" <{cls}>" : "";
             vm.ValueText = CombatantRow.Compact(row.Value);
