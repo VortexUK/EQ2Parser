@@ -147,9 +147,9 @@ public class SpellTimerServiceTests
     public void Timer_Mods_Scale_Modable_Timers_At_Start()
     {
         var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
-        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5, T0, TimeSpan.FromSeconds(30));
         // Same name never stacks — re-adding replaces.
-        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5, T0, TimeSpan.FromSeconds(30));
 
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0));
         var timer = Assert.Single(Assert.Single(service.Frames).Timers);
@@ -157,7 +157,7 @@ public class SpellTimerServiceTests
         Assert.Equal(60, timer.BaseDurationSeconds);
 
         // Different names sum additively: 60 × (1 + 0.5 + 0.25) = 105.
-        service.AddTimerMod("Bossmob", "Temporal Drag", 0.25);
+        service.AddTimerMod("Bossmob", "Temporal Drag", 0.25, T0, TimeSpan.FromSeconds(30));
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0));
         var second = Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers);
         Assert.Equal(105, second.DurationSeconds);
@@ -167,12 +167,12 @@ public class SpellTimerServiceTests
     public void NonModable_Timers_Ignore_Mods_And_Other_Owners_Are_Unaffected()
     {
         var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = false });
-        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5, T0, TimeSpan.FromSeconds(30));
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0));
         Assert.Equal(60, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
 
         var modable = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
-        modable.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+        modable.AddTimerMod("Bossmob", "Sluggish Recast", 0.5, T0, TimeSpan.FromSeconds(30));
         // A different caster has no mods — unmodified.
         Assert.True(modable.Notify("Othermob", "Doom", self: false, "sofja", T0));
         Assert.Equal(60, Assert.Single(Assert.Single(modable.Frames).Timers).DurationSeconds);
@@ -182,7 +182,7 @@ public class SpellTimerServiceTests
     public void Owner_Death_Drops_Mods_And_Reverts_Timers_Started_Within_Two_Seconds()
     {
         var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
-        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5, T0, TimeSpan.FromSeconds(30));
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0));
 
         // Death 1 s later: inside the grace window — the recast never
@@ -199,7 +199,7 @@ public class SpellTimerServiceTests
     public void Old_Modified_Timers_Survive_Owner_Death()
     {
         var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
-        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5, T0, TimeSpan.FromSeconds(30));
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0));
 
         // Death 3 s later: past the 2 s window — the committed recast keeps
@@ -212,7 +212,7 @@ public class SpellTimerServiceTests
     public void Dispel_Reverts_Only_Within_One_Second()
     {
         var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
-        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5, T0, TimeSpan.FromSeconds(30));
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0));
 
         service.RemoveTimerMod("Bossmob", "Sluggish Recast", T0.AddSeconds(1.5));
@@ -220,6 +220,41 @@ public class SpellTimerServiceTests
         Assert.Equal(90, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
         // …but the mod itself is gone for future timers.
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(5)));
+        Assert.Equal(60, Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers).DurationSeconds);
+    }
+
+    [Fact]
+    public void Mods_Expire_After_Their_Debuff_Duration()
+    {
+        var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5, T0, TimeSpan.FromSeconds(30));
+
+        // 31 s later the debuff has worn off — unmodified.
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0.AddSeconds(31)));
+        Assert.Equal(60, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
+
+        // Re-applying refreshes the window.
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5, T0.AddSeconds(40), TimeSpan.FromSeconds(30));
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(60)));
+        Assert.Equal(90, Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers).DurationSeconds);
+    }
+
+    [Fact]
+    public void Traumatic_Swipe_Hits_Produce_And_Cures_Remove_The_Mod()
+    {
+        // ACT_English_Parser hardcodes exactly one recast debuff: every
+        // Traumatic Swipe hit → ApplyTimerMod(victim, 50%, 30 s).
+        var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
+        Assert.False(service.NotifyRecastDebuff("Bossmob", "Kidney Stab", T0));
+        Assert.True(service.NotifyRecastDebuff("Bossmob", "Traumatic Swipe", T0));
+
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0.AddSeconds(2)));
+        Assert.Equal(90, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
+
+        // A cure stripping Traumatic Swipe drops the mod (unrelated effects don't).
+        service.NotifyDispel("Bossmob", "Some Other Effect", T0.AddSeconds(3));
+        service.NotifyDispel("Bossmob", "Traumatic Swipe", T0.AddSeconds(3));
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(10)));
         Assert.Equal(60, Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers).DurationSeconds);
     }
 }

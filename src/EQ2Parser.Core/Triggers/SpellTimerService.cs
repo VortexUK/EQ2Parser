@@ -59,9 +59,19 @@ public sealed class SpellTimerService(TimerOptions? options = null)
     private readonly Dictionary<string, TimerDefinition> _definitions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<TimerDefinition>> _byName = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, TimerFrame> _frames = new(StringComparer.Ordinal);
-    // owner (lower) → mod name (lower) → additive fraction. ACT's recast
-    // mods: same name never stacks, different names sum.
-    private readonly Dictionary<string, Dictionary<string, double>> _mods = new(StringComparer.Ordinal);
+    // owner (lower) → mod name → (additive fraction, expiry). ACT's recast
+    // mods: same name never stacks (re-apply refreshes), different names
+    // sum, and each mod lives only for its debuff duration.
+    private readonly Dictionary<string, Dictionary<string, (double Fraction, DateTimeOffset Expires)>> _mods = new(StringComparer.Ordinal);
+
+    /// <summary>ACT's hardcoded recast-debuff table (ACT_English_Parser:
+    /// every Traumatic Swipe hit applies a 50% recast slow to the victim
+    /// for 30 s, refreshed per hit).</summary>
+    public static readonly IReadOnlyDictionary<string, (double Fraction, TimeSpan Duration)> RecastDebuffs =
+        new Dictionary<string, (double, TimeSpan)>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Traumatic Swipe"] = (0.5, TimeSpan.FromSeconds(30)),
+        };
 
     public event Action<TimerFrame, ActiveTimer>? TimerStarted;
     public event Action<TimerFrame, ActiveTimer>? WarningReached;
@@ -151,9 +161,9 @@ public sealed class SpellTimerService(TimerOptions? options = null)
         // Non-modable definitions ignore mods entirely.
         var duration = chosen.DurationSeconds;
         var modOwner = "";
-        if (chosen.Modable && _mods.TryGetValue(attacker, out var ownerMods) && ownerMods.Count > 0)
+        if (chosen.Modable && ActiveModSum(attacker, time) is > 0 and var modSum)
         {
-            duration = Math.Max(0, (int)Math.Round(duration * (1 + ownerMods.Values.Sum())));
+            duration = Math.Max(0, (int)Math.Round(duration * (1 + modSum)));
             modOwner = attacker;
         }
         var timer = new ActiveTimer(time, duration, isMaster)
@@ -185,15 +195,58 @@ public sealed class SpellTimerService(TimerOptions? options = null)
 
     // ---- timer mods (ACT ApplyTimerMod, docs/act-behavior.md §4) ----
 
-    /// <summary>Add or refresh a named recast mod on a combatant. Same name
-    /// never stacks (replace); different names sum additively. Affects only
+    /// <summary>Add or refresh a named recast mod on a combatant for
+    /// <paramref name="duration"/>. Same name never stacks (re-apply
+    /// refreshes the expiry); different names sum additively. Affects only
     /// timers that START while the mod is active.</summary>
-    public void AddTimerMod(string owner, string modName, double fraction)
+    public void AddTimerMod(string owner, string modName, double fraction, DateTimeOffset time, TimeSpan duration)
     {
         owner = owner.ToLowerInvariant();
         if (!_mods.TryGetValue(owner, out var ownerMods))
-            _mods[owner] = ownerMods = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-        ownerMods[modName] = fraction;
+            _mods[owner] = ownerMods = new Dictionary<string, (double, DateTimeOffset)>(StringComparer.OrdinalIgnoreCase);
+        ownerMods[modName] = (fraction, time + duration);
+    }
+
+    /// <summary>A damaging ability landed: if it's a known recast debuff
+    /// (<see cref="RecastDebuffs"/>), apply/refresh the victim's mod —
+    /// exactly ACT's per-hit ApplyTimerMod call.</summary>
+    public bool NotifyRecastDebuff(string victim, string ability, DateTimeOffset time)
+    {
+        if (!RecastDebuffs.TryGetValue(ability, out var debuff))
+            return false;
+        AddTimerMod(victim, ability, debuff.Fraction, time, debuff.Duration);
+        return true;
+    }
+
+    /// <summary>A cure stripped an effect: if that effect was a recast mod
+    /// on the victim, it drops (ACT's DispellTimerMods).</summary>
+    public void NotifyDispel(string victim, string effect, DateTimeOffset time)
+    {
+        if (RecastDebuffs.ContainsKey(effect))
+            RemoveTimerMod(victim, effect, time);
+    }
+
+    private double ActiveModSum(string owner, DateTimeOffset time)
+    {
+        if (!_mods.TryGetValue(owner, out var ownerMods))
+            return 0;
+        List<string>? expired = null;
+        double sum = 0;
+        foreach (var (name, mod) in ownerMods)
+        {
+            if (mod.Expires <= time)
+                (expired ??= []).Add(name);
+            else
+                sum += mod.Fraction;
+        }
+        if (expired is not null)
+        {
+            foreach (var name in expired)
+                ownerMods.Remove(name);
+            if (ownerMods.Count == 0)
+                _mods.Remove(owner);
+        }
+        return sum;
     }
 
     /// <summary>Remove one mod (debuff expired or dispelled). A dispel

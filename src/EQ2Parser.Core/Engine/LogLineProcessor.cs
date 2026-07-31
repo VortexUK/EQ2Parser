@@ -103,12 +103,18 @@ public sealed class LogLineProcessor
                 // anchor to the arrival stamp so bars start the instant the
                 // line lands, not on the next whole second. Replayed history
                 // never starts bars (same freshness rule as triggers).
-                if (live)
+                if (live && _timers is not null)
                 {
-                    _timers?.Notify(
+                    _timers.Notify(
                         attacker, swing.Ability,
                         self: attacker == Engine.OwnerName || victim == Engine.OwnerName,
                         victim, anchor, Engine.CurrentZone);
+                    // Recast debuffs (Traumatic Swipe): every hit refreshes
+                    // the victim's timer mod, ACT-style; a cure stripping a
+                    // known debuff drops the mod again.
+                    _timers.NotifyRecastDebuff(victim, swing.Ability, anchor);
+                    if (swing.Category == SwingCategory.CureDispel)
+                        _timers.NotifyDispel(victim, swing.DamageType, anchor);
                 }
                 break;
             }
