@@ -11,7 +11,7 @@ public sealed partial class SourceRow(LogSource source) : ObservableObject
     public LogSource Source { get; } = source;
     public string Owner => Source.Owner;
     public string Path => Source.Path;
-    public string Mode => Source.ParseFromStart ? "full file" : "live tail";
+    public string Mode => Source.AutoDiscovered ? "auto" : Source.ParseFromStart ? "full file" : "live tail";
 
     [ObservableProperty]
     private string _status = "";
@@ -23,12 +23,37 @@ public sealed partial class SourceRow(LogSource source) : ObservableObject
 public sealed partial class SourcesViewModel(SourceManager manager) : ObservableObject
 {
     public ObservableCollection<SourceRow> Rows { get; } = [];
+    public ObservableCollection<string> WatchedFolders { get; } = [.. manager.WatchedFolders];
 
     [RelayCommand]
     private void AddLive() => Add(parseFromStart: false);
 
     [RelayCommand]
     private void AddWithHistory() => Add(parseFromStart: true);
+
+    [RelayCommand]
+    private void WatchFolder()
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Choose the EQ2 logs folder (server subfolders are scanned too)",
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+        manager.AddWatchedFolder(dialog.FolderName);
+        if (!WatchedFolders.Contains(dialog.FolderName))
+            WatchedFolders.Add(dialog.FolderName);
+    }
+
+    [RelayCommand]
+    private void UnwatchFolder(string? folder)
+    {
+        if (folder is null)
+            return;
+        manager.RemoveWatchedFolder(folder);
+        WatchedFolders.Remove(folder);
+        SyncFromManager();
+    }
 
     [RelayCommand]
     private void Remove(SourceRow? row)
@@ -56,9 +81,12 @@ public sealed partial class SourcesViewModel(SourceManager manager) : Observable
         manager.PersistSources();
     }
 
-    /// <summary>Shell tick: refresh per-source status lines.</summary>
+    /// <summary>Shell tick: pick up folder-watcher discoveries, then
+    /// refresh per-source status lines.</summary>
     public void Refresh()
     {
+        if (manager.Sources.Count != Rows.Count)
+            SyncFromManager();
         foreach (var row in Rows)
         {
             long seen, matched;

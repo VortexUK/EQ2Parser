@@ -22,6 +22,9 @@ public sealed class LogSource : IDisposable
     public string Path { get; }
     public string Owner { get; }
     public bool ParseFromStart { get; }
+
+    /// <summary>Attached by the folder watcher rather than by hand.</summary>
+    public bool AutoDiscovered { get; init; }
     public ParserEngine Engine { get; }
     public LogLineProcessor Processor { get; }
     public TriggerEngine? TriggerEngine { get; }

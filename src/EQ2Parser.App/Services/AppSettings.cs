@@ -5,13 +5,21 @@ namespace EQ2Parser.App.Services;
 
 /// <summary>LastPosition: byte offset of the last consumed line — the next
 /// session resumes there and catches up what was written while the app was
-/// closed. Null (older settings files) = tail from the end.</summary>
-public sealed record SourceSetting(string Path, bool ParseFromStart, long? LastPosition = null);
+/// closed. Null (older settings files) = tail from the end. AutoDiscovered
+/// sources came from a watched folder: their positions persist here but the
+/// folder watcher (not RestoreFromSettings) re-adds them when active.</summary>
+public sealed record SourceSetting(string Path, bool ParseFromStart, long? LastPosition = null, bool AutoDiscovered = false);
 
 /// <summary>Persisted app settings — %LocalAppData%\EQ2Parser\settings.json.</summary>
 public sealed record AppSettings
 {
     public List<SourceSetting> Sources { get; init; } = [];
+
+    /// <summary>Folders scanned for eq2log_*.txt (recursively — the EQ2
+    /// logs root covers every server subfolder): any log that becomes
+    /// active is tracked automatically.</summary>
+    public List<string> WatchedFolders { get; init; } = [];
+
     public double IdleEndSeconds { get; init; } = 6;
     public int PollMilliseconds { get; init; } = 10;
 

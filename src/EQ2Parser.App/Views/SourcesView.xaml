@@ -10,12 +10,32 @@
 
         <TextBlock Text="Log Sources" Style="{StaticResource PageTitle}" />
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
-            <Button Content="Add live tail" Style="{StaticResource GoldButton}" Command="{Binding AddLiveCommand}" />
-            <Button Content="Add + parse existing" Style="{StaticResource GoldButton}" Margin="8,0,0,0"
-                    Command="{Binding AddWithHistoryCommand}" />
-            <TextBlock Text="Live tail starts at the end of the file; parse existing chews through the whole log first."
-                       Style="{StaticResource MutedText}" FontSize="12" Margin="16,6,0,0" />
+        <StackPanel Grid.Row="1" Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Add live tail" Style="{StaticResource GoldButton}" Command="{Binding AddLiveCommand}" />
+                <Button Content="Add + parse existing" Style="{StaticResource GoldButton}" Margin="8,0,0,0"
+                        Command="{Binding AddWithHistoryCommand}" />
+                <Button Content="Watch folder…" Style="{StaticResource GoldButton}" Margin="8,0,0,0"
+                        ToolTip="Point at the EQ2 logs folder — any character's log that becomes active is tracked automatically"
+                        Command="{Binding WatchFolderCommand}" />
+                <TextBlock Text="Live tail starts at the end; parse existing chews the whole log once; a watched folder tracks every active log by itself."
+                           Style="{StaticResource MutedText}" FontSize="12" Margin="16,6,0,0" />
+            </StackPanel>
+            <ItemsControl ItemsSource="{Binding WatchedFolders}" Margin="0,8,0,0">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" Margin="0,2">
+                            <TextBlock Text="👁" FontSize="12" Margin="0,1,8,0" />
+                            <TextBlock Text="{Binding}" Style="{StaticResource MutedText}" FontSize="12"
+                                       VerticalAlignment="Center" />
+                            <Button Content="✕" Style="{StaticResource GoldButton}" Padding="8,1" Margin="10,0,0,0"
+                                    ToolTip="Stop watching (detaches its auto-discovered sources)"
+                                    Command="{Binding DataContext.UnwatchFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </StackPanel>
 
         <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8">

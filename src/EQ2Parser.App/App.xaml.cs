@@ -16,6 +16,7 @@ public partial class App : Application
         _manager = new SourceManager();
         _manager.RestoreHistory();
         _manager.RestoreFromSettings();
+        _manager.StartFolderWatch();
         var overlay = new OverlayController(_manager);
         var window = new MainWindow(new MainViewModel(_manager, overlay));
         MainWindow = window;
