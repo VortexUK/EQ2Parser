@@ -673,13 +673,32 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             var attempts = 0;
             var hitCount = 0;
             var stoneskin = 0;
+            var warded = 0;
             long landedTotal = 0;
+            long wardedTotal = 0;
             var enemies = EnemyAttackerKeys(ResolveFight());
 
             foreach (var (targetName, combatant) in targets)
             {
                 if (combatant.IncomingBuckets.GetValueOrDefault(BucketConfig.IncomingDamage) is not { } bucket)
                     continue;
+
+                // A fully warded hit logs as "fails to inflict any damage"
+                // PLUS a same-second ward absorb — pair them so warded hits
+                // aren't mistaken for stoneskins (ACT counts them as landed).
+                Dictionary<long, (int Count, long Total, int Used)> wardsBySecond = [];
+                if (combatant.IncomingBuckets.GetValueOrDefault(BucketConfig.HealedInc) is { } healedInc)
+                {
+                    foreach (var heal in healedInc.All.Swings)
+                    {
+                        if (heal.DamageType != Core.Grammar.EnglishGrammar.WardAbsorbType || heal.Damage.Number <= 0)
+                            continue;
+                        var second = heal.Time.ToUnixTimeSeconds();
+                        wardsBySecond.TryGetValue(second, out var w);
+                        wardsBySecond[second] = (w.Count + 1, w.Total + heal.Damage.Number, w.Used);
+                    }
+                }
+
                 foreach (var sw in bucket.All.Swings)
                 {
                     // Enemy attacks only — self-procs, ally utility hits and
@@ -694,8 +713,20 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                             landedTotal += sw.Damage.Number;
                             break;
                         case 0:
-                            stoneskin++;
+                        {
+                            var second = sw.Time.ToUnixTimeSeconds();
+                            if (wardsBySecond.TryGetValue(second, out var w) && w.Used < w.Count)
+                            {
+                                warded++;
+                                wardedTotal += w.Total / w.Count;
+                                wardsBySecond[second] = (w.Count, w.Total, w.Used + 1);
+                            }
+                            else
+                            {
+                                stoneskin++;
+                            }
                             break;
+                        }
                         default:
                         {
                             var kind = sw.Damage.Number switch
@@ -724,18 +755,20 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             }
 
             var avgHit = hitCount > 0 ? (double)landedTotal / hitCount : 0;
-            var avoided = attempts - hitCount - stoneskin;
+            var avoided = attempts - hitCount - stoneskin - warded;
             var avoidedEst = avoided * avgHit;
 
             // Headline: the x-of-y truth first.
             ReportLine(
                 ($"{attempts} incoming attacks", ClassColors.TreeText),
                 ($"   landed {hitCount}/{attempts} ({100.0 * hitCount / attempts:F1}%)", ClassColors.OutcomeLoss),
+                ($"   warded {warded}/{attempts} ({100.0 * warded / attempts:F1}%)", ClassColors.SourceRaid),
                 ($"   stoneskin {stoneskin}/{attempts} ({100.0 * stoneskin / attempts:F1}%)", ClassColors.TreeHeader),
                 ($"   avoided {avoided}/{attempts} ({100.0 * avoided / attempts:F1}%)", ClassColors.OutcomeWin));
             ReportLine(
                 ($"avg landed hit {CombatantRow.Compact(avgHit)}", ClassColors.Neutral),
                 ($"   est. avoided {CombatantRow.Compact(avoidedEst)} (effective {CombatantRow.Compact(avoidedEst / seconds)} HPS)", ClassColors.OutcomeWin),
+                ($"   warded {CombatantRow.Compact(wardedTotal)} absorbed", ClassColors.SourceRaid),
                 ($"   stoneskin est. {CombatantRow.Compact(stoneskin * avgHit)}", ClassColors.TreeHeader));
             ReportLine(("", ClassColors.Neutral));
             ReportLine(
@@ -755,6 +788,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             }
 
             Row("Landed", "—", hitCount, "—", "—", new SKColor(0xF8, 0x71, 0x71));
+            Row("Warded", "—", warded, "—", CombatantRow.Compact(wardedTotal), new SKColor(0x93, 0xD9, 0xFF));
             Row("Stoneskin", "—", stoneskin, "—", CombatantRow.Compact(stoneskin * avgHit), new SKColor(0xC8, 0xA9, 0x6E));
             foreach (var (label, color) in kindPalette)
             {
@@ -784,6 +818,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             ReportDonutInner =
             [
                 Ring("Landed", hitCount, new SKColor(0xF8, 0x71, 0x71), attempts, 30),
+                Ring("Warded", warded, new SKColor(0x93, 0xD9, 0xFF), attempts, 30),
                 Ring("Stoneskin", stoneskin, new SKColor(0xC8, 0xA9, 0x6E), attempts, 30),
                 Ring("Avoided", avoided, new SKColor(0x4A, 0xDE, 0x80), attempts, 30),
             ];
@@ -791,7 +826,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             [
                 new PieSeries<double>
                 {
-                    Values = new double[] { hitCount + stoneskin },
+                    Values = new double[] { hitCount + warded + stoneskin },
                     Name = "not avoided",
                     Fill = new SolidColorPaint(new SKColor(0xFF, 0xFF, 0xFF, 0x08)),
                     InnerRadius = 86,
