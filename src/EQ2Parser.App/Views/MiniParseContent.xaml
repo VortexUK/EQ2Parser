@@ -51,7 +51,7 @@
                                        VerticalAlignment="Center" FontFamily="Consolas" />
                             <TextBlock Grid.Column="1" FontSize="12" VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis" FontFamily="Segoe UI">
-                                <Run Text="{Binding Name, Mode=OneWay}" Foreground="{Binding NameBrush}" FontWeight="SemiBold" /><Run Text="{Binding ClassText, Mode=OneWay}" Foreground="#8B90AB" FontSize="10" />
+                                <Run Text="{Binding Name, Mode=OneWay}" Foreground="{Binding NameBrush}" FontWeight="SemiBold" /><Run Text="{Binding ClassText, Mode=OneWay}" Foreground="#D6DAE6" FontSize="10.5" />
                                 <TextBlock.Effect>
                                     <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
                                 </TextBlock.Effect>
