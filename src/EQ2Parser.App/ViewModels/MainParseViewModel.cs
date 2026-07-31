@@ -594,14 +594,22 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             var classMap = ClassMapFor(fight);
             var total = Math.Max(1, perOther.Values.Sum(a => a.Total));
             var suffix = abilityFilter is not null ? $" › {abilityFilter}" : "";
+            var seconds = Math.Max(1, fight switch
+            {
+                Encounter e => e.Duration.TotalSeconds,
+                CorrelatedEncounter m => m.Duration.TotalSeconds,
+                AggregateFights a => SumDuration(a.Fights).TotalSeconds,
+                _ => 1,
+            });
 
             ReportLine(
                 ("NAME".PadRight(20), ClassColors.TreeHeader),
-                ("SWINGS   HITS   CRIT%       AVG       MAX       TOTAL       %", ClassColors.TreeHeader));
+                ("ENCDPS  SWINGS   HITS   CRIT%       AVG       MAX       TOTAL       %", ClassColors.TreeHeader));
             foreach (var (other, acc) in perOther.OrderByDescending(kv => kv.Value.Total))
             {
                 ReportLine(
                     (other.PadRight(20), ClassColors.TreeText),
+                    (CombatantRow.Compact(acc.Total / seconds).PadLeft(6) + "  ", ClassColors.SourceClass),
                     ($"{acc.Swings,6}  {acc.Hits,5}  ", ClassColors.Neutral),
                     ($"{(acc.Hits > 0 ? 100.0 * acc.Crits / acc.Hits : 0),5:F0}%  ", ClassColors.Neutral),
                     ($"{(acc.Hits > 0 ? CombatantRow.Compact((double)acc.Total / acc.Hits) : "—"),8}  ", ClassColors.TreeText),
