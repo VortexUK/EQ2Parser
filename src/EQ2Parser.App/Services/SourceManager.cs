@@ -52,14 +52,15 @@ public sealed class SourceManager : IDisposable
         }
     }
 
-    public LogSource Add(string path, bool parseFromStart)
+    public LogSource Add(string path, bool parseFromStart, long? startOffset = null)
     {
         var source = new LogSource(
             path, parseFromStart, Sync,
             new EngineOptions { IdleEndSeconds = Settings.IdleEndSeconds },
             TimeSpan.FromMilliseconds(Settings.PollMilliseconds),
             Triggers.CreateEngine(LogSource.DeriveOwner(path)),
-            SpellTimers.Service);
+            SpellTimers.Service,
+            startOffset);
         lock (Sync)
         {
             Correlator.Attach(source.Engine);
@@ -94,12 +95,14 @@ public sealed class SourceManager : IDisposable
     {
         foreach (var saved in Settings.Sources)
         {
-            // "Parse existing" is a one-time backfill at add time. On
-            // restart the archive already holds that history — re-chewing
-            // the log would duplicate every fight — so saved sources always
-            // resume as live tails.
+            // "Parse existing" is a one-time backfill at add time — the
+            // archive holds that history. Restarts resume from the last
+            // consumed byte, catching up whatever was written while the
+            // app was closed (alerts stay silent for old lines; the dedup
+            // guard keeps the archive clean). No saved position (older
+            // settings) = tail from the end.
             if (System.IO.File.Exists(saved.Path))
-                Add(saved.Path, parseFromStart: false);
+                Add(saved.Path, parseFromStart: false, saved.LastPosition);
         }
     }
 
@@ -107,7 +110,7 @@ public sealed class SourceManager : IDisposable
     {
         Settings = Settings with
         {
-            Sources = [.. Sources.Select(s => new SourceSetting(s.Path, s.ParseFromStart))],
+            Sources = [.. Sources.Select(s => new SourceSetting(s.Path, s.ParseFromStart, s.LastPosition))],
         };
         Settings.Save();
     }

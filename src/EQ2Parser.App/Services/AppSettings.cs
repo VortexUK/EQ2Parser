@@ -3,7 +3,10 @@ using System.Text.Json;
 
 namespace EQ2Parser.App.Services;
 
-public sealed record SourceSetting(string Path, bool ParseFromStart);
+/// <summary>LastPosition: byte offset of the last consumed line — the next
+/// session resumes there and catches up what was written while the app was
+/// closed. Null (older settings files) = tail from the end.</summary>
+public sealed record SourceSetting(string Path, bool ParseFromStart, long? LastPosition = null);
 
 /// <summary>Persisted app settings — %LocalAppData%\EQ2Parser\settings.json.</summary>
 public sealed record AppSettings

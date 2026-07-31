@@ -9,6 +9,11 @@ public sealed record LogTailOptions
     /// <summary>Start at the end of the file (live mode) instead of the beginning (import mode).</summary>
     public bool StartAtEnd { get; init; } = true;
 
+    /// <summary>Resume from a byte position saved by a previous session
+    /// (wins over <see cref="StartAtEnd"/>). A stale offset past the file's
+    /// length is treated as rotation — restart from 0.</summary>
+    public long? StartOffset { get; init; }
+
     /// <summary>How often to poll for new content. Polling beats FileSystemWatcher
     /// here: watchers are notoriously unreliable for files a game keeps open and
     /// appends to without touching metadata. 10 ms matches ACT's reader cadence —
@@ -46,6 +51,12 @@ public readonly record struct TailedLine(string Raw, DateTimeOffset ObservedAt);
 public sealed class LogTailReader(string path, LogTailOptions? options = null)
 {
     private readonly LogTailOptions _options = options ?? new LogTailOptions();
+    private long _consumedPosition;
+
+    /// <summary>Byte position up to which COMPLETE lines have been yielded
+    /// (a trailing partial line is not counted, so resuming here re-reads
+    /// it whole). Persist this to continue across sessions.</summary>
+    public long ConsumedPosition => Interlocked.Read(ref _consumedPosition);
 
     /// <summary>Raw complete lines (no trailing CR/LF) with arrival stamps,
     /// forever until cancelled.</summary>
@@ -75,12 +86,16 @@ public sealed class LogTailReader(string path, LogTailOptions? options = null)
                     using (stream)
                     {
                         if (position < 0)
-                            position = _options.StartAtEnd ? stream.Length : 0;
+                        {
+                            position = _options.StartOffset ?? (_options.StartAtEnd ? stream.Length : 0);
+                            Interlocked.Exchange(ref _consumedPosition, Math.Min(position, stream.Length));
+                        }
                         if (stream.Length < position)
                         {
                             // Truncated or rotated: start over, drop any carry.
                             position = 0;
                             carry = [];
+                            Interlocked.Exchange(ref _consumedPosition, 0);
                         }
 
                         if (stream.Length > position)
@@ -104,6 +119,7 @@ public sealed class LogTailReader(string path, LogTailOptions? options = null)
                             while (consumed < buffer.Length && (buffer[consumed] == (byte)'\n' || buffer[consumed] == (byte)'\r'))
                                 consumed++;
                             carry = buffer[consumed..];
+                            Interlocked.Exchange(ref _consumedPosition, position - carry.Length);
                         }
                     }
                 }

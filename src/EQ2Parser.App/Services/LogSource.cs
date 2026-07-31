@@ -17,6 +17,8 @@ public sealed class LogSource : IDisposable
     private readonly Task _task;
     private readonly object _sync;
 
+    private readonly LogTailReader _reader;
+
     public string Path { get; }
     public string Owner { get; }
     public bool ParseFromStart { get; }
@@ -24,11 +26,15 @@ public sealed class LogSource : IDisposable
     public LogLineProcessor Processor { get; }
     public TriggerEngine? TriggerEngine { get; }
 
+    /// <summary>Byte position of the last fully-consumed log line —
+    /// persisted so the next session resumes where this one left off.</summary>
+    public long LastPosition => _reader.ConsumedPosition;
+
     /// <summary>Set when the tail loop dies (file unreadable etc.).</summary>
     public Exception? Error { get; private set; }
     public bool Completed => _task.IsCompleted;
 
-    public LogSource(string path, bool parseFromStart, object sync, EngineOptions engineOptions, TimeSpan pollInterval, TriggerEngine? triggers = null, SpellTimerService? timers = null)
+    public LogSource(string path, bool parseFromStart, object sync, EngineOptions engineOptions, TimeSpan pollInterval, TriggerEngine? triggers = null, SpellTimerService? timers = null, long? startOffset = null)
     {
         Path = path;
         ParseFromStart = parseFromStart;
@@ -37,12 +43,13 @@ public sealed class LogSource : IDisposable
         Engine = new ParserEngine(path, Owner, engineOptions);
         TriggerEngine = triggers;
         Processor = new LogLineProcessor(Engine, triggers, timers);
-        var reader = new LogTailReader(path, new LogTailOptions
+        _reader = new LogTailReader(path, new LogTailOptions
         {
             StartAtEnd = !parseFromStart,
+            StartOffset = parseFromStart ? null : startOffset,
             PollInterval = pollInterval,
         });
-        _task = Task.Run(() => PumpAsync(reader, _cts.Token));
+        _task = Task.Run(() => PumpAsync(_reader, _cts.Token));
     }
 
     /// <summary>eq2log_Charname.[…].txt → Charname.</summary>

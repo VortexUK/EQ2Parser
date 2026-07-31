@@ -26,6 +26,61 @@ public sealed class ArrivalTimeTests : IDisposable
     }
 
     [Fact]
+    public async Task Reader_Resumes_From_A_Saved_Position_And_Reports_Consumed()
+    {
+        var path = Path.Combine(_dir, "eq2log_Resume.txt");
+        var noBom = new UTF8Encoding(false); // EQ2 logs carry no BOM
+        File.WriteAllText(path, "(1)[s] one\n(2)[s] two\n", noBom);
+        var afterFirst = noBom.GetByteCount("(1)[s] one\n");
+
+        var reader = new LogTailReader(path, new LogTailOptions
+        {
+            StartOffset = afterFirst,
+            PollInterval = TimeSpan.FromMilliseconds(15),
+        });
+        var lines = new ConcurrentQueue<TailedLine>();
+        _ = Task.Run(async () =>
+        {
+            await foreach (var line in reader.ReadLinesAsync(_cts.Token))
+                lines.Enqueue(line);
+        });
+
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (lines.IsEmpty && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+
+        // Only the line AFTER the saved position, and the consumed position
+        // advanced to the end of what was fully read.
+        Assert.Equal("(2)[s] two", Assert.Single(lines).Raw);
+        Assert.Equal(new FileInfo(path).Length, reader.ConsumedPosition);
+
+        // A partial trailing line is NOT counted as consumed — resuming at
+        // ConsumedPosition re-reads it whole next session.
+        var beforePartial = reader.ConsumedPosition;
+        File.AppendAllText(path, "(3)[s] par", noBom);
+        await Task.Delay(200);
+        Assert.Equal(beforePartial, reader.ConsumedPosition);
+
+        // A stale offset past the file length (rotation) restarts from 0.
+        var rotated = new LogTailReader(path, new LogTailOptions
+        {
+            StartOffset = 1_000_000,
+            PollInterval = TimeSpan.FromMilliseconds(15),
+        });
+        var rotatedLines = new ConcurrentQueue<TailedLine>();
+        _ = Task.Run(async () =>
+        {
+            await foreach (var line in rotated.ReadLinesAsync(_cts.Token))
+                rotatedLines.Enqueue(line);
+        });
+        deadline = DateTime.UtcNow.AddSeconds(5);
+        while (rotatedLines.Count < 2 && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+        Assert.True(rotatedLines.Count >= 2, "rotation fallback should re-read from the top");
+        Assert.Equal("(1)[s] one", rotatedLines.First().Raw);
+    }
+
+    [Fact]
     public async Task Reader_Stamps_Batches_With_The_Injected_Clock()
     {
         var path = Path.Combine(_dir, "eq2log_Test.txt");
