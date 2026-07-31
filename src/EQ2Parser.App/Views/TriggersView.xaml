@@ -36,7 +36,7 @@
                 <Grid>
                     <!-- ListBox (not ItemsControl) so 300+ imported triggers
                          virtualize; the container style strips selection chrome. -->
-                    <ListBox ItemsSource="{Binding Rows}" Background="Transparent" BorderThickness="0"
+                    <ListBox x:Name="TriggerList" ItemsSource="{Binding Rows}" Background="Transparent" BorderThickness="0"
                              HorizontalContentAlignment="Stretch"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              VirtualizingPanel.VirtualizationMode="Recycling">
@@ -103,11 +103,24 @@
                                 </Border>
                             </DataTemplate>
 
-                            <!-- Trigger row: drag by the grip to re-file it. -->
+                            <!-- Trigger row: drag by the grip to re-file it.
+                                 Highlights while hovered as a drop target
+                                 (drop = file into this row's category) and
+                                 flashes after landing from a move. -->
                             <DataTemplate DataType="{x:Type vm:TriggerRow}">
                                 <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
-                                        Padding="4,8,8,8" Margin="16,0,0,0" AllowDrop="True" Background="Transparent"
+                                        Padding="4,8,8,8" Margin="16,0,0,0" AllowDrop="True"
                                         DragOver="DropTarget_DragOver" DragLeave="DropTarget_DragLeave" Drop="DropTarget_Drop">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="Transparent" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDropTarget}" Value="True">
+                                                    <Setter Property="Background" Value="#26C8A96E" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />

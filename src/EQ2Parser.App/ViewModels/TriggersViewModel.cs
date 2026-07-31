@@ -42,6 +42,11 @@ public sealed partial class TriggerRow : ObservableObject
     [ObservableProperty]
     private bool _enabled;
 
+    /// <summary>Highlight when hovered as a drag target — and reused as the
+    /// landing flash after a move.</summary>
+    [ObservableProperty]
+    private bool _isDropTarget;
+
     partial void OnEnabledChanged(bool value) => _owner.SetRowEnabled(this, value);
 }
 
@@ -173,7 +178,19 @@ public sealed partial class TriggersViewModel : ObservableObject
         if (_editingKey == current.Key)
             _editingKey = moved.Key;
         RebuildRows();
+        foreach (var item in Rows)
+        {
+            if (item is TriggerRow landed && landed.Key == moved.Key)
+            {
+                TriggerMoved?.Invoke(landed);
+                break;
+            }
+        }
     }
+
+    /// <summary>Raised after a drag-move with the row at its new home — the
+    /// view scrolls it into view and flashes it.</summary>
+    public event Action<TriggerRow>? TriggerMoved;
 
     internal void SetRowEnabled(TriggerRow row, bool enabled)
     {
