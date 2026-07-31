@@ -53,8 +53,10 @@
                     <Button Grid.Row="2" Grid.Column="2" Content="♪" Style="{StaticResource GoldButton}" Margin="8,2,0,2"
                             Padding="12,3" ToolTip="Test the chime" Command="{Binding TestChimeCommand}" />
                 </Grid>
+                <TextBlock Text="{Binding VoiceStatus}" Foreground="{StaticResource GoldBrush}" FontSize="12"
+                           TextWrapping="Wrap" Margin="0,4,0,0" />
                 <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"
-                           Text="Voices come from Windows. For far better quality, install a free neural voice: Settings › Accessibility › Narrator › Add natural voices — it appears here after a restart and is picked automatically." />
+                           Text="Neural voices download once (~65 MB) when first selected, then work fully offline — they sound dramatically better than the built-in Windows voices below them in the list." />
 
                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                     <Button Content="Save" Style="{StaticResource GoldButton}" Command="{Binding SaveCommand}" />

@@ -11,13 +11,15 @@ namespace EQ2Parser.App.Services;
 public sealed record TtsVoice(string Id, string DisplayName);
 
 /// <summary>
-/// The alert audio stack. TTS goes through WinRT speech
-/// (Windows.Media.SpeechSynthesis) — the modern OneCore/natural voices, not
-/// System.Speech's ancient SAPI Desktop set — synthesized to WAV bytes
-/// (cached per voice/rate/phrase, so repeats play instantly) and played via
-/// NAudio. Spoken alerts queue so phrases never talk over each other; the
-/// chime and WAV-file alerts fire immediately and may overlap speech.
-/// The "beep" is a synthesized soft bell, not the harsh system exclamation.
+/// The alert audio stack. TTS has two backends: downloaded Piper neural
+/// voices ("piper:" ids, via <see cref="PiperTtsEngine"/> — the good ones)
+/// and WinRT speech (Windows.Media.SpeechSynthesis) for the built-in
+/// system voices and as the fallback while a neural model is missing or
+/// still downloading. Either way phrases become WAV bytes (cached per
+/// voice/rate/phrase, so repeats play instantly) played via NAudio. Spoken
+/// alerts queue so phrases never talk over each other; the chime and
+/// WAV-file alerts fire immediately and may overlap speech. The "beep" is
+/// a synthesized soft bell, not the harsh system exclamation.
 /// </summary>
 public sealed class AlertAudioService : IDisposable
 {
@@ -30,6 +32,7 @@ public sealed class AlertAudioService : IDisposable
     private readonly Dictionary<string, byte[]> _ttsCache = [];
     private readonly object _cacheGate = new();
     private readonly byte[] _chime = BuildChime();
+    private readonly PiperTtsEngine _piper = new();
     private readonly Task _speechPump;
 
     /// <summary>Master alert volume, 0–1.</summary>
@@ -64,20 +67,23 @@ public sealed class AlertAudioService : IDisposable
         });
     }
 
-    /// <summary>Every installed voice, natural voices first.</summary>
+    /// <summary>Neural voices first (the recommended set), then every
+    /// installed Windows voice.</summary>
     public static IReadOnlyList<TtsVoice> ListVoices()
     {
+        List<TtsVoice> voices = [.. PiperVoiceCatalog.Voices.Select(v => new TtsVoice(v.Key, v.DisplayName))];
         try
         {
-            return [.. SpeechSynthesizer.AllVoices
+            voices.AddRange(SpeechSynthesizer.AllVoices
                 .Select(v => new TtsVoice(v.Id, v.DisplayName))
                 .OrderByDescending(v => v.DisplayName.Contains("Natural", StringComparison.OrdinalIgnoreCase))
-                .ThenBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)];
+                .ThenBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase));
         }
         catch (Exception)
         {
-            return [];
+            // No WinRT speech on this system — neural-only list.
         }
+        return voices;
     }
 
     /// <summary>Queue a phrase — spoken after anything already queued.</summary>
@@ -125,6 +131,25 @@ public sealed class AlertAudioService : IDisposable
             if (_ttsCache.TryGetValue(key, out var cached))
                 return cached;
         }
+
+        // Neural voice: synthesize on this pump thread (~100 ms warm).
+        // Missing/broken model falls through to the Windows backend so an
+        // alert mid-download still speaks.
+        if (PiperVoiceCatalog.Find(VoiceId) is { } neural && PiperVoiceCatalog.IsInstalled(neural))
+        {
+            var neuralWav = _piper.Synthesize(neural, text, SpeakingRate);
+            if (neuralWav is not null)
+            {
+                lock (_cacheGate)
+                {
+                    if (_ttsCache.Count >= CacheCap)
+                        _ttsCache.Clear();
+                    _ttsCache[key] = neuralWav;
+                }
+                return neuralWav;
+            }
+        }
+
         try
         {
             using var synth = new SpeechSynthesizer();
@@ -235,6 +260,7 @@ public sealed class AlertAudioService : IDisposable
         {
             // Cancellation surfaces here on shutdown.
         }
+        _piper.Dispose();
         _cts.Dispose();
     }
 }

@@ -30,6 +30,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private double _alertVolume;
 
+    [ObservableProperty]
+    private string _voiceStatus = "";
+
+    private string? _downloadingKey;
+
     public string TtsRateLabel => $"{TtsRate:0.0}×";
     public string AlertVolumeLabel => $"{AlertVolume:P0}";
 
@@ -45,8 +50,47 @@ public sealed partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(AlertVolumeLabel));
     }
 
-    partial void OnSelectedVoiceChanged(TtsVoice? value) =>
+    partial void OnSelectedVoiceChanged(TtsVoice? value)
+    {
         _manager.Audio.VoiceId = value?.Id;
+        if (value is null || PiperVoiceCatalog.Find(value.Id) is not { } neural)
+        {
+            VoiceStatus = "";
+            return;
+        }
+        if (PiperVoiceCatalog.IsInstalled(neural))
+        {
+            VoiceStatus = "Neural voice ready — offline from here on.";
+            return;
+        }
+        _ = DownloadVoiceAsync(neural);
+    }
+
+    private async Task DownloadVoiceAsync(PiperVoice neural)
+    {
+        if (_downloadingKey is not null)
+        {
+            VoiceStatus = $"Still downloading another voice — {neural.DisplayName} will need re-selecting after.";
+            return;
+        }
+        _downloadingKey = neural.Key;
+        VoiceStatus = $"Downloading {neural.DisplayName} ({neural.SizeMb} MB)…";
+        try
+        {
+            var progress = new Progress<double>(p =>
+                VoiceStatus = $"Downloading {neural.DisplayName} — {p:P0} of ~{neural.SizeMb} MB…");
+            await PiperVoiceCatalog.DownloadAsync(neural, progress, CancellationToken.None);
+            VoiceStatus = $"{neural.DisplayName} installed — hit Test. Alerts use it from now on.";
+        }
+        catch (Exception ex)
+        {
+            VoiceStatus = $"Download failed ({ex.Message}). Alerts fall back to a Windows voice; re-select the neural voice to retry.";
+        }
+        finally
+        {
+            _downloadingKey = null;
+        }
+    }
 
     public SettingsViewModel(SourceManager manager)
     {
@@ -55,11 +99,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         _pollMilliseconds = manager.Settings.PollMilliseconds.ToString();
 
         Voices = AlertAudioService.ListVoices();
-        _selectedVoice = Voices.FirstOrDefault(v => v.Id == manager.Settings.TtsVoiceId)
-            ?? Voices.FirstOrDefault(v => v.DisplayName.Contains("Natural", StringComparison.OrdinalIgnoreCase))
-            ?? Voices.FirstOrDefault();
         _ttsRate = manager.Settings.TtsRate;
         _alertVolume = manager.Settings.AlertVolume;
+        // Set via the property (not the field) so the piper install check +
+        // status line run for the persisted selection too.
+        SelectedVoice = Voices.FirstOrDefault(v => v.Id == manager.Settings.TtsVoiceId)
+            ?? Voices.FirstOrDefault(v => PiperVoiceCatalog.Find(v.Id) is { } pv && PiperVoiceCatalog.IsInstalled(pv))
+            ?? Voices.FirstOrDefault(v => v.DisplayName.Contains("Natural", StringComparison.OrdinalIgnoreCase))
+            ?? Voices.FirstOrDefault(v => PiperVoiceCatalog.Find(v.Id) is null);
     }
 
     [RelayCommand]
