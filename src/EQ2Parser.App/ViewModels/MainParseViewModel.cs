@@ -166,6 +166,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     public SolidColorPaint DrillLegendPaint { get; } = new(new SKColor(0xB0, 0xB4, 0xC8));
     public SolidColorPaint DonutLegendPaint { get; } = new(new SKColor(0xB0, 0xB4, 0xC8));
     public SolidColorPaint ReportLegendPaint { get; } = new(new SKColor(0xB0, 0xB4, 0xC8));
+    public SolidColorPaint BreakdownLegendPaint { get; } = new(new SKColor(0xB0, 0xB4, 0xC8));
 
     private (string?, string?, string?) _drillChartKey = ("\0", null, null);
     private long _drillChartVersion;
@@ -871,32 +872,24 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
             OpenReport($"{context} › avoidance report");
 
+            // Side-by-side doughnuts: outcome (of all attacks) and the
+            // avoidance breakdown (shares of the avoids).
             ReportDonutInner =
             [
-                Ring("Landed", hitCount, new SKColor(0xF8, 0x71, 0x71), attempts, 30),
-                Ring("Warded", warded, new SKColor(0x93, 0xD9, 0xFF), attempts, 30),
-                Ring("Avoided", avoided, new SKColor(0x4A, 0xDE, 0x80), attempts, 30),
+                Ring("Landed", hitCount, new SKColor(0xF8, 0x71, 0x71), attempts, 44),
+                Ring("Warded", warded, new SKColor(0x93, 0xD9, 0xFF), attempts, 44),
+                Ring("Avoided", avoided, new SKColor(0x4A, 0xDE, 0x80), attempts, 44),
             ];
-            List<ISeries> outer =
-            [
-                new PieSeries<double>
-                {
-                    Values = new double[] { hitCount + warded },
-                    Name = "not avoided",
-                    Fill = new SolidColorPaint(new SKColor(0xFF, 0xFF, 0xFF, 0x08)),
-                    InnerRadius = 86,
-                    ToolTipLabelFormatter = _ => "",
-                },
-            ];
+            List<ISeries> breakdown = [];
             if (stoneskin > 0)
-                outer.Add(Ring("Stoneskin", stoneskin, new SKColor(0xC8, 0xA9, 0x6E), attempts, 86));
+                breakdown.Add(Ring("Stoneskin", stoneskin, new SKColor(0xC8, 0xA9, 0x6E), avoided, 44));
             foreach (var (label, color) in kindPalette)
             {
                 var count = avoidCounts[label].Values.Sum(n => n.Auto + n.Skill);
                 if (count > 0)
-                    outer.Add(Ring(label, count, color, attempts, 86));
+                    breakdown.Add(Ring(label, count, color, avoided, 44));
             }
-            ReportDonutOuter = [.. outer];
+            ReportDonutOuter = [.. breakdown];
             ReportChartVisible = true;
         }
     }
