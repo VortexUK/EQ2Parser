@@ -263,6 +263,28 @@ public sealed class HistoryStore : IDisposable
         return results;
     }
 
+    /// <summary>Rebuild a full Encounter (buckets, combatants, title) by
+    /// replaying the stored swing list through the same AddSwing path live
+    /// parsing uses — a restored fight drills exactly like a live one.</summary>
+    public Encounter RestoreEncounter(EncounterSummary summary)
+    {
+        var encounter = new Encounter(summary.SourceId, summary.Owner, summary.Zone);
+        foreach (var swing in LoadSwings(summary.Id))
+            encounter.AddSwing(swing);
+        encounter.End();
+        return encounter;
+    }
+
+    /// <summary>Retention sweep: drop every encounter that started before
+    /// the cutoff (swings/combatants cascade). Returns rows removed.</summary>
+    public int PruneBefore(DateTimeOffset cutoff)
+    {
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM encounters WHERE start_ts < $cutoff;";
+        cmd.Parameters.AddWithValue("$cutoff", cutoff.ToUnixTimeSeconds());
+        return cmd.ExecuteNonQuery();
+    }
+
     public bool DeleteEncounter(long encounterId)
     {
         using var cmd = _conn.CreateCommand();

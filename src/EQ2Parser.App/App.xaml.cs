@@ -14,6 +14,7 @@ public partial class App : Application
         base.OnStartup(e);
         LiveChartsCore.LiveCharts.Configure(config => config.AddDarkTheme());
         _manager = new SourceManager();
+        _manager.RestoreHistory();
         _manager.RestoreFromSettings();
         var overlay = new OverlayController(_manager);
         var window = new MainWindow(new MainViewModel(_manager, overlay));

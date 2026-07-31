@@ -12,6 +12,9 @@ public sealed record AppSettings
     public double IdleEndSeconds { get; init; } = 6;
     public int PollMilliseconds { get; init; } = 10;
 
+    /// <summary>Days of parse history kept on disk (pruned at startup).</summary>
+    public int HistoryRetentionDays { get; init; } = 14;
+
     // Alert audio: null voice = best available (natural voice if exposed).
     public string? TtsVoiceId { get; init; }
     public double TtsRate { get; init; } = 1.0;

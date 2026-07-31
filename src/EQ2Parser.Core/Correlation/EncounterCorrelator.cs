@@ -42,6 +42,12 @@ public sealed class EncounterCorrelator(CorrelatorOptions? options = null)
         engine.EncounterEnded += Accept;
     }
 
+    /// <summary>Register a log owner without attaching an engine — history
+    /// restore uses this so the shared-combatant merge test skips owner
+    /// names exactly like live correlation.</summary>
+    public void RegisterOwner(string ownerName) =>
+        _ownerKeys.Add(ownerName.ToUpperInvariant());
+
     /// <summary>User deletion of a correlated fight. Returns false when the
     /// fight was not (or no longer) in history.</summary>
     public bool Remove(CorrelatedEncounter fight) => _history.Remove(fight);

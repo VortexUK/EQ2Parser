@@ -332,6 +332,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 foreach (var fight in group)
                 {
                     manager.Correlator.Remove(fight);
+                    manager.History.DeleteFight(fight);
                     if (ReferenceEquals(_pinnedFight, fight))
                         _pinnedFight = null;
                 }
@@ -339,6 +340,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             else if (node.Fight is CorrelatedEncounter fight)
             {
                 manager.Correlator.Remove(fight);
+                manager.History.DeleteFight(fight);
                 if (ReferenceEquals(_pinnedFight, fight))
                     _pinnedFight = null;
             }

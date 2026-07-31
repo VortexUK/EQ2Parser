@@ -112,4 +112,40 @@ public sealed class HistoryStoreTests : IDisposable
             Assert.Equal(4, store.LoadSwings(id).Count);
         }
     }
+
+    [Fact]
+    public void RestoreEncounter_Rebuilds_A_Drillable_Fight()
+    {
+        using var store = Store();
+        var original = BuildEncounter();
+        store.SaveEncounter(original);
+
+        var restored = store.RestoreEncounter(Assert.Single(store.QueryEncounters()));
+
+        // Same identity, totals, outcome, and structure as the live fight.
+        Assert.Equal(original.Title, restored.Title);
+        Assert.Equal(original.Zone, restored.Zone);
+        Assert.Equal(original.Damage, restored.Damage);
+        Assert.Equal(original.Healed, restored.Healed);
+        Assert.Equal(original.Duration, restored.Duration);
+        Assert.Equal(original.GetSuccessLevel(), restored.GetSuccessLevel());
+        Assert.Equal(original.Combatants.Count, restored.Combatants.Count);
+        Assert.False(restored.Active);
+        // The rebuilt buckets drill: the owner's outgoing reference bucket
+        // carries the same swing count.
+        Assert.Equal(
+            original.Combatants["MENLUDIIR"].OutgoingBuckets[BucketConfig.AllOutgoingRef].All.Swings.Count,
+            restored.Combatants["MENLUDIIR"].OutgoingBuckets[BucketConfig.AllOutgoingRef].All.Swings.Count);
+    }
+
+    [Fact]
+    public void PruneBefore_Drops_Old_Fights_And_Keeps_Recent()
+    {
+        using var store = Store();
+        store.SaveEncounter(BuildEncounter());
+        Assert.Equal(0, store.PruneBefore(T0)); // fight starts AT T0 — kept
+        Assert.Single(store.QueryEncounters());
+        Assert.Equal(1, store.PruneBefore(T0.AddDays(1)));
+        Assert.Empty(store.QueryEncounters());
+    }
 }

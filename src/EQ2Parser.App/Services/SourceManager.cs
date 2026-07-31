@@ -20,6 +20,7 @@ public sealed class SourceManager : IDisposable
     public AlertAudioService Audio { get; }
     public TriggerService Triggers { get; }
     public TimerService SpellTimers { get; }
+    public HistoryService History { get; } = new();
     public AppSettings Settings { get; set; } = AppSettings.Load();
 
     /// <summary>Raised (on a background thread) whenever a correlated fight
@@ -62,6 +63,7 @@ public sealed class SourceManager : IDisposable
         lock (Sync)
         {
             Correlator.Attach(source.Engine);
+            source.Engine.EncounterEnded += History.QueueSave;
             _sources.Add(source);
         }
         return source;
@@ -76,6 +78,16 @@ public sealed class SourceManager : IDisposable
         if (source.TriggerEngine is { } engine)
             Triggers.RemoveEngine(engine);
         source.Dispose();
+    }
+
+    /// <summary>Load past sessions' fights into the correlator — called at
+    /// startup BEFORE the log tails start, so live fights land on top.</summary>
+    public void RestoreHistory()
+    {
+        lock (Sync)
+        {
+            History.RestoreInto(Correlator, Settings.HistoryRetentionDays);
+        }
     }
 
     public void RestoreFromSettings()
@@ -100,6 +112,7 @@ public sealed class SourceManager : IDisposable
     {
         foreach (var source in Sources)
             source.Dispose();
+        History.Dispose();
         Audio.Dispose();
     }
 }

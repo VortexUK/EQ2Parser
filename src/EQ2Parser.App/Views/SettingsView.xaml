@@ -14,11 +14,15 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <TextBlock Text="Combat idle timeout (s)" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
                     <TextBox Grid.Column="1" Text="{Binding IdleEndSeconds}" Margin="0,2" />
                     <TextBlock Grid.Row="1" Text="Log poll interval (ms)" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
                     <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding PollMilliseconds}" Margin="0,2" />
+                    <TextBlock Grid.Row="2" Text="Keep parse history (days)" Style="{StaticResource MutedText}" VerticalAlignment="Center"
+                               ToolTip="Fights save automatically and reload at startup; older ones are pruned" />
+                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding HistoryRetentionDays}" Margin="0,2" />
                 </Grid>
                 <TextBlock Text="Alerts" Style="{StaticResource SectionLabel}" Margin="0,20,0,8" />
                 <Grid>

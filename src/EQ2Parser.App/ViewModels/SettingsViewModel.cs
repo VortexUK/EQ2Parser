@@ -31,6 +31,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     private string _pollMilliseconds;
 
     [ObservableProperty]
+    private string _historyRetentionDays;
+
+    [ObservableProperty]
     private string _status = "";
 
     // ---- alert audio (applied to the live service immediately; Save persists) ----
@@ -167,6 +170,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _manager = manager;
         _idleEndSeconds = manager.Settings.IdleEndSeconds.ToString("0.#");
         _pollMilliseconds = manager.Settings.PollMilliseconds.ToString();
+        _historyRetentionDays = manager.Settings.HistoryRetentionDays.ToString();
 
         Voices = AlertAudioService.ListVoices();
         PackRows = [.. PiperVoiceCatalog.Packs.Select(p => new VoicePackRow(p))];
@@ -202,10 +206,16 @@ public sealed partial class SettingsViewModel : ObservableObject
             Status = "Poll interval must be 1–1000 ms.";
             return;
         }
+        if (!int.TryParse(HistoryRetentionDays, out var retention) || retention < 1 || retention > 365)
+        {
+            Status = "History retention must be 1–365 days.";
+            return;
+        }
         _manager.Settings = _manager.Settings with
         {
             IdleEndSeconds = idle,
             PollMilliseconds = poll,
+            HistoryRetentionDays = retention,
             TtsVoiceId = SelectedVoice?.Id,
             TtsRate = TtsRate,
             AlertVolume = AlertVolume,
