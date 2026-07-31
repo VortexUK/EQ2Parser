@@ -561,6 +561,25 @@
                     </Border>
                 </Grid>
 
+                <!-- Two-ring avoidance doughnut (report chart) -->
+                <Border Grid.Row="1" Style="{StaticResource Card}" Padding="4" Margin="0,0,0,10" Height="240"
+                        Visibility="{Binding ReportChartVisible, Converter={StaticResource BoolToVis}}">
+                    <Grid>
+                        <lvc:PieChart Series="{Binding ReportDonutOuter}"
+                                      InitialRotation="-90"
+                                      LegendPosition="Hidden"
+                                      TooltipPosition="Top"
+                                      AnimationsSpeed="0:0:0.3" />
+                        <lvc:PieChart Series="{Binding ReportDonutInner}"
+                                      InitialRotation="-90"
+                                      LegendPosition="Right"
+                                      LegendTextPaint="{Binding ReportLegendPaint}"
+                                      TooltipPosition="Top"
+                                      AnimationsSpeed="0:0:0.3"
+                                      Margin="30" />
+                    </Grid>
+                </Border>
+
                 <!-- Report view (death / avoidance / specials / lookup) -->
                 <Border Grid.Row="2" Style="{StaticResource Card}" Padding="10"
                         Visibility="{Binding ReportLevel, Converter={StaticResource BoolToVis}}">

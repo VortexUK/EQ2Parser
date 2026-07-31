@@ -78,10 +78,15 @@ public sealed class LogLineProcessor
                     && !string.Equals(attacker, victim, StringComparison.OrdinalIgnoreCase);
                 if (!Engine.SetEncounter(line.Timestamp, attacker, victim, hostile))
                     break;
+                // The avoid-actor rides in Extra ("by=YOU") and needs the
+                // same owner resolution as attacker/victim.
+                var extra = swing.Extra;
+                if (extra is not null && extra.StartsWith("by=", StringComparison.Ordinal))
+                    extra = "by=" + Resolve(extra[3..]);
                 Engine.AddSwing(
                     swing.Category, swing.Critical, swing.Special,
                     attacker, swing.Ability, swing.Damage,
-                    line.Timestamp, victim, swing.DamageType, swing.Extra, line.ObservedAt);
+                    line.Timestamp, victim, swing.DamageType, extra, line.ObservedAt);
                 // Every combat action notifies the spell timers by ability
                 // name (ACT semantics) — how cast-driven timers start. Timers
                 // anchor to the arrival stamp so bars start the instant the

@@ -165,6 +165,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     public SolidColorPaint DrillLegendPaint { get; } = new(new SKColor(0xB0, 0xB4, 0xC8));
     public SolidColorPaint DonutLegendPaint { get; } = new(new SKColor(0xB0, 0xB4, 0xC8));
+    public SolidColorPaint ReportLegendPaint { get; } = new(new SKColor(0xB0, 0xB4, 0xC8));
 
     private (string?, string?, string?) _drillChartKey = ("\0", null, null);
     private long _drillChartVersion;
@@ -452,6 +453,15 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     public ObservableCollection<LogRow> ReportRows { get; } = [];
 
+    [ObservableProperty]
+    private bool _reportChartVisible;
+
+    [ObservableProperty]
+    private ISeries[] _reportDonutInner = [];
+
+    [ObservableProperty]
+    private ISeries[] _reportDonutOuter = [];
+
     private readonly System.Text.StringBuilder _reportBuilder = new();
     private readonly List<LogRow> _reportLines = [];
 
@@ -629,12 +639,6 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         }
     }
 
-    private sealed record AvoidKind(string Label, SKColor Color)
-    {
-        public int Count;
-        public readonly Dictionary<string, int> Actors = new(StringComparer.OrdinalIgnoreCase);
-    }
-
     private void CombatantAvoidanceReport(CombatantRow row)
     {
         lock (manager.Sync)
@@ -648,21 +652,24 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 _ => 1,
             });
 
-            Dictionary<string, AvoidKind> kinds = new(StringComparer.Ordinal)
-            {
-                ["Hit"] = new("Hit", new SKColor(0xF8, 0x71, 0x71)),
-                ["Stoneskin"] = new("Stoneskin", new SKColor(0xC8, 0xA9, 0x6E)),
-                ["Block"] = new("Block", new SKColor(0x4A, 0xDE, 0x80)),
-                ["Parry"] = new("Parry", new SKColor(0x93, 0xB4, 0xFF)),
-                ["Riposte"] = new("Riposte", new SKColor(0x22, 0xD3, 0xEE)),
-                ["Miss"] = new("Miss", new SKColor(0x8B, 0x90, 0xAB)),
-                ["Dodge"] = new("Dodge", new SKColor(0xFB, 0xBF, 0x24)),
-                ["Resist"] = new("Resist", new SKColor(0xE8, 0xBB, 0xFF)),
-                ["Counter"] = new("Counter", new SKColor(0xFF, 0x9E, 0xC7)),
-            };
+            (string Label, SKColor Color)[] kindPalette =
+            [
+                ("Block", new SKColor(0x4A, 0xDE, 0x80)),
+                ("Parry", new SKColor(0x93, 0xB4, 0xFF)),
+                ("Riposte", new SKColor(0x22, 0xD3, 0xEE)),
+                ("Miss", new SKColor(0x8B, 0x90, 0xAB)),
+                ("Dodge", new SKColor(0xFB, 0xBF, 0x24)),
+                ("Resist", new SKColor(0xE8, 0xBB, 0xFF)),
+                ("Counter", new SKColor(0xFF, 0x9E, 0xC7)),
+            ];
+            var avoidCounts = kindPalette.ToDictionary(
+                k => k.Label,
+                _ => new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
+                StringComparer.Ordinal);
             var attempts = 0;
+            var hitCount = 0;
+            var stoneskin = 0;
             long landedTotal = 0;
-            var landedCount = 0;
 
             foreach (var (targetName, combatant) in targets)
             {
@@ -671,28 +678,31 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 foreach (var sw in bucket.All.Swings)
                 {
                     attempts++;
-                    var kindKey = sw.Damage.Number switch
+                    switch (sw.Damage.Number)
                     {
-                        > 0 => "Hit",
-                        0 => "Stoneskin",
-                        Core.Combat.DamageValue.MissNumber => "Miss",
-                        Core.Combat.DamageValue.ResistNumber => "Resist",
-                        Core.Combat.DamageValue.ParryNumber => "Parry",
-                        Core.Combat.DamageValue.RiposteNumber => "Riposte",
-                        Core.Combat.DamageValue.BlockNumber => "Block",
-                        _ => sw.Damage.ToString() == "Counter" ? "Counter" : "Dodge",
-                    };
-                    var kind = kinds[kindKey];
-                    kind.Count++;
-                    if (kindKey == "Hit")
-                    {
-                        landedTotal += sw.Damage.Number;
-                        landedCount++;
-                    }
-                    else if (kindKey != "Stoneskin")
-                    {
-                        kind.Actors.TryGetValue(ActorLabel(sw.Extra, targetName), out var n);
-                        kind.Actors[ActorLabel(sw.Extra, targetName)] = n + 1;
+                        case > 0:
+                            hitCount++;
+                            landedTotal += sw.Damage.Number;
+                            break;
+                        case 0:
+                            stoneskin++;
+                            break;
+                        default:
+                        {
+                            var kind = sw.Damage.Number switch
+                            {
+                                Core.Combat.DamageValue.MissNumber => "Miss",
+                                Core.Combat.DamageValue.ResistNumber => "Resist",
+                                Core.Combat.DamageValue.ParryNumber => "Parry",
+                                Core.Combat.DamageValue.RiposteNumber => "Riposte",
+                                Core.Combat.DamageValue.BlockNumber => "Block",
+                                _ => sw.Damage.ToString() == "Counter" ? "Counter" : "Dodge",
+                            };
+                            var actor = ActorLabel(sw.Extra, targetName);
+                            avoidCounts[kind].TryGetValue(actor, out var n);
+                            avoidCounts[kind][actor] = n + 1;
+                            break;
+                        }
                     }
                 }
             }
@@ -704,67 +714,109 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 return;
             }
 
-            var avgHit = landedCount > 0 ? (double)landedTotal / landedCount : 0;
-            var avoidedCount = attempts - kinds["Hit"].Count - kinds["Stoneskin"].Count;
-            var avoidedDamage = avoidedCount * avgHit + kinds["Stoneskin"].Count * avgHit;
+            var avgHit = hitCount > 0 ? (double)landedTotal / hitCount : 0;
+            var avoided = attempts - hitCount - stoneskin;
+            var avoidedEst = avoided * avgHit;
 
+            // Headline: the x-of-y truth first.
             ReportLine(
                 ($"{attempts} incoming attacks", ClassColors.TreeText),
-                ($"  ·  {kinds["Hit"].Count} landed ({100.0 * kinds["Hit"].Count / attempts:F0}%)", ClassColors.OutcomeLoss),
-                ($"  ·  avg hit {CombatantRow.Compact(avgHit)}", ClassColors.Neutral));
+                ($"   landed {hitCount}/{attempts} ({100.0 * hitCount / attempts:F1}%)", ClassColors.OutcomeLoss),
+                ($"   stoneskin {stoneskin}/{attempts} ({100.0 * stoneskin / attempts:F1}%)", ClassColors.TreeHeader),
+                ($"   avoided {avoided}/{attempts} ({100.0 * avoided / attempts:F1}%)", ClassColors.OutcomeWin));
             ReportLine(
-                ($"est. damage avoided {CombatantRow.Compact(avoidedDamage)}", ClassColors.OutcomeWin),
-                ($"  ·  effective {CombatantRow.Compact(avoidedDamage / seconds)} HPS", ClassColors.SourceClass));
+                ($"avg landed hit {CombatantRow.Compact(avgHit)}", ClassColors.Neutral),
+                ($"   est. avoided {CombatantRow.Compact(avoidedEst)} (effective {CombatantRow.Compact(avoidedEst / seconds)} HPS)", ClassColors.OutcomeWin),
+                ($"   stoneskin est. {CombatantRow.Compact(stoneskin * avgHit)}", ClassColors.TreeHeader));
             ReportLine(("", ClassColors.Neutral));
             ReportLine(
-                ("KIND".PadRight(12), ClassColors.TreeHeader),
-                ("COUNT   % OF ATTACKS   EST. AVOIDED", ClassColors.TreeHeader));
-            foreach (var kind in kinds.Values.Where(k => k.Count > 0).OrderByDescending(k => k.Count))
+                ("KIND".PadRight(11), ClassColors.TreeHeader),
+                ("BY".PadRight(17), ClassColors.TreeHeader),
+                ("      COUNT   % SWINGS   % AVOIDS   EST. AVOIDED", ClassColors.TreeHeader));
+
+            void Row(string kind, string by, int count, string pctAvoids, string estimate, SKColor kindColor)
             {
-                var estimate = kind.Label is "Hit" ? "" : CombatantRow.Compact(kind.Count * avgHit).PadLeft(13);
                 ReportLine(
-                    (kind.Label.PadRight(12), ClassColors.TreeText),
-                    ($"{kind.Count,5}   {100.0 * kind.Count / attempts,10:F1}%   ", ClassColors.Neutral),
-                    (estimate, ClassColors.OutcomeWin));
-                if (kind.Actors.Count > 0 && (kind.Actors.Count > 1 || !kind.Actors.ContainsKey("self")))
+                    (kind.PadRight(11), new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(kindColor.Red, kindColor.Green, kindColor.Blue))),
+                    (by.PadRight(17), ClassColors.TreeText),
+                    ($"{count,4} / {attempts,-4}  {100.0 * count / attempts,6:F1}%   ", ClassColors.Neutral),
+                    (pctAvoids.PadLeft(8), ClassColors.Neutral),
+                    (estimate.PadLeft(15), ClassColors.OutcomeWin));
+            }
+
+            Row("Landed", "—", hitCount, "—", "—", new SKColor(0xF8, 0x71, 0x71));
+            Row("Stoneskin", "—", stoneskin, "—", CombatantRow.Compact(stoneskin * avgHit), new SKColor(0xC8, 0xA9, 0x6E));
+            foreach (var (label, color) in kindPalette)
+            {
+                var actors = avoidCounts[label];
+                if (actors.Count == 0)
+                    continue;
+                var first = true;
+                foreach (var (actor, count) in actors.OrderByDescending(kv => kv.Value))
                 {
-                    var parts = kind.Actors
-                        .OrderByDescending(kv => kv.Value)
-                        .Select(kv => $"{kv.Key} {kv.Value}");
-                    ReportLine(
-                        ("            ", ClassColors.Neutral),
-                        ($"└ {string.Join("  ·  ", parts)}", ClassColors.SourceRaid));
+                    Row(first ? label : "", actor, count,
+                        $"{100.0 * count / Math.Max(1, avoided):F1}%",
+                        CombatantRow.Compact(count * avgHit), color);
+                    first = false;
                 }
             }
+            ReportLine(
+                ("TOTAL AVOIDED".PadRight(28), ClassColors.OutcomeWin),
+                ($"{avoided,4} / {attempts,-4}  {100.0 * avoided / attempts,6:F1}%   ", ClassColors.TreeText),
+                ("100%".PadLeft(8), ClassColors.Neutral),
+                (CombatantRow.Compact(avoidedEst).PadLeft(15), ClassColors.OutcomeWin));
 
             OpenReport($"{context} › avoidance report");
 
-            // Outcome doughnut in the overlay chart card.
-            var total = attempts;
-            DrillDonutSeries = [.. kinds.Values
-                .Where(k => k.Count > 0)
-                .OrderByDescending(k => k.Count)
-                .Select(ISeries (k) => new PieSeries<double>
+            // Two-ring doughnut: inner = landed / stoneskin / avoided at
+            // their true shares; outer = the avoided arc broken into kinds
+            // (a transparent filler keeps the arcs aligned).
+            ReportDonutInner =
+            [
+                Ring("Landed", hitCount, new SKColor(0xF8, 0x71, 0x71), attempts, 30),
+                Ring("Stoneskin", stoneskin, new SKColor(0xC8, 0xA9, 0x6E), attempts, 30),
+                Ring("Avoided", avoided, new SKColor(0x4A, 0xDE, 0x80), attempts, 30),
+            ];
+            List<ISeries> outer =
+            [
+                new PieSeries<double>
                 {
-                    Values = new double[] { k.Count },
-                    Name = $"{100.0 * k.Count / total:F0}%  {k.Label}",
-                    Fill = new SolidColorPaint(k.Color),
-                    InnerRadius = 50,
-                    HoverPushout = 7,
-                    ToolTipLabelFormatter = _ => $"{k.Count}  ·  {100.0 * k.Count / total:F0}%",
-                })];
-            DrillDonutVisible = true;
-            DrillCartesianVisible = false;
-            DrillChartVisible = true;
+                    Values = new double[] { hitCount + stoneskin },
+                    Name = "not avoided",
+                    Fill = new SolidColorPaint(new SKColor(0xFF, 0xFF, 0xFF, 0x08)),
+                    InnerRadius = 86,
+                    ToolTipLabelFormatter = _ => "",
+                },
+            ];
+            foreach (var (label, color) in kindPalette)
+            {
+                var count = avoidCounts[label].Values.Sum();
+                if (count > 0)
+                    outer.Add(Ring(label, count, color, attempts, 86));
+            }
+            ReportDonutOuter = [.. outer];
+            ReportChartVisible = true;
         }
     }
 
-    /// <summary>Who defeated an incoming attack: the victim, their weapon,
-    /// or another player (optionally via that player's weapon).</summary>
+    private static PieSeries<double> Ring(string label, int count, SKColor color, int total, double innerRadius) => new()
+    {
+        Values = new double[] { count },
+        Name = $"{100.0 * count / Math.Max(1, total):F1}%  {label}",
+        Fill = new SolidColorPaint(color),
+        InnerRadius = innerRadius,
+        HoverPushout = 5,
+        ToolTipLabelFormatter = _ => $"{count} / {total}",
+    };
+
+    /// <summary>Who defeated an incoming attack: the character themselves,
+    /// their weapon, or another player (a helper's weapon credits the
+    /// helper). Names come pre-resolved from the processor.</summary>
     private static string ActorLabel(string? extra, string targetName)
     {
         if (extra is null || !extra.StartsWith("by=", StringComparison.Ordinal))
-            return "self";
+            return targetName;
         var actor = extra[3..];
         var idx = actor.IndexOf("'s ", StringComparison.Ordinal);
         if (idx <= 0)
@@ -772,9 +824,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         if (idx > 0)
         {
             var owner = actor[..idx];
-            return owner.Equals(targetName, StringComparison.OrdinalIgnoreCase) ? "weapon" : owner;
+            return owner.Equals(targetName, StringComparison.OrdinalIgnoreCase) ? $"{targetName} (weapon)" : owner;
         }
-        return actor.Equals(targetName, StringComparison.OrdinalIgnoreCase) ? "self" : actor;
+        return actor;
     }
 
     /// <summary>Outgoing autoattack specials: normal/multi/double/flurry/AoE + crit%.</summary>
@@ -895,6 +947,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         {
             ReportLevel = false;
             DrillChartVisible = false;
+            ReportChartVisible = false;
             if (_detailKey is null)
             {
                 DetailOpen = false;
