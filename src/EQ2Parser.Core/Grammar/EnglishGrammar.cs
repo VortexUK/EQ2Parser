@@ -56,7 +56,7 @@ public static partial class EnglishGrammar
     // a krait patriarch tries to crush Menludiir, but Menludiir parries.
     // ... but YOU block. / but YOU resist. / but Badbang ripostes. / but X dodges.
 
-    [GeneratedRegex(@"^(?<attacker>.+?) tries to (?<verb>\w+) (?<victim>.+?), but (?:(?<outcomeactor>.+?) )?(?<outcome>misses|parries|ripostes|blocks|resists|dodges|block|resist|riposte|parry|dodge)\.$")]
+    [GeneratedRegex(@"^(?<attacker>.+?) tries to (?<verb>\w+) (?<victim>.+?), but (?:(?<outcomeactor>.+?) )?(?<outcome>misses|parries|ripostes|blocks|resists|dodges|counters|block|resist|riposte|parry|dodge|counter)\.$")]
     private static partial Regex AvoidLine();
 
     // ── Heals ───────────────────────────────────────────────────────────────
@@ -325,6 +325,7 @@ public static partial class EnglishGrammar
             "ripostes" or "riposte" => new DamageValue(DamageValue.RiposteNumber),
             "blocks" or "block" => new DamageValue(DamageValue.BlockNumber),
             "resists" or "resist" => new DamageValue(DamageValue.ResistNumber),
+            "counters" or "counter" => DamageValue.Unknown("Counter"),
             _ => DamageValue.Unknown("Dodge"),
         };
 
@@ -348,6 +349,14 @@ public static partial class EnglishGrammar
             victim = victim[..idx];
         }
 
+        // Preserve WHO defeated the attack when it wasn't the victim
+        // themselves — another player covering them, or a parrying weapon
+        // ("but Ahuli blocks." / "but Menludiir's unswerving hammer
+        // parries."). Feeds the avoidance report's helper attribution.
+        string? extra = null;
+        if (actor.Length > 0 && !actor.Equals(victim, StringComparison.OrdinalIgnoreCase))
+            extra = "by=" + actor;
+
         return new SwingEvent(
             ability == AutoAttackAbility ? SwingCategory.Melee : SwingCategory.NonMelee,
             Critical: false,
@@ -356,7 +365,8 @@ public static partial class EnglishGrammar
             Ability: ability,
             Damage: damage,
             Victim: victim,
-            DamageType: "avoided");
+            DamageType: "avoided",
+            Extra: extra);
     }
 
     private static string SpecialFromVerb(string verb) => verb switch

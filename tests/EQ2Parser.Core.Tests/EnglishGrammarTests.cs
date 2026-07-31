@@ -82,6 +82,18 @@ public class EnglishGrammarTests
         Assert.Equal("a krait patriarch", s.Attacker);
         Assert.Equal("Menludiir", s.Victim);
         Assert.Equal(DamageValue.ParryNumber, s.Damage.Number);
+        // The defeating actor is preserved for helper attribution.
+        Assert.Equal("by=Menludiir's unswerving hammer", s.Extra);
+
+        // A helper covering the victim ("intercept" style) is preserved too;
+        // self-avoids carry no actor.
+        var helper = Swing("a hedon sentinel tries to crush Sihtric, but Ahuli blocks.");
+        Assert.Equal(("Sihtric", "by=Ahuli"), (helper.Victim, helper.Extra));
+        var self = Swing("a hedon sentinel tries to crush Sihtric, but Sihtric blocks.");
+        Assert.Null(self.Extra);
+
+        var counter = Swing("a hedon sentinel tries to crush Ahuli, but Ahuli counters.");
+        Assert.Equal("Counter", counter.Damage.ToString());
     }
 
     [Theory]
