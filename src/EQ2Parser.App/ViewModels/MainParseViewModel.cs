@@ -456,6 +456,13 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [ObservableProperty]
     private bool _reportChartVisible;
 
+    /// <summary>What the open report is bound to: 0 none/fight-independent,
+    /// -1 a specific fight (close on switch), 1/2/3 death/avoidance/specials
+    /// for one combatant (re-run for them in the new fight).</summary>
+    private int _reportScope;
+    private string? _reportKey;
+    private string? _reportName;
+
     [ObservableProperty]
     private ISeries[] _reportDonutInner = [];
 
@@ -493,6 +500,21 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     [RelayCommand]
     private void CopyReport() => SetClipboard(_reportText);
+
+    private void RecordReportScope(object? parameter, int combatantScope)
+    {
+        switch (parameter)
+        {
+            case CombatantRow row:
+                _reportScope = combatantScope;
+                _reportKey = row.Key;
+                _reportName = row.Name;
+                break;
+            case ParseNode:
+                _reportScope = -1;
+                break;
+        }
+    }
 
     /// <summary>Combatants of the current selection for a report target:
     /// a fight node reports every ally, a combatant row just that one.</summary>
@@ -545,6 +567,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [RelayCommand]
     private void DeathReport(object? parameter)
     {
+        RecordReportScope(parameter, 1);
         lock (manager.Sync)
         {
             var targets = ReportTargets(parameter, out var context);
@@ -589,6 +612,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [RelayCommand]
     private void AvoidanceReport(object? parameter)
     {
+        RecordReportScope(parameter, 2);
         if (parameter is CombatantRow row)
         {
             CombatantAvoidanceReport(row);
@@ -941,6 +965,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [RelayCommand]
     private void SpecialReport(object? parameter)
     {
+        RecordReportScope(parameter, 3);
         lock (manager.Sync)
         {
             var targets = ReportTargets(parameter, out var context);
@@ -995,6 +1020,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     {
         if (row is null)
             return;
+        _reportScope = 0; // history-wide — survives fight switches
         lock (manager.Sync)
         {
             var any = false;
@@ -1056,6 +1082,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             ReportLevel = false;
             DrillChartVisible = false;
             ReportChartVisible = false;
+            _reportScope = 0;
             if (_detailKey is null)
             {
                 DetailOpen = false;
@@ -1145,7 +1172,68 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             _pinnedFight = value.Fight;
             FollowLive = false;
         }
+        FollowSelectionInOverlay();
         RefreshGrid();
+    }
+
+    /// <summary>Keep any open report/log view coherent with the newly
+    /// selected fight: combatant reports re-run for the same character
+    /// (closing if they aren't in the fight); fight-scoped reports and
+    /// standalone log views close back to the summary.</summary>
+    private void FollowSelectionInOverlay()
+    {
+        if (LogLevel && _detailKey is null)
+        {
+            CloseOverlay();
+            return;
+        }
+        if (!ReportLevel)
+            return;
+        if (_reportScope == -1)
+        {
+            CloseOverlay();
+            return;
+        }
+        if (_reportScope <= 0)
+            return; // lookup — history-wide, fight-independent
+        bool present;
+        lock (manager.Sync)
+        {
+            present = FightContains(ResolveFight(), _reportKey!);
+        }
+        if (!present)
+        {
+            CloseOverlay();
+            return;
+        }
+        var proxy = new CombatantRow { Key = _reportKey! };
+        proxy.Name = _reportName ?? _reportKey!;
+        switch (_reportScope)
+        {
+            case 1: DeathReport(proxy); break;
+            case 2: AvoidanceReport(proxy); break;
+            case 3: SpecialReport(proxy); break;
+        }
+    }
+
+    private static bool FightContains(object? fight, string key) => fight switch
+    {
+        Encounter e => e.Combatants.ContainsKey(key),
+        CorrelatedEncounter m => m.MergedCombatants.ContainsKey(key),
+        AggregateFights a => a.Fights.Any(f => f.MergedCombatants.ContainsKey(key)),
+        _ => false,
+    };
+
+    private void CloseOverlay()
+    {
+        DetailOpen = false;
+        ReportLevel = false;
+        LogLevel = false;
+        SwingLevel = false;
+        ReportChartVisible = false;
+        DrillChartVisible = false;
+        _detailKey = null;
+        _reportScope = 0;
     }
 
     [RelayCommand]
