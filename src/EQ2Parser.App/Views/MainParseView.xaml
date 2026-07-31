@@ -34,7 +34,21 @@
         </Style>
 
         <DataTemplate x:Key="GridRowTemplate" DataType="{x:Type vm:CombatantRow}">
-            <Grid Margin="0,1" Cursor="Hand" Background="Transparent">
+            <Grid Margin="0,1" Cursor="Hand" Background="Transparent"
+                  Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                <Grid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Drill down"
+                                  Command="{Binding PlacementTarget.Tag.OpenDetailCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Header="Copy row"
+                                  Command="{Binding PlacementTarget.Tag.CopyCombatantCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Header="Copy ability breakdown"
+                                  Command="{Binding PlacementTarget.Tag.CopyBreakdownCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                    </ContextMenu>
+                </Grid.ContextMenu>
                 <Grid.InputBindings>
                     <MouseBinding MouseAction="LeftClick"
                                   Command="{Binding DataContext.OpenDetailCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -119,6 +133,24 @@
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="Padding" Value="4,1" />
+                        <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                        <Setter Property="ContextMenu">
+                            <Setter.Value>
+                                <ContextMenu>
+                                    <MenuItem Header="Copy summary"
+                                              Command="{Binding PlacementTarget.Tag.CopyNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <MenuItem Header="View log"
+                                              Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                              Command="{Binding PlacementTarget.Tag.ViewFightLogCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <MenuItem Header="Delete"
+                                              Visibility="{Binding PlacementTarget.DataContext.IsDeletable, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                              Command="{Binding PlacementTarget.Tag.DeleteNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                </ContextMenu>
+                            </Setter.Value>
+                        </Setter>
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="ListBoxItem">
@@ -332,7 +364,15 @@
                             <ItemsControl ItemsSource="{Binding DrillRows}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:AbilityRow}">
-                                        <Grid x:Name="RowRoot" Margin="0,1" Cursor="Hand" Background="Transparent">
+                                        <Grid x:Name="RowRoot" Margin="0,1" Cursor="Hand" Background="Transparent"
+                                              Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                            <Grid.ContextMenu>
+                                                <ContextMenu>
+                                                <MenuItem Header="Copy row"
+                                                          Command="{Binding PlacementTarget.Tag.CopyAbilityCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                </ContextMenu>
+                                            </Grid.ContextMenu>
                                             <Grid.InputBindings>
                                                 <MouseBinding MouseAction="LeftClick"
                                                               Command="{Binding DataContext.DrillIntoCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -450,7 +490,18 @@
                             </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:SwingRow}">
-                                    <Grid Cursor="Hand" Background="Transparent">
+                                    <Grid Cursor="Hand" Background="Transparent"
+                                          Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                        <Grid.ContextMenu>
+                                            <ContextMenu>
+                                            <MenuItem Header="View log"
+                                                      Command="{Binding PlacementTarget.Tag.OpenSwingLogCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <MenuItem Header="Copy line"
+                                                      Command="{Binding PlacementTarget.Tag.CopySwingCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            </ContextMenu>
+                                        </Grid.ContextMenu>
                                         <Grid.InputBindings>
                                             <MouseBinding MouseAction="LeftClick"
                                                           Command="{Binding DataContext.OpenSwingLogCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"

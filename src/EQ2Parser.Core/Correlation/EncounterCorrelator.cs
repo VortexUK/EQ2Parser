@@ -42,6 +42,10 @@ public sealed class EncounterCorrelator(CorrelatorOptions? options = null)
         engine.EncounterEnded += Accept;
     }
 
+    /// <summary>User deletion of a correlated fight. Returns false when the
+    /// fight was not (or no longer) in history.</summary>
+    public bool Remove(CorrelatedEncounter fight) => _history.Remove(fight);
+
     /// <summary>Direct entry for tests/imports.</summary>
     public void Accept(Encounter encounter)
     {
