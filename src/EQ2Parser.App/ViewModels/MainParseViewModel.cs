@@ -683,21 +683,23 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 if (combatant.IncomingBuckets.GetValueOrDefault(BucketConfig.IncomingDamage) is not { } bucket)
                     continue;
 
-                // A fully warded hit logs as "fails to inflict any damage"
-                // PLUS a same-second ward absorb — pair them so warded hits
-                // aren't mistaken for stoneskins (ACT counts them as landed).
-                Dictionary<long, (int Count, long Total, int Used)> wardsBySecond = [];
+                // A fully warded hit logs its absorb line(s) IMMEDIATELY
+                // BEFORE the "fails to inflict any damage" line. Pair by log
+                // adjacency (TimeSorter), not by second — a same-second
+                // bucket lets partial absorbs on OTHER hits masquerade as
+                // full wards and steals from the stoneskin count.
+                List<(int Sorter, long Second, long Amount)> absorbs = [];
                 if (combatant.IncomingBuckets.GetValueOrDefault(BucketConfig.HealedInc) is { } healedInc)
                 {
                     foreach (var heal in healedInc.All.Swings)
                     {
                         if (heal.DamageType != Core.Grammar.EnglishGrammar.WardAbsorbType || heal.Damage.Number <= 0)
                             continue;
-                        var second = heal.Time.ToUnixTimeSeconds();
-                        wardsBySecond.TryGetValue(second, out var w);
-                        wardsBySecond[second] = (w.Count + 1, w.Total + heal.Damage.Number, w.Used);
+                        absorbs.Add((heal.TimeSorter, heal.Time.ToUnixTimeSeconds(), heal.Damage.Number));
                     }
                 }
+                absorbs.Sort((a, b) => a.Sorter.CompareTo(b.Sorter));
+                var absorbUsed = new bool[absorbs.Count];
 
                 foreach (var sw in bucket.All.Swings)
                 {
@@ -714,12 +716,24 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                             break;
                         case 0:
                         {
+                            // Claim every unused absorb printed just before
+                            // this line (a hit can drain several wards).
+                            long claimed = 0;
                             var second = sw.Time.ToUnixTimeSeconds();
-                            if (wardsBySecond.TryGetValue(second, out var w) && w.Used < w.Count)
+                            for (var a = 0; a < absorbs.Count; a++)
+                            {
+                                if (absorbUsed[a])
+                                    continue;
+                                var gap = sw.TimeSorter - absorbs[a].Sorter;
+                                if (gap is <= 0 or > 6 || Math.Abs(absorbs[a].Second - second) > 1)
+                                    continue;
+                                absorbUsed[a] = true;
+                                claimed += absorbs[a].Amount;
+                            }
+                            if (claimed > 0)
                             {
                                 warded++;
-                                wardedTotal += w.Total / w.Count;
-                                wardsBySecond[second] = (w.Count, w.Total, w.Used + 1);
+                                wardedTotal += claimed;
                             }
                             else
                             {
