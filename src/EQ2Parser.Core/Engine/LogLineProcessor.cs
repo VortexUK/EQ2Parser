@@ -112,7 +112,7 @@ public sealed class LogLineProcessor
                     // Recast debuffs (Traumatic Swipe): every hit refreshes
                     // the victim's timer mod, ACT-style; a cure stripping a
                     // known debuff drops the mod again.
-                    _timers.NotifyRecastDebuff(victim, swing.Ability, anchor);
+                    _timers.NotifyRecastDebuff(attacker, victim, swing.Ability, anchor);
                     if (swing.Category == SwingCategory.CureDispel)
                         _timers.NotifyDispel(victim, swing.DamageType, anchor);
                 }
@@ -123,10 +123,11 @@ public sealed class LogLineProcessor
             {
                 var killer = Resolve(death.Killer);
                 var victim = Resolve(death.Victim);
-                // Death drops the combatant's timer mods (ACT: their
-                // modified timers started in the last 2 s revert too).
+                // Death drops the timer mods ON the combatant AND the ones
+                // they applied — a dead swiper's debuff dies with them, and
+                // running timers it stretched rescale pro-rata.
                 if (live)
-                    _timers?.ClearTimerMods(victim, anchor);
+                    _timers?.NotifyDeath(victim, anchor);
                 // Deaths are recorded into a live fight but never start one —
                 // an out-of-combat "Alas, X has died" is not an encounter.
                 if (!Engine.SetEncounter(line.Timestamp, killer, victim, hostile: false))

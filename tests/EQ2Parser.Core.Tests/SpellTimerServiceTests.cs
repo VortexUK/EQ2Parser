@@ -245,8 +245,8 @@ public class SpellTimerServiceTests
         // ACT_English_Parser hardcodes exactly one recast debuff: every
         // Traumatic Swipe hit → ApplyTimerMod(victim, 50%, 30 s).
         var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
-        Assert.False(service.NotifyRecastDebuff("Bossmob", "Kidney Stab", T0));
-        Assert.True(service.NotifyRecastDebuff("Bossmob", "Traumatic Swipe", T0));
+        Assert.False(service.NotifyRecastDebuff("Teramo", "Bossmob", "Kidney Stab", T0));
+        Assert.True(service.NotifyRecastDebuff("Teramo", "Bossmob", "Traumatic Swipe", T0));
 
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0.AddSeconds(2)));
         Assert.Equal(90, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
@@ -256,5 +256,49 @@ public class SpellTimerServiceTests
         service.NotifyDispel("Bossmob", "Traumatic Swipe", T0.AddSeconds(3));
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(10)));
         Assert.Equal(60, Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers).DurationSeconds);
+    }
+
+    [Fact]
+    public void Swiper_Death_Rescales_Running_Timers_ProRata()
+    {
+        // The debuff dies with its applier: elapsed time stays spent, the
+        // remaining portion shrinks back to the unmodified rate.
+        var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
+        service.NotifyRecastDebuff("Teramo", "Bossmob", "Traumatic Swipe", T0);
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0));
+        var timer = Assert.Single(Assert.Single(service.Frames).Timers);
+        Assert.Equal(90, timer.DurationSeconds);
+
+        // Teramo dies 30 s in: 30 elapsed + 60 remaining × (1/1.5) = 70.
+        service.NotifyDeath("Teramo", T0.AddSeconds(30));
+        Assert.Equal(70, timer.DurationSeconds);
+
+        // The pending mod is gone too — the next timer is unmodified.
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(35)));
+        Assert.Equal(60, Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers).DurationSeconds);
+
+        // A second death is a no-op — the contribution was already removed.
+        service.NotifyDeath("Teramo", T0.AddSeconds(40));
+        Assert.Equal(70, timer.DurationSeconds);
+    }
+
+    [Fact]
+    public void Reapplied_Swipe_Transfers_Ownership_To_The_Newest_Swiper()
+    {
+        // Same-name mods replace (ACT semantics) — the newest applier owns
+        // the debuff, so the FIRST swiper's death changes nothing.
+        var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
+        service.NotifyRecastDebuff("Teramo", "Bossmob", "Traumatic Swipe", T0);
+        service.NotifyRecastDebuff("Sennhe", "Bossmob", "Traumatic Swipe", T0.AddSeconds(5));
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0.AddSeconds(6)));
+        var timer = Assert.Single(Assert.Single(service.Frames).Timers);
+        Assert.Equal(90, timer.DurationSeconds);
+
+        service.NotifyDeath("Teramo", T0.AddSeconds(10));
+        Assert.Equal(90, timer.DurationSeconds);
+
+        // The owner's death does rescale: 4 elapsed + 86 × (1/1.5) ≈ 61.
+        service.NotifyDeath("Sennhe", T0.AddSeconds(10));
+        Assert.Equal(61, timer.DurationSeconds);
     }
 }

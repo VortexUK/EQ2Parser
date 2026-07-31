@@ -13,10 +13,15 @@ public sealed record TimerOptions
     public TimeSpan SubTimerWindow { get; init; } = TimeSpan.FromSeconds(12);
 }
 
+/// <summary>One mod contribution baked into a running timer: which debuff,
+/// who applied it (lower-cased), and its additive fraction — kept so the
+/// applier's death can rescale the timer pro-rata.</summary>
+public sealed record AppliedTimerMod(string Name, string Attacker, double Fraction);
+
 /// <summary>One live countdown instance. Duration may exceed the
-/// definition's base when a timer mod applied at start (final = base ×
-/// (1 + mods)); the base and mod owner are kept so the short death/dispel
-/// grace windows can revert it.</summary>
+/// definition's base when timer mods applied at start (final = base ×
+/// (1 + mods)); the base, mod owner, and per-mod contributors are kept so
+/// the grace-window reverts and applier-death rescales can adjust it.</summary>
 public sealed class ActiveTimer(DateTimeOffset start, int durationSeconds, bool isMaster)
 {
     public DateTimeOffset Start { get; } = start;
@@ -24,6 +29,8 @@ public sealed class ActiveTimer(DateTimeOffset start, int durationSeconds, bool 
     public int BaseDurationSeconds { get; internal init; } = durationSeconds;
     /// <summary>Lower-cased combatant whose mods scaled this timer ("" = unmodified).</summary>
     public string ModOwner { get; internal init; } = "";
+    /// <summary>The mods that scaled this timer at start (empty = unmodified).</summary>
+    public List<AppliedTimerMod> AppliedMods { get; internal init; } = [];
     public bool IsMaster { get; } = isMaster;
     public bool WarningRaised { get; internal set; }
     public bool ExpiryRaised { get; internal set; }
@@ -59,10 +66,12 @@ public sealed class SpellTimerService(TimerOptions? options = null)
     private readonly Dictionary<string, TimerDefinition> _definitions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<TimerDefinition>> _byName = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, TimerFrame> _frames = new(StringComparer.Ordinal);
-    // owner (lower) → mod name → (additive fraction, expiry). ACT's recast
-    // mods: same name never stacks (re-apply refreshes), different names
-    // sum, and each mod lives only for its debuff duration.
-    private readonly Dictionary<string, Dictionary<string, (double Fraction, DateTimeOffset Expires)>> _mods = new(StringComparer.Ordinal);
+    // owner (lower) → mod name → (additive fraction, expiry, applier).
+    // ACT's recast mods: same name never stacks (re-apply refreshes and the
+    // newest applier owns it), different names sum, and each mod lives only
+    // for its debuff duration. The applier is tracked so their death can
+    // drop the debuff and rescale running timers.
+    private readonly Dictionary<string, Dictionary<string, (double Fraction, DateTimeOffset Expires, string Attacker)>> _mods = new(StringComparer.Ordinal);
 
     /// <summary>ACT's hardcoded recast-debuff table (ACT_English_Parser:
     /// every Traumatic Swipe hit applies a 50% recast slow to the victim
@@ -161,15 +170,21 @@ public sealed class SpellTimerService(TimerOptions? options = null)
         // Non-modable definitions ignore mods entirely.
         var duration = chosen.DurationSeconds;
         var modOwner = "";
-        if (chosen.Modable && ActiveModSum(attacker, time) is > 0 and var modSum)
+        List<AppliedTimerMod> applied = [];
+        if (chosen.Modable)
         {
-            duration = Math.Max(0, (int)Math.Round(duration * (1 + modSum)));
-            modOwner = attacker;
+            applied = ActiveMods(attacker, time);
+            if (applied.Count > 0)
+            {
+                duration = Math.Max(0, (int)Math.Round(duration * (1 + applied.Sum(m => m.Fraction))));
+                modOwner = attacker;
+            }
         }
         var timer = new ActiveTimer(time, duration, isMaster)
         {
             BaseDurationSeconds = chosen.DurationSeconds,
             ModOwner = modOwner,
+            AppliedMods = applied,
         };
         if (isMaster)
         {
@@ -197,24 +212,25 @@ public sealed class SpellTimerService(TimerOptions? options = null)
 
     /// <summary>Add or refresh a named recast mod on a combatant for
     /// <paramref name="duration"/>. Same name never stacks (re-apply
-    /// refreshes the expiry); different names sum additively. Affects only
-    /// timers that START while the mod is active.</summary>
-    public void AddTimerMod(string owner, string modName, double fraction, DateTimeOffset time, TimeSpan duration)
+    /// refreshes the expiry and the newest applier owns it); different
+    /// names sum additively. Affects only timers that START while the mod
+    /// is active.</summary>
+    public void AddTimerMod(string owner, string modName, double fraction, DateTimeOffset time, TimeSpan duration, string attacker = "")
     {
         owner = owner.ToLowerInvariant();
         if (!_mods.TryGetValue(owner, out var ownerMods))
-            _mods[owner] = ownerMods = new Dictionary<string, (double, DateTimeOffset)>(StringComparer.OrdinalIgnoreCase);
-        ownerMods[modName] = (fraction, time + duration);
+            _mods[owner] = ownerMods = new Dictionary<string, (double, DateTimeOffset, string)>(StringComparer.OrdinalIgnoreCase);
+        ownerMods[modName] = (fraction, time + duration, attacker.ToLowerInvariant());
     }
 
     /// <summary>A damaging ability landed: if it's a known recast debuff
     /// (<see cref="RecastDebuffs"/>), apply/refresh the victim's mod —
-    /// exactly ACT's per-hit ApplyTimerMod call.</summary>
-    public bool NotifyRecastDebuff(string victim, string ability, DateTimeOffset time)
+    /// exactly ACT's per-hit ApplyTimerMod call, remembering who swiped.</summary>
+    public bool NotifyRecastDebuff(string attacker, string victim, string ability, DateTimeOffset time)
     {
         if (!RecastDebuffs.TryGetValue(ability, out var debuff))
             return false;
-        AddTimerMod(victim, ability, debuff.Fraction, time, debuff.Duration);
+        AddTimerMod(victim, ability, debuff.Fraction, time, debuff.Duration, attacker);
         return true;
     }
 
@@ -226,18 +242,18 @@ public sealed class SpellTimerService(TimerOptions? options = null)
             RemoveTimerMod(victim, effect, time);
     }
 
-    private double ActiveModSum(string owner, DateTimeOffset time)
+    private List<AppliedTimerMod> ActiveMods(string owner, DateTimeOffset time)
     {
         if (!_mods.TryGetValue(owner, out var ownerMods))
-            return 0;
+            return [];
         List<string>? expired = null;
-        double sum = 0;
+        List<AppliedTimerMod> active = [];
         foreach (var (name, mod) in ownerMods)
         {
             if (mod.Expires <= time)
                 (expired ??= []).Add(name);
             else
-                sum += mod.Fraction;
+                active.Add(new AppliedTimerMod(name, mod.Attacker, mod.Fraction));
         }
         if (expired is not null)
         {
@@ -246,7 +262,62 @@ public sealed class SpellTimerService(TimerOptions? options = null)
             if (ownerMods.Count == 0)
                 _mods.Remove(owner);
         }
-        return sum;
+        return active;
+    }
+
+    /// <summary>Every death routes here: mods ON the dead combatant drop
+    /// (with the 2 s grace revert), and mods APPLIED BY them drop too — the
+    /// debuff dies with its owner, so running timers it stretched rescale
+    /// pro-rata: elapsed time stays spent, the remaining portion shrinks
+    /// back to the unmodified rate. (Beyond ACT, which never touches a
+    /// committed recast.)</summary>
+    public void NotifyDeath(string name, DateTimeOffset time)
+    {
+        ClearTimerMods(name, time);
+        var dead = name.ToLowerInvariant();
+
+        // Drop pending mods this combatant applied to anyone.
+        List<string>? emptyOwners = null;
+        foreach (var (owner, ownerMods) in _mods)
+        {
+            List<string>? removed = null;
+            foreach (var (modName, mod) in ownerMods)
+            {
+                if (mod.Attacker == dead)
+                    (removed ??= []).Add(modName);
+            }
+            if (removed is null)
+                continue;
+            foreach (var modName in removed)
+                ownerMods.Remove(modName);
+            if (ownerMods.Count == 0)
+                (emptyOwners ??= []).Add(owner);
+        }
+        if (emptyOwners is not null)
+        {
+            foreach (var owner in emptyOwners)
+                _mods.Remove(owner);
+        }
+
+        // Rescale running timers that carry the dead applier's mods.
+        foreach (var frame in _frames.Values)
+        {
+            foreach (var timer in frame.Timers)
+            {
+                if (timer.AppliedMods.Count == 0 || !timer.AppliedMods.Any(m => m.Attacker == dead))
+                    continue;
+                var elapsed = (time - timer.Start).TotalSeconds;
+                var remaining = timer.DurationSeconds - elapsed;
+                if (elapsed < 0 || remaining <= 0)
+                    continue;
+                var oldSum = timer.AppliedMods.Sum(m => m.Fraction);
+                timer.AppliedMods.RemoveAll(m => m.Attacker == dead);
+                var newSum = timer.AppliedMods.Sum(m => m.Fraction);
+                timer.DurationSeconds = Math.Max(
+                    timer.BaseDurationSeconds,
+                    (int)Math.Round(elapsed + remaining * (1 + newSum) / (1 + oldSum)));
+            }
+        }
     }
 
     /// <summary>Remove one mod (debuff expired or dispelled). A dispel
@@ -278,7 +349,10 @@ public sealed class SpellTimerService(TimerOptions? options = null)
                 if (timer.ModOwner == owner
                     && timer.DurationSeconds != timer.BaseDurationSeconds
                     && time - timer.Start <= window)
+                {
                     timer.DurationSeconds = timer.BaseDurationSeconds;
+                    timer.AppliedMods.Clear();
+                }
             }
         }
     }
