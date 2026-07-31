@@ -787,7 +787,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                     return new PieSeries<double>
                     {
                         Values = new[] { Math.Round(slice.Value) },
-                        Name = slice.Label,
+                        Name = $"{share * 100:F0}%  {slice.Label}",
                         Fill = new SolidColorPaint(SKColor.FromHsv(i * 360f / Math.Max(1, slices.Count), 44f, 82f)),
                         InnerRadius = 50,
                         HoverPushout = 7,
