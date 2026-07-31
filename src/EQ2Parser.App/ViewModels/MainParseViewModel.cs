@@ -1107,12 +1107,12 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 }
             }
 
-            List<(string Name, int Swings, int Normal, int Multi, int Dbl, int Flurry, int Aoe, int Hits, int Crits)> rows = [];
+            List<(string Name, int Swings, int Normal, int Multi, int Flurry, int Aoe, int Hits, int Crits)> rows = [];
             foreach (var (targetName, combatants) in targets
                 .GroupBy(t => t.Name)
                 .Select(g => (g.Key, g.Select(t => t.C).ToList())))
             {
-                int swings = 0, normal = 0, multi = 0, dbl = 0, flurry = 0, aoe = 0, crits = 0, hits = 0;
+                int swings = 0, normal = 0, multi = 0, flurry = 0, aoe = 0, crits = 0, hits = 0;
                 foreach (var c in combatants)
                 {
                     if (c.OutgoingBuckets.GetValueOrDefault(BucketConfig.AutoAttackOut) is not { } bucket)
@@ -1131,7 +1131,6 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                         switch (sw.Special)
                         {
                             case "Multi Attack": multi++; break;
-                            case "Double Attack": dbl++; break;
                             case "Flurry": flurry++; break;
                             case "AoE Attack": aoe++; break;
                             default: normal++; break;
@@ -1139,27 +1138,26 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                     }
                 }
                 if (swings > 0)
-                    rows.Add((targetName, swings, normal, multi, dbl, flurry, aoe, hits, crits));
+                    rows.Add((targetName, swings, normal, multi, flurry, aoe, hits, crits));
             }
 
             ReportLine(
                 ("NAME".PadRight(18), ClassColors.TreeHeader),
-                ("SWINGS  NORMAL   MULTI    DBL  FLURRY   AOE   MULTI%  FLURRY%   CRIT%", ClassColors.TreeHeader));
+                ("SWINGS  NORMAL   MULTI  FLURRY   AOE   MULTI%  FLURRY%   CRIT%", ClassColors.TreeHeader));
             static string Cell(int n, int width) => (n > 0 ? n.ToString() : "—").PadLeft(width);
-            int tSw = 0, tNorm = 0, tMulti = 0, tDbl = 0, tFlurry = 0, tAoe = 0, tHits = 0, tCrits = 0;
+            int tSw = 0, tNorm = 0, tMulti = 0, tFlurry = 0, tAoe = 0, tHits = 0, tCrits = 0;
             foreach (var r in rows.OrderByDescending(r => r.Swings))
             {
                 ReportLine(
                     (r.Name.PadRight(18), ClassColors.TreeText),
                     ($"{r.Swings,6}  ", ClassColors.TreeText),
-                    (Cell(r.Normal, 6) + Cell(r.Multi, 8) + Cell(r.Dbl, 7) + Cell(r.Flurry, 8) + Cell(r.Aoe, 6), ClassColors.Neutral),
+                    (Cell(r.Normal, 6) + Cell(r.Multi, 8) + Cell(r.Flurry, 8) + Cell(r.Aoe, 6), ClassColors.Neutral),
                     ($"{100.0 * r.Multi / r.Swings,8:F1}%", ClassColors.SourceRaid),
                     ($"{100.0 * r.Flurry / r.Swings,8:F1}%", ClassColors.OutcomePartial),
                     ($"{(r.Hits > 0 ? 100.0 * r.Crits / r.Hits : 0),7:F1}%", ClassColors.SourceClass));
                 tSw += r.Swings;
                 tNorm += r.Normal;
                 tMulti += r.Multi;
-                tDbl += r.Dbl;
                 tFlurry += r.Flurry;
                 tAoe += r.Aoe;
                 tHits += r.Hits;
@@ -1170,7 +1168,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 ReportLine(
                     ("TOTAL".PadRight(18), ClassColors.TreeHeader),
                     ($"{tSw,6}  ", ClassColors.TreeText),
-                    (Cell(tNorm, 6) + Cell(tMulti, 8) + Cell(tDbl, 7) + Cell(tFlurry, 8) + Cell(tAoe, 6), ClassColors.Neutral),
+                    (Cell(tNorm, 6) + Cell(tMulti, 8) + Cell(tFlurry, 8) + Cell(tAoe, 6), ClassColors.Neutral),
                     ($"{100.0 * tMulti / tSw,8:F1}%", ClassColors.SourceRaid),
                     ($"{100.0 * tFlurry / tSw,8:F1}%", ClassColors.OutcomePartial),
                     ($"{(tHits > 0 ? 100.0 * tCrits / tHits : 0),7:F1}%", ClassColors.SourceClass));
@@ -1186,7 +1184,6 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 [
                     Ring("Normal", tNorm, new SKColor(0x8B, 0x90, 0xAB), tSw, 44),
                     Ring("Multi Attack", tMulti, new SKColor(0x93, 0xB4, 0xFF), tSw, 44),
-                    Ring("Double Attack", tDbl, new SKColor(0x22, 0xD3, 0xEE), tSw, 44),
                     Ring("Flurry", tFlurry, new SKColor(0xFB, 0xBF, 0x24), tSw, 44),
                     Ring("AoE Attack", tAoe, new SKColor(0xE8, 0xBB, 0xFF), tSw, 44),
                 ];
@@ -2037,9 +2034,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     }
 
     /// <summary>Special-based grouping for the Auto-Attack bucket:
-    /// All / Normal / Multi Attack / Double Attack / Flurry / AoE Attack.</summary>
+    /// All / Normal / Multi Attack / Flurry / AoE Attack.</summary>
     private static readonly string[] AutoAttackGroups =
-        ["All", "Normal", "Multi Attack", "Double Attack", "Flurry", "AoE Attack"];
+        ["All", "Normal", "Multi Attack", "Flurry", "AoE Attack"];
 
     private static bool SwingInAutoGroup(Core.Combat.Swing swing, string group) => group switch
     {

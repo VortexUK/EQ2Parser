@@ -373,7 +373,7 @@ public static partial class EnglishGrammar
     {
         "hits" or "hit" => "None",
         "multi attacks" => "Multi Attack",
-        "double attacks" => "Double Attack",
+        "double attacks" => "Multi Attack", // era rename - same mechanic
         "flurries" => "Flurry",
         "aoe attacks" => "AoE Attack",
         _ => "None",
