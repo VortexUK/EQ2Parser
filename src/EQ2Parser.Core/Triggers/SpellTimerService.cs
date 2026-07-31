@@ -13,11 +13,17 @@ public sealed record TimerOptions
     public TimeSpan SubTimerWindow { get; init; } = TimeSpan.FromSeconds(12);
 }
 
-/// <summary>One live countdown instance.</summary>
+/// <summary>One live countdown instance. Duration may exceed the
+/// definition's base when a timer mod applied at start (final = base ×
+/// (1 + mods)); the base and mod owner are kept so the short death/dispel
+/// grace windows can revert it.</summary>
 public sealed class ActiveTimer(DateTimeOffset start, int durationSeconds, bool isMaster)
 {
     public DateTimeOffset Start { get; } = start;
-    public int DurationSeconds { get; } = durationSeconds;
+    public int DurationSeconds { get; internal set; } = durationSeconds;
+    public int BaseDurationSeconds { get; internal init; } = durationSeconds;
+    /// <summary>Lower-cased combatant whose mods scaled this timer ("" = unmodified).</summary>
+    public string ModOwner { get; internal init; } = "";
     public bool IsMaster { get; } = isMaster;
     public bool WarningRaised { get; internal set; }
     public bool ExpiryRaised { get; internal set; }
@@ -53,6 +59,9 @@ public sealed class SpellTimerService(TimerOptions? options = null)
     private readonly Dictionary<string, TimerDefinition> _definitions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<TimerDefinition>> _byName = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, TimerFrame> _frames = new(StringComparer.Ordinal);
+    // owner (lower) → mod name (lower) → additive fraction. ACT's recast
+    // mods: same name never stacks, different names sum.
+    private readonly Dictionary<string, Dictionary<string, double>> _mods = new(StringComparer.Ordinal);
 
     public event Action<TimerFrame, ActiveTimer>? TimerStarted;
     public event Action<TimerFrame, ActiveTimer>? WarningReached;
@@ -137,7 +146,21 @@ public sealed class SpellTimerService(TimerOptions? options = null)
             return false; // dedupe
 
         var isMaster = chosen.OnlyMasterTicks || frame.Timers.Count == 0 || sinceNewest >= _options.SubTimerWindow;
-        var timer = new ActiveTimer(time, chosen.DurationSeconds, isMaster);
+        // Timer mods (ACT ApplyTimerMod): a Modable timer starting now is
+        // scaled by the CASTER's active mods — final = base × (1 + Σ mods).
+        // Non-modable definitions ignore mods entirely.
+        var duration = chosen.DurationSeconds;
+        var modOwner = "";
+        if (chosen.Modable && _mods.TryGetValue(attacker, out var ownerMods) && ownerMods.Count > 0)
+        {
+            duration = Math.Max(0, (int)Math.Round(duration * (1 + ownerMods.Values.Sum())));
+            modOwner = attacker;
+        }
+        var timer = new ActiveTimer(time, duration, isMaster)
+        {
+            BaseDurationSeconds = chosen.DurationSeconds,
+            ModOwner = modOwner,
+        };
         if (isMaster)
         {
             // A fresh master resets the sound latches (sub-timers do not).
@@ -158,6 +181,53 @@ public sealed class SpellTimerService(TimerOptions? options = null)
         if (!_frames.TryGetValue(key, out var frame))
             _frames[key] = frame = new TimerFrame(def, combatant);
         return frame;
+    }
+
+    // ---- timer mods (ACT ApplyTimerMod, docs/act-behavior.md §4) ----
+
+    /// <summary>Add or refresh a named recast mod on a combatant. Same name
+    /// never stacks (replace); different names sum additively. Affects only
+    /// timers that START while the mod is active.</summary>
+    public void AddTimerMod(string owner, string modName, double fraction)
+    {
+        owner = owner.ToLowerInvariant();
+        if (!_mods.TryGetValue(owner, out var ownerMods))
+            _mods[owner] = ownerMods = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        ownerMods[modName] = fraction;
+    }
+
+    /// <summary>Remove one mod (debuff expired or dispelled). A dispel
+    /// arriving within 1 s of a modified timer's start reverts that timer to
+    /// its base duration — the recast never really committed.</summary>
+    public void RemoveTimerMod(string owner, string modName, DateTimeOffset time)
+    {
+        owner = owner.ToLowerInvariant();
+        if (_mods.TryGetValue(owner, out var ownerMods) && ownerMods.Remove(modName) && ownerMods.Count == 0)
+            _mods.Remove(owner);
+        RevertRecentlyModified(owner, time, TimeSpan.FromSeconds(1));
+    }
+
+    /// <summary>The combatant died: all their mods drop, and their modified
+    /// timers started within the last 2 s revert to base duration.</summary>
+    public void ClearTimerMods(string owner, DateTimeOffset time)
+    {
+        owner = owner.ToLowerInvariant();
+        if (_mods.Remove(owner))
+            RevertRecentlyModified(owner, time, TimeSpan.FromSeconds(2));
+    }
+
+    private void RevertRecentlyModified(string owner, DateTimeOffset time, TimeSpan window)
+    {
+        foreach (var frame in _frames.Values)
+        {
+            foreach (var timer in frame.Timers)
+            {
+                if (timer.ModOwner == owner
+                    && timer.DurationSeconds != timer.BaseDurationSeconds
+                    && time - timer.Start <= window)
+                    timer.DurationSeconds = timer.BaseDurationSeconds;
+            }
+        }
     }
 
     /// <summary>Advance to <paramref name="now"/>: raise warnings/expiries,

@@ -139,4 +139,87 @@ public class SpellTimerServiceTests
         Assert.Equal(["warning", "expired", "removed"], events);
         Assert.Empty(service.Frames);
     }
+
+    // ---- timer mods (ACT ApplyTimerMod: final = base × (1 + Σ mods),
+    //      same-name mods replace, Modable=false ignores them) ----
+
+    [Fact]
+    public void Timer_Mods_Scale_Modable_Timers_At_Start()
+    {
+        var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+        // Same name never stacks — re-adding replaces.
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0));
+        var timer = Assert.Single(Assert.Single(service.Frames).Timers);
+        Assert.Equal(90, timer.DurationSeconds);
+        Assert.Equal(60, timer.BaseDurationSeconds);
+
+        // Different names sum additively: 60 × (1 + 0.5 + 0.25) = 105.
+        service.AddTimerMod("Bossmob", "Temporal Drag", 0.25);
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0));
+        var second = Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers);
+        Assert.Equal(105, second.DurationSeconds);
+    }
+
+    [Fact]
+    public void NonModable_Timers_Ignore_Mods_And_Other_Owners_Are_Unaffected()
+    {
+        var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = false });
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0));
+        Assert.Equal(60, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
+
+        var modable = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
+        modable.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+        // A different caster has no mods — unmodified.
+        Assert.True(modable.Notify("Othermob", "Doom", self: false, "sofja", T0));
+        Assert.Equal(60, Assert.Single(Assert.Single(modable.Frames).Timers).DurationSeconds);
+    }
+
+    [Fact]
+    public void Owner_Death_Drops_Mods_And_Reverts_Timers_Started_Within_Two_Seconds()
+    {
+        var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0));
+
+        // Death 1 s later: inside the grace window — the recast never
+        // committed, the bar reverts to base.
+        service.ClearTimerMods("Bossmob", T0.AddSeconds(1));
+        Assert.Equal(60, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
+
+        // Mods are gone: the next timer is unmodified.
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(5)));
+        Assert.Equal(60, Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers).DurationSeconds);
+    }
+
+    [Fact]
+    public void Old_Modified_Timers_Survive_Owner_Death()
+    {
+        var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0));
+
+        // Death 3 s later: past the 2 s window — the committed recast keeps
+        // its modified duration.
+        service.ClearTimerMods("Bossmob", T0.AddSeconds(3));
+        Assert.Equal(90, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
+    }
+
+    [Fact]
+    public void Dispel_Reverts_Only_Within_One_Second()
+    {
+        var service = Service(new TimerDefinition { Name = "Doom", DurationSeconds = 60, Modable = true });
+        service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5);
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0));
+
+        service.RemoveTimerMod("Bossmob", "Sluggish Recast", T0.AddSeconds(1.5));
+        // 1.5 s > the 1 s dispel window — stays modified…
+        Assert.Equal(90, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
+        // …but the mod itself is gone for future timers.
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(5)));
+        Assert.Equal(60, Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers).DurationSeconds);
+    }
 }

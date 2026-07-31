@@ -150,6 +150,10 @@ public sealed class TimerService
         {
             foreach (var frame in Service.Frames)
             {
+                // Panel A gates the visible bars (ACT: a timer can be
+                // sound-only, Panel1=false — it still fires its events).
+                if (!frame.Definition.Panel1)
+                    continue;
                 foreach (var timer in frame.Timers)
                 {
                     bars.Add(new TimerBarSnapshot(

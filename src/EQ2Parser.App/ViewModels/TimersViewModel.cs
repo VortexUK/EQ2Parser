@@ -50,6 +50,10 @@ public sealed partial class TimerDefRow : ObservableObject, ICategoryDropTarget
                 parts.Add("one at a time");
             if (Definition.RestrictToCategory)
                 parts.Add("category-locked");
+            if (Definition.OnlyMasterTicks)
+                parts.Add("restart only");
+            if (!Definition.Modable)
+                parts.Add("mods off");
             if (Definition.StartSoundData.Length > 0 || Definition.WarningSoundData.Length > 0)
                 parts.Add("🔊");
             return string.Join("  ·  ", parts);
@@ -274,6 +278,9 @@ public sealed partial class TimersViewModel : ObservableObject
     private string _warningSeconds = "10";
 
     [ObservableProperty]
+    private string _removeSeconds = "-15";
+
+    [ObservableProperty]
     private int _colorChoice;
 
     [ObservableProperty]
@@ -284,6 +291,24 @@ public sealed partial class TimersViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _restrictToCategory;
+
+    [ObservableProperty]
+    private bool _onlyMasterTicks;
+
+    [ObservableProperty]
+    private bool _modable = true;
+
+    [ObservableProperty]
+    private bool _radialDisplay;
+
+    [ObservableProperty]
+    private bool _panel1 = true;
+
+    [ObservableProperty]
+    private bool _panel2;
+
+    [ObservableProperty]
+    private string _tooltip = "";
 
     [ObservableProperty]
     private string _startSound = "";
@@ -307,10 +332,17 @@ public sealed partial class TimersViewModel : ObservableObject
         Category = "General";
         DurationSeconds = "30";
         WarningSeconds = "10";
+        RemoveSeconds = "-15";
         ColorChoice = 0;
         RestrictToMe = false;
         AbsoluteTiming = false;
         RestrictToCategory = false;
+        OnlyMasterTicks = false;
+        Modable = true;
+        RadialDisplay = false;
+        Panel1 = true;
+        Panel2 = false;
+        Tooltip = "";
         StartSound = "";
         WarningSound = "";
         EditorError = "";
@@ -328,6 +360,7 @@ public sealed partial class TimersViewModel : ObservableObject
         Category = d.Category;
         DurationSeconds = d.DurationSeconds.ToString();
         WarningSeconds = d.WarningSeconds.ToString();
+        RemoveSeconds = d.RemoveSeconds.ToString();
         var index = Array.IndexOf(ColorValues, d.FillColorArgb);
         _hasCustomColor = index < 0;
         _customColor = d.FillColorArgb;
@@ -335,6 +368,12 @@ public sealed partial class TimersViewModel : ObservableObject
         RestrictToMe = d.RestrictToMe;
         AbsoluteTiming = d.AbsoluteTiming;
         RestrictToCategory = d.RestrictToCategory;
+        OnlyMasterTicks = d.OnlyMasterTicks;
+        Modable = d.Modable;
+        RadialDisplay = d.RadialDisplay;
+        Panel1 = d.Panel1;
+        Panel2 = d.Panel2;
+        Tooltip = d.Tooltip;
         StartSound = d.StartSoundData;
         WarningSound = d.WarningSoundData;
         EditorError = "";
@@ -359,6 +398,11 @@ public sealed partial class TimersViewModel : ObservableObject
             EditorError = "Warning must be a whole number of seconds (0 = no warning).";
             return;
         }
+        if (!int.TryParse(RemoveSeconds, out var remove))
+        {
+            EditorError = "Remove-at must be a whole number of seconds (negative = linger past zero).";
+            return;
+        }
         var category = Category.Trim();
         var definition = new TimerDefinition
         {
@@ -366,10 +410,17 @@ public sealed partial class TimersViewModel : ObservableObject
             Category = category.Length == 0 ? "General" : category,
             DurationSeconds = duration,
             WarningSeconds = Math.Min(warning, duration),
+            RemoveSeconds = remove,
             FillColorArgb = _hasCustomColor && ColorChoice == 0 ? _customColor : ColorValues[Math.Clamp(ColorChoice, 0, ColorValues.Length - 1)],
             RestrictToMe = RestrictToMe,
             AbsoluteTiming = AbsoluteTiming,
             RestrictToCategory = RestrictToCategory,
+            OnlyMasterTicks = OnlyMasterTicks,
+            Modable = Modable,
+            RadialDisplay = RadialDisplay,
+            Panel1 = Panel1,
+            Panel2 = Panel2,
+            Tooltip = Tooltip.Trim(),
             StartSoundData = StartSound.Trim(),
             WarningSoundData = WarningSound.Trim(),
         };

@@ -186,6 +186,12 @@ public class TriggerEngineTests
         Assert.Equal("tts Shield off", d2.WarningSoundData);
         Assert.Equal(0, d2.RemoveSeconds);
 
+        // Panel flags survive import (sound-only timers are Panel1=False).
+        var d4 = Assert.IsType<TimerDefinition>(ActShareFormat.TryImport(
+            """<Spell Checked="True" Name="Potion" Timer="900" WarningWav="tts Potion Expired" WarningValue="5" Panel1="False" Panel2="True" RemoveValue="0" Category=" General" />"""));
+        Assert.False(d4.Panel1);
+        Assert.True(d4.Panel2);
+
         // Empty Name (ACT's junk default row) is rejected, not imported.
         Assert.Null(ActShareFormat.TryImport(
             """<Spell Checked="True" Name="" Timer="30" Category=" General" />"""));

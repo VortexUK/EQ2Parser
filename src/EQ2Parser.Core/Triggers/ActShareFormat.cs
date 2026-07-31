@@ -118,6 +118,8 @@ public static class ActShareFormat
             OnlyMasterTicks = IsTrue(Attr("OM", "OnlyMasterTicks")),
             Modable = !IsFalse(Attr("M", "Modable")),
             RadialDisplay = !IsFalse(Attr("RD", "RadialDisplay")),
+            Panel1 = !IsFalse(e.GetAttribute("Panel1")),
+            Panel2 = IsTrue(e.GetAttribute("Panel2")),
             FillColorArgb = IntOr(Attr("FC", "FillColor"), unchecked((int)0xFF0000FF)),
             Tooltip = Attr("Tt", "Tooltip"),
             StartSoundData = Attr("SS", "StartWav"),

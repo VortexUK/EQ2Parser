@@ -202,20 +202,26 @@
                         <Grid Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="70" />
+                                <ColumnDefinition Width="62" />
+                                <ColumnDefinition Width="62" />
                                 <ColumnDefinition Width="70" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,10,0">
                                 <TextBlock Text="Category" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
                                 <TextBox Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
                             </StackPanel>
-                            <StackPanel Grid.Column="1" Margin="0,0,10,0">
-                                <TextBlock Text="Length (s)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                <TextBlock Text="Length" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
                                 <TextBox Text="{Binding DurationSeconds, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
                             </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="Warn (s)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                            <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                                <TextBlock Text="Warn" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
                                 <TextBox Text="{Binding WarningSeconds, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="3">
+                                <TextBlock Text="Remove at" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="Seconds remaining when the bar disappears — negative keeps it counting past zero" />
+                                <TextBox Text="{Binding RemoveSeconds, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
                             </StackPanel>
                         </Grid>
 
@@ -229,13 +235,36 @@
                                 <ComboBox ItemsSource="{Binding ColorChoices}" SelectedIndex="{Binding ColorChoice}"
                                           Width="110" FontSize="13" />
                             </StackPanel>
-                            <StackPanel Grid.Column="1" Margin="12,14,0,0" Orientation="Horizontal">
-                                <CheckBox Content="only mine" IsChecked="{Binding RestrictToMe}" FontSize="12"
-                                          ToolTip="Only start when you cast it / it lands on you" />
-                                <CheckBox Content="one at a time" IsChecked="{Binding AbsoluteTiming}" FontSize="12" Margin="10,0,0,0"
-                                          ToolTip="Refuse to restart while the timer is already running" />
-                                <CheckBox Content="category lock" IsChecked="{Binding RestrictToCategory}" FontSize="12" Margin="10,0,0,0"
+                            <WrapPanel Grid.Column="1" Margin="12,14,0,0">
+                                <CheckBox Content="only mine" IsChecked="{Binding RestrictToMe}" FontSize="12" Margin="0,0,10,4"
+                                          ToolTip="Restrict to the white list (you): only your casts start it" />
+                                <CheckBox Content="one at a time" IsChecked="{Binding AbsoluteTiming}" FontSize="12" Margin="0,0,10,4"
+                                          ToolTip="Ignore timer restarts while time is left" />
+                                <CheckBox Content="category lock" IsChecked="{Binding RestrictToCategory}" FontSize="12" Margin="0,0,10,4"
                                           ToolTip="Only start when the attacker, victim, or zone matches the category" />
+                                <CheckBox Content="restart only" IsChecked="{Binding OnlyMasterTicks}" FontSize="12" Margin="0,0,10,4"
+                                          ToolTip="Do not use DoT ticks: every hit restarts the timer instead of adding sub-bars" />
+                                <CheckBox Content="allow timer mods" IsChecked="{Binding Modable}" FontSize="12" Margin="0,0,10,4"
+                                          ToolTip="Recast mods on the caster scale this timer's duration when it starts (final = base × (1 + mods))" />
+                                <CheckBox Content="radial" IsChecked="{Binding RadialDisplay}" FontSize="12" Margin="0,0,10,4"
+                                          ToolTip="Show as a radial dial (when the timer window supports it)" />
+                            </WrapPanel>
+                        </Grid>
+
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" Margin="0,0,12,4">
+                                <CheckBox Content="panel A" IsChecked="{Binding Panel1}" FontSize="12"
+                                          ToolTip="Show in timer panel A (the overlay). Panel B arrives with the mini timer window." />
+                                <CheckBox Content="panel B" IsChecked="{Binding Panel2}" FontSize="12" Margin="10,0,0,0"
+                                          ToolTip="Reserved for the second timer panel — imported state is kept" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Tooltip / note" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <TextBox Text="{Binding Tooltip, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="12" />
                             </StackPanel>
                         </Grid>
 

@@ -35,8 +35,16 @@ public sealed record TimerDefinition
     /// <summary>Never create sub-timers; every notify is a fresh master.</summary>
     public bool OnlyMasterTicks { get; init; }
 
+    /// <summary>"Allow Timer Mods to affect this": whether recast mods
+    /// (ApplyTimerMod — final = base × (1 + mods)) scale this timer's
+    /// duration at start. Off = always the base duration.</summary>
     public bool Modable { get; init; } = true;
     public bool RadialDisplay { get; init; } = true;
+
+    /// <summary>ACT's two spell-timer panels (the mini timer windows) — kept
+    /// for lossless config import; our overlay maps A now, B later.</summary>
+    public bool Panel1 { get; init; } = true;
+    public bool Panel2 { get; init; }
 
     /// <summary>Bar colour as ARGB int (kept UI-framework-free in Core).</summary>
     public int FillColorArgb { get; init; } = unchecked((int)0xFF0000FF);
