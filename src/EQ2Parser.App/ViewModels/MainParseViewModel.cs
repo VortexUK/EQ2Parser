@@ -622,49 +622,168 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         lock (manager.Sync)
         {
             var targets = ReportTargets(parameter, out var context);
-            var enemies = EnemyAttackerKeys(
-                parameter is ParseNode { Fight: { } nodeFight } ? nodeFight : ResolveFight());
-            ReportLine(
-                ("NAME".PadRight(18), ClassColors.TreeHeader),
-                ("ATTACKS   HIT%   MISS  PARRY  RIPOSTE  BLOCK  DODGE  RESIST  AVOIDED", ClassColors.TreeHeader));
-            foreach (var (targetName, combatant) in targets
+            var fightObj = parameter is ParseNode { Fight: { } nodeFight } ? nodeFight : ResolveFight();
+            var enemies = EnemyAttackerKeys(fightObj);
+
+            // Same machinery as the per-combatant view, per ally: enemy
+            // attacks only, ward pairing, stoneskin as an avoid, per-type
+            // damage-avoided estimates.
+            List<(string Name, int Attempts, int Hits, int Warded, long WardedTotal,
+                int Ss, int Block, int Parry, int Riposte, int Miss, int Dodge, int Resist, int Counter,
+                int Avoided, double Est)> rows = [];
+            foreach (var (targetName, combatants) in targets
                 .GroupBy(t => t.Name)
-                .Select(g => (g.Key, g.Select(t => t.C).ToList()))
-                .OrderBy(t => t.Key, StringComparer.OrdinalIgnoreCase))
+                .Select(g => (g.Key, g.Select(t => t.C).ToList())))
             {
-                int attempts = 0, hits = 0, miss = 0, parry = 0, riposte = 0, block = 0, dodge = 0, resist = 0;
-                foreach (var c in combatant)
+                int attempts = 0, hits = 0, warded = 0, ssAuto = 0, ssSkill = 0;
+                int block = 0, parry = 0, riposte = 0, miss = 0, dodge = 0, resist = 0, counter = 0;
+                int blockA = 0, parryA = 0, riposteA = 0, missA = 0, dodgeA = 0, resistA = 0, counterA = 0;
+                long wardedTotal = 0, landedAutoTotal = 0, landedSkillTotal = 0;
+                int landedAutoCount = 0, landedSkillCount = 0;
+
+                foreach (var c in combatants)
                 {
                     if (c.IncomingBuckets.GetValueOrDefault(BucketConfig.IncomingDamage) is not { } bucket)
                         continue;
+                    List<(int Sorter, long Second, long Amount)> absorbs = [];
+                    if (c.IncomingBuckets.GetValueOrDefault(BucketConfig.HealedInc) is { } healedInc)
+                    {
+                        foreach (var heal in healedInc.All.Swings)
+                        {
+                            if (heal.DamageType == Core.Grammar.EnglishGrammar.WardAbsorbType && heal.Damage.Number > 0)
+                                absorbs.Add((heal.TimeSorter, heal.Time.ToUnixTimeSeconds(), heal.Damage.Number));
+                        }
+                    }
+                    absorbs.Sort((a, b) => a.Sorter.CompareTo(b.Sorter));
+                    var absorbUsed = new bool[absorbs.Count];
+
                     foreach (var sw in bucket.All.Swings)
                     {
                         if (sw.Ability == Combatant.KillingAbility || !enemies.Contains(sw.Attacker.ToUpperInvariant()))
                             continue;
                         attempts++;
+                        var isAuto = sw.Category == SwingCategory.Melee;
                         switch (sw.Damage.Number)
                         {
-                            case >= 0: hits++; break;
-                            case Core.Combat.DamageValue.MissNumber: miss++; break;
-                            case Core.Combat.DamageValue.ResistNumber: resist++; break;
-                            case Core.Combat.DamageValue.ParryNumber: parry++; break;
-                            case Core.Combat.DamageValue.RiposteNumber: riposte++; break;
-                            case Core.Combat.DamageValue.BlockNumber: block++; break;
-                            default: dodge++; break;
+                            case > 0:
+                                hits++;
+                                if (isAuto) { landedAutoCount++; landedAutoTotal += sw.Damage.Number; }
+                                else { landedSkillCount++; landedSkillTotal += sw.Damage.Number; }
+                                break;
+                            case 0:
+                            {
+                                long claimed = 0;
+                                var second = sw.Time.ToUnixTimeSeconds();
+                                for (var a = 0; a < absorbs.Count; a++)
+                                {
+                                    if (absorbUsed[a])
+                                        continue;
+                                    var gap = sw.TimeSorter - absorbs[a].Sorter;
+                                    if (gap is <= 0 or > 6 || Math.Abs(absorbs[a].Second - second) > 1)
+                                        continue;
+                                    absorbUsed[a] = true;
+                                    claimed += absorbs[a].Amount;
+                                }
+                                if (claimed > 0) { warded++; wardedTotal += claimed; }
+                                else if (isAuto) ssAuto++;
+                                else ssSkill++;
+                                break;
+                            }
+                            case Core.Combat.DamageValue.MissNumber: miss++; if (isAuto) missA++; break;
+                            case Core.Combat.DamageValue.ResistNumber: resist++; if (isAuto) resistA++; break;
+                            case Core.Combat.DamageValue.ParryNumber: parry++; if (isAuto) parryA++; break;
+                            case Core.Combat.DamageValue.RiposteNumber: riposte++; if (isAuto) riposteA++; break;
+                            case Core.Combat.DamageValue.BlockNumber: block++; if (isAuto) blockA++; break;
+                            default:
+                                if (sw.Damage.ToString() == "Counter") { counter++; if (isAuto) counterA++; }
+                                else { dodge++; if (isAuto) dodgeA++; }
+                                break;
                         }
                     }
                 }
                 if (attempts == 0)
                     continue;
-                var avoided = attempts - hits;
-                ReportLine(
-                    (targetName.PadRight(18), ClassColors.TreeText),
-                    ($"{attempts,7}  ", ClassColors.TreeText),
-                    ($"{100.0 * hits / attempts,4:F0}%  ", ClassColors.SourceClass),
-                    ($"{miss,5}  {parry,5}  {riposte,7}  {block,5}  {dodge,5}  {resist,6}  ", ClassColors.Neutral),
-                    ($"{100.0 * avoided / attempts,6:F0}%", ClassColors.OutcomeWin));
+
+                var avgAuto = landedAutoCount > 0 ? (double)landedAutoTotal / landedAutoCount
+                    : landedSkillCount > 0 ? (double)landedSkillTotal / landedSkillCount : 0;
+                var avgSkill = landedSkillCount > 0 ? (double)landedSkillTotal / landedSkillCount : avgAuto;
+                double Est(int auto, int total) => auto * avgAuto + (total - auto) * avgSkill;
+                var ss = ssAuto + ssSkill;
+                var avoided = attempts - hits - warded;
+                var est = Est(ssAuto, ss) + Est(blockA, block) + Est(parryA, parry) + Est(riposteA, riposte)
+                    + Est(missA, miss) + Est(dodgeA, dodge) + Est(resistA, resist) + Est(counterA, counter);
+                rows.Add((targetName, attempts, hits, warded, wardedTotal,
+                    ss, block, parry, riposte, miss, dodge, resist, counter, avoided, est));
             }
+
+            ReportLine(
+                ("NAME".PadRight(18), ClassColors.TreeHeader),
+                ("ATTACKS  LANDED%  WARDED    SS  BLOCK  PARRY  RIP  MISS  DDG  RES  CTR   AVOID%   EST. AVOIDED", ClassColors.TreeHeader));
+            int tAtt = 0, tHit = 0, tWard = 0, tSs = 0, tAvoid = 0;
+            long tWardTotal = 0;
+            double tEst = 0;
+            static string Cell(int n, int width) => (n > 0 ? n.ToString() : "—").PadLeft(width);
+            foreach (var r in rows.OrderByDescending(r => r.Attempts))
+            {
+                ReportLine(
+                    (r.Name.PadRight(18), ClassColors.TreeText),
+                    ($"{r.Attempts,7}  ", ClassColors.TreeText),
+                    ($"{100.0 * r.Hits / r.Attempts,6:F1}%  ", ClassColors.OutcomeLoss),
+                    (Cell(r.Warded, 6) + "  ", ClassColors.SourceRaid),
+                    (Cell(r.Ss, 4) + Cell(r.Block, 7) + Cell(r.Parry, 7) + Cell(r.Riposte, 5)
+                        + Cell(r.Miss, 6) + Cell(r.Dodge, 5) + Cell(r.Resist, 5) + Cell(r.Counter, 5), ClassColors.Neutral),
+                    ($"{100.0 * r.Avoided / r.Attempts,8:F1}%  ", ClassColors.OutcomeWin),
+                    (CombatantRow.Compact(r.Est).PadLeft(13), ClassColors.OutcomeWin));
+                tAtt += r.Attempts;
+                tHit += r.Hits;
+                tWard += r.Warded;
+                tWardTotal += r.WardedTotal;
+                tSs += r.Ss;
+                tAvoid += r.Avoided;
+                tEst += r.Est;
+            }
+            if (tAtt > 0)
+            {
+                ReportLine(
+                    ("TOTAL".PadRight(18), ClassColors.TreeHeader),
+                    ($"{tAtt,7}  ", ClassColors.TreeText),
+                    ($"{100.0 * tHit / tAtt,6:F1}%  ", ClassColors.OutcomeLoss),
+                    (Cell(tWard, 6) + "  ", ClassColors.SourceRaid),
+                    (Cell(tSs, 4).PadRight(46), ClassColors.Neutral),
+                    ($"{100.0 * tAvoid / tAtt,8:F1}%  ", ClassColors.OutcomeWin),
+                    (CombatantRow.Compact(tEst).PadLeft(13), ClassColors.OutcomeWin));
+                ReportLine(
+                    ($"warded total {CombatantRow.Compact(tWardTotal)} absorbed", ClassColors.SourceRaid),
+                    ($"   est. avoided {CombatantRow.Compact(tEst)} raid-wide", ClassColors.OutcomeWin));
+            }
+
             OpenReport($"{context} › avoidance report");
+
+            // Raid-wide doughnuts, same pair as the combatant view.
+            if (tAtt > 0)
+            {
+                ReportDonutInner =
+                [
+                    Ring("Landed", tHit, new SKColor(0xF8, 0x71, 0x71), tAtt, 44),
+                    Ring("Warded", tWard, new SKColor(0x93, 0xD9, 0xFF), tAtt, 44),
+                    Ring("Avoided", tAvoid, new SKColor(0x4A, 0xDE, 0x80), tAtt, 44),
+                ];
+                (string Label, int Count, SKColor Color)[] agg =
+                [
+                    ("Stoneskin", tSs, new SKColor(0xC8, 0xA9, 0x6E)),
+                    ("Block", rows.Sum(r => r.Block), new SKColor(0x4A, 0xDE, 0x80)),
+                    ("Parry", rows.Sum(r => r.Parry), new SKColor(0x93, 0xB4, 0xFF)),
+                    ("Riposte", rows.Sum(r => r.Riposte), new SKColor(0x22, 0xD3, 0xEE)),
+                    ("Miss", rows.Sum(r => r.Miss), new SKColor(0x8B, 0x90, 0xAB)),
+                    ("Dodge", rows.Sum(r => r.Dodge), new SKColor(0xFB, 0xBF, 0x24)),
+                    ("Resist", rows.Sum(r => r.Resist), new SKColor(0xE8, 0xBB, 0xFF)),
+                    ("Counter", rows.Sum(r => r.Counter), new SKColor(0xFF, 0x9E, 0xC7)),
+                ];
+                ReportDonutOuter = [.. agg
+                    .Where(k => k.Count > 0)
+                    .Select(ISeries (k) => Ring(k.Label, k.Count, k.Color, tAvoid, 44))];
+                ReportChartVisible = true;
+            }
         }
     }
 
