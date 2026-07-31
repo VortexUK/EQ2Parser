@@ -20,6 +20,9 @@ public partial class App : Application
         var overlay = new OverlayController(_manager);
         var window = new MainWindow(new MainViewModel(_manager, overlay));
         MainWindow = window;
+        // Overlays are windows too — without this, closing the main window
+        // leaves the app running headless behind any open overlay.
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
         window.Show();
         overlay.RestoreFromSettings();
         _ = _manager.Updates.CheckAndDownloadAsync();
