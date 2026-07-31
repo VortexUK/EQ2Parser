@@ -282,14 +282,14 @@
                                             XAxes="{Binding DrillXAxes}"
                                             YAxes="{Binding DrillYAxes}"
                                             LegendPosition="Bottom"
-                                            LegendTextPaint="{Binding LegendPaint}"
+                                            LegendTextPaint="{Binding DrillLegendPaint}"
                                             TooltipPosition="Top"
                                             AnimationsSpeed="0:0:0.3"
                                             Visibility="{Binding DrillCartesianVisible, Converter={StaticResource BoolToVis}}" />
                         <lvc:PieChart Series="{Binding DrillDonutSeries}"
                                       InitialRotation="-90"
                                       LegendPosition="Right"
-                                      LegendTextPaint="{Binding LegendPaint}"
+                                      LegendTextPaint="{Binding DonutLegendPaint}"
                                       TooltipPosition="Top"
                                       AnimationsSpeed="0:0:0.3"
                                       Visibility="{Binding DrillDonutVisible, Converter={StaticResource BoolToVis}}" />

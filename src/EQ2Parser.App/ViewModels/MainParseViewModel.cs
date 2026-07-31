@@ -151,9 +151,11 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [ObservableProperty]
     private ISeries[] _drillDonutSeries = [];
 
-    public SolidColorPaint LegendPaint { get; } = new(new SKColor(0xB0, 0xB4, 0xC8));
+    public SolidColorPaint DrillLegendPaint { get; } = new(new SKColor(0xB0, 0xB4, 0xC8));
+    public SolidColorPaint DonutLegendPaint { get; } = new(new SKColor(0xB0, 0xB4, 0xC8));
 
     private (string?, string?, string?) _drillChartKey = ("\0", null, null);
+    private long _drillChartVersion;
     private long _drillChartMs;
 
     // ── Drill-down state (combatant → bucket → ability → swings) ───────────
@@ -586,8 +588,10 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         return new ChartData(metric, IsRollup: false, columns);
     }
 
-    private static readonly SolidColorPaint AxisLabelPaint = new(new SKColor(0x8B, 0x90, 0xAB));
-    private static readonly SolidColorPaint AxisSeparatorPaint = new(new SKColor(0x2E, 0x31, 0x50, 0x90));
+    // LiveCharts paints carry per-canvas state — every axis/legend needs its
+    // own instance, never a shared static (sharing silently drops labels).
+    private static SolidColorPaint MutedPaint() => new(new SKColor(0x8B, 0x90, 0xAB));
+    private static SolidColorPaint SeparatorPaint() => new(new SKColor(0x2E, 0x31, 0x50, 0x90));
 
     private void ApplyChart(ChartData chart)
     {
@@ -639,7 +643,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             new Axis
             {
                 Labels = chart.Columns.Select(c => c.Label).ToArray(),
-                LabelsPaint = AxisLabelPaint,
+                LabelsPaint = MutedPaint(),
                 LabelsRotation = -35,
                 TextSize = 10.5,
                 SeparatorsPaint = null,
@@ -650,12 +654,12 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             new Axis
             {
                 Name = chart.IsRollup ? $"raid {chart.MetricLabel}" : chart.MetricLabel,
-                NamePaint = AxisLabelPaint,
+                NamePaint = MutedPaint(),
                 NameTextSize = 11,
-                LabelsPaint = AxisLabelPaint,
+                LabelsPaint = MutedPaint(),
                 TextSize = 11,
                 Labeler = v => CombatantRow.Compact(v),
-                SeparatorsPaint = AxisSeparatorPaint,
+                SeparatorsPaint = SeparatorPaint(),
                 MinLimit = 0,
             },
         ];
@@ -705,19 +709,23 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         return (start, bucketSeconds, (int)(duration / bucketSeconds) + 1);
     }
 
-    /// <summary>Throttle: rebuild on drill-path change, else at most ~1s.</summary>
-    private bool ShouldBuildDrillChart()
+    /// <summary>Throttle: rebuild on drill-path change; otherwise only when
+    /// the underlying data grew (live fight), at most ~1s. Ended fights
+    /// build once and stay still.</summary>
+    private bool ShouldBuildDrillChart(long version)
     {
         var key = (_detailKey, _detailBucket, _detailAbility);
         var now = Environment.TickCount64;
         if (key != _drillChartKey)
         {
             _drillChartKey = key;
+            _drillChartVersion = version;
             _drillChartMs = now;
             return true;
         }
-        if (now - _drillChartMs < 1000)
+        if (version == _drillChartVersion || now - _drillChartMs < 1000)
             return false;
+        _drillChartVersion = version;
         _drillChartMs = now;
         return true;
     }
@@ -759,10 +767,10 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 [
                     new Axis
                     {
-                        LabelsPaint = AxisLabelPaint,
+                        LabelsPaint = MutedPaint(),
                         TextSize = 11,
                         Labeler = v => CombatantRow.Compact(v),
-                        SeparatorsPaint = AxisSeparatorPaint,
+                        SeparatorsPaint = SeparatorPaint(),
                         MinLimit = 0,
                     },
                 ];
@@ -829,7 +837,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     private static Axis TimeAxis(double bucketSeconds) => new()
     {
         Labeler = v => TimeSpan.FromSeconds(Math.Max(0, v) * bucketSeconds).ToString(@"m\:ss"),
-        LabelsPaint = AxisLabelPaint,
+        LabelsPaint = MutedPaint(),
         TextSize = 11,
         SeparatorsPaint = null,
     };
@@ -930,6 +938,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         var name = instances[0].Name;
         var detection = manager.Classifier.Identifier.Detect(instances[0]);
         var cls = detection.ClassName is not null ? $" · {detection.ClassName}" : "";
+        var chartVersion = instances.Sum(c =>
+            (long)(c.OutgoingBuckets.GetValueOrDefault(BucketConfig.AllOutgoingRef)?.All.Swings.Count ?? 0)
+            + (c.IncomingBuckets.GetValueOrDefault(BucketConfig.AllIncomingRef)?.All.Swings.Count ?? 0));
         var seconds = Math.Max(1, fight switch
         {
             Encounter e => e.Duration.TotalSeconds,
@@ -974,7 +985,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             }
 
             DrillChart? bucketChart = null;
-            if (ShouldBuildDrillChart())
+            if (ShouldBuildDrillChart(chartVersion))
             {
                 bucketChart = HiddenDrillChart;
                 if (FightWindow(fight) is { } window)
@@ -1026,7 +1037,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                     table.Add(acc.ToData(group, "", seconds));
             }
             DrillChart? autoChart = null;
-            if (ShouldBuildDrillChart())
+            if (ShouldBuildDrillChart(chartVersion))
             {
                 List<(string, double)> slices = [.. table
                     .Where(t => t.Name != "All" && t.Total > 0)
@@ -1066,7 +1077,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                         : "",
                 seconds))];
             DrillChart? abilityChart = null;
-            if (ShouldBuildDrillChart())
+            if (ShouldBuildDrillChart(chartVersion))
             {
                 var ranked = table.Where(t => t.Total > 0).OrderByDescending(t => t.Total).ToList();
                 List<(string, double)> slices = [.. ranked.Take(11).Select(t => (t.Name, (double)t.Total))];
@@ -1103,7 +1114,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             }
         }
         DrillChart? heatChart = null;
-        if (ShouldBuildDrillChart())
+        if (ShouldBuildDrillChart(chartVersion))
         {
             heatChart = HiddenDrillChart;
             if (FightWindow(fight) is { } window)
