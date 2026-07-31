@@ -131,6 +131,36 @@ public class TriggerEngineTests
     }
 
     [Fact]
+    public void Import_Accepts_Act_Config_File_Dialect()
+    {
+        // ACT's config XML / community trigger packs use long attribute
+        // names (Regex/SoundData/…/Active) instead of the share snippet's
+        // short ones. Both must import.
+        var t = Assert.IsType<Trigger>(ActShareFormat.TryImport(
+            """<Trigger Active="False" Regex="(?&lt;Player&gt;.+?) placed the rally banner in (?&lt;Location&gt;.+)." SoundData="Flag placed in ${Location}" SoundType="3" CategoryRestrict="False" Category=" General" Timer="False" TimerName="" Tabbed="False" />"""));
+        Assert.False(t.Enabled);
+        Assert.Equal("(?<Player>.+?) placed the rally banner in (?<Location>.+).", t.RegexText);
+        Assert.Equal("General", t.Category); // leading space trimmed
+        Assert.Equal(TriggerSound.Tts, t.SoundType);
+        Assert.Equal("Flag placed in ${Location}", t.SoundData);
+        Assert.False(t.RestrictToCategoryZone);
+        Assert.False(t.StartsTimer);
+
+        var t2 = Assert.IsType<Trigger>(ActShareFormat.TryImport(
+            """<Trigger Active="True" Regex="In the name of the Ancient" SoundData="Stun" SoundType="3" CategoryRestrict="True" Category="Avatar of Fear" Timer="True" TimerName="Ancient" Tabbed="False" />"""));
+        Assert.True(t2.Enabled);
+        Assert.True(t2.RestrictToCategoryZone);
+        Assert.True(t2.StartsTimer);
+        Assert.Equal("Ancient", t2.TimerName);
+
+        // The short share dialect still imports (no Active attr → enabled).
+        var t3 = Assert.IsType<Trigger>(ActShareFormat.TryImport(
+            """<Trigger R="dragon roars" SD="joust" ST="3" CR="F" C="General" T="F" TN="" Ta="F" />"""));
+        Assert.True(t3.Enabled);
+        Assert.Equal(TriggerSound.Tts, t3.SoundType);
+    }
+
+    [Fact]
     public void Processor_Skips_Triggers_For_Replayed_History()
     {
         // Parse-from-start replays hours of old lines in seconds — those

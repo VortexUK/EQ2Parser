@@ -46,23 +46,35 @@ public static class ActShareFormat
 
     private static Trigger? ImportTrigger(XmlElement e)
     {
-        // R and C are required — they form the identity key (ACT rejects
-        // snippets without them the same way).
-        var regex = e.GetAttribute("R");
-        var category = e.GetAttribute("C");
+        // Two attribute dialects exist in the wild: the share-snippet short
+        // names (R/SD/ST/CR/C/T/TN) and the config-file long names ACT uses
+        // in its own settings XML and most community trigger packs
+        // (Regex/SoundData/SoundType/CategoryRestrict/Category/Timer/
+        // TimerName, plus Active which the share form doesn't carry).
+        string Attr(string shortName, string longName) =>
+            e.HasAttribute(shortName) ? e.GetAttribute(shortName) : e.GetAttribute(longName);
+        static bool Flag(string value) =>
+            value is "T" || value.Equals("True", StringComparison.OrdinalIgnoreCase);
+
+        // Regex and Category are required — they form the identity key
+        // (ACT rejects snippets without them the same way).
+        var regex = Attr("R", "Regex");
+        var category = Attr("C", "Category").Trim();
         if (regex.Length == 0 || category.Length == 0)
             return null;
         try
         {
             return new Trigger(regex, category)
             {
-                SoundType = int.TryParse(e.GetAttribute("ST"), out var st) && Enum.IsDefined((TriggerSound)st)
+                // Share snippets carry no enabled state — default on.
+                Enabled = !e.HasAttribute("Active") || Flag(e.GetAttribute("Active")),
+                SoundType = int.TryParse(Attr("ST", "SoundType"), out var st) && Enum.IsDefined((TriggerSound)st)
                     ? (TriggerSound)st
                     : TriggerSound.None,
-                SoundData = e.GetAttribute("SD"),
-                RestrictToCategoryZone = e.GetAttribute("CR") == "T",
-                StartsTimer = e.GetAttribute("T") == "T",
-                TimerName = e.GetAttribute("TN"),
+                SoundData = Attr("SD", "SoundData"),
+                RestrictToCategoryZone = Flag(Attr("CR", "CategoryRestrict")),
+                StartsTimer = Flag(Attr("T", "Timer")),
+                TimerName = Attr("TN", "TimerName"),
             };
         }
         catch (ArgumentException)

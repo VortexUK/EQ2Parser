@@ -33,9 +33,27 @@
 
             <Border Grid.Row="1" Style="{StaticResource Card}" Padding="4">
                 <Grid>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding Rows}">
-                            <ItemsControl.ItemTemplate>
+                    <!-- ListBox (not ItemsControl) so 300+ imported triggers
+                         virtualize; the container style strips selection chrome. -->
+                    <ListBox ItemsSource="{Binding Rows}" Background="Transparent" BorderThickness="0"
+                             HorizontalContentAlignment="Stretch"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             VirtualizingPanel.VirtualizationMode="Recycling">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="Focusable" Value="False" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <ContentPresenter />
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,8">
                                         <Grid>
@@ -78,9 +96,8 @@
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                            </ListBox.ItemTemplate>
+                    </ListBox>
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                                 Visibility="{Binding HasTriggers, Converter={StaticResource InverseBoolToVis}}">
                         <TextBlock Text="No triggers yet" FontFamily="{StaticResource HeadingFont}" FontSize="18"

@@ -100,6 +100,32 @@ public sealed class TriggerService
         }
     }
 
+    /// <summary>Bulk upsert (imports): one save and one fan-out for the
+    /// whole batch instead of per-trigger work.</summary>
+    public int AddOrUpdateMany(IReadOnlyCollection<Trigger> triggers)
+    {
+        if (triggers.Count == 0)
+            return 0;
+        lock (_gate)
+        {
+            foreach (var trigger in triggers)
+            {
+                var index = _definitions.FindIndex(t => t.Key == trigger.Key);
+                if (index >= 0)
+                    _definitions[index] = trigger;
+                else
+                    _definitions.Add(trigger);
+            }
+            foreach (var engine in _engines)
+            {
+                foreach (var trigger in triggers)
+                    engine.AddOrUpdate(trigger);
+            }
+            Save();
+        }
+        return triggers.Count;
+    }
+
     public bool Remove(string key)
     {
         lock (_gate)
