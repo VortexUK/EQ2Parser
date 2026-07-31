@@ -10,7 +10,7 @@ namespace EQ2Parser.App.ViewModels;
 
 /// <summary>One trigger in the list. Enabled is live — flipping the
 /// checkbox pushes straight through to every engine.</summary>
-public sealed partial class TriggerRow : ObservableObject
+public sealed partial class TriggerRow : ObservableObject, ICategoryDropTarget
 {
     private readonly TriggersViewModel _owner;
 
@@ -25,6 +25,7 @@ public sealed partial class TriggerRow : ObservableObject
     public string Key => Trigger.Key;
     public string RegexText => Trigger.RegexText;
     public string Category => Trigger.Category;
+    public string CategoryName => Trigger.Category;
     public bool ZoneRestricted => Trigger.RestrictToCategoryZone;
 
     public string SoundLabel => Trigger.SoundType switch
@@ -50,25 +51,6 @@ public sealed partial class TriggerRow : ObservableObject
     partial void OnEnabledChanged(bool value) => _owner.SetRowEnabled(this, value);
 }
 
-/// <summary>A collapsible category header in the trigger tree — also the
-/// drop target when dragging a trigger into another category.</summary>
-public sealed partial class TriggerCategoryRow(string name, bool expanded) : ObservableObject
-{
-    public string Name { get; } = name;
-
-    [ObservableProperty]
-    private int _count;
-
-    [ObservableProperty]
-    private int _enabledCount;
-
-    [ObservableProperty]
-    private bool _isExpanded = expanded;
-
-    [ObservableProperty]
-    private bool _isDropTarget;
-}
-
 /// <summary>One line in the recent-fires feed.</summary>
 public sealed record FiredRow(string Time, string Category, string Matched);
 
@@ -82,7 +64,7 @@ public sealed partial class TriggersViewModel : ObservableObject
     private readonly SourceManager _manager;
     private string? _editingKey;
 
-    /// <summary>Flat virtualized tree: TriggerCategoryRow headers with
+    /// <summary>Flat virtualized tree: CategoryRow headers with
     /// TriggerRow children under the expanded ones (same idiom as the
     /// encounter tree on the Main page).</summary>
     public ObservableCollection<object> Rows { get; } = [];
@@ -130,7 +112,7 @@ public sealed partial class TriggersViewModel : ObservableObject
                 continue;
             // A filter opens everything it touches; otherwise remembered state.
             var expanded = filtering || _expandedCategories.Contains(group.Key);
-            Rows.Add(new TriggerCategoryRow(group.Key, expanded)
+            Rows.Add(new CategoryRow(group.Key, expanded)
             {
                 Count = members.Count,
                 EnabledCount = members.Count(t => t.Enabled),
@@ -144,7 +126,7 @@ public sealed partial class TriggersViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ToggleCategory(TriggerCategoryRow? row)
+    private void ToggleCategory(CategoryRow? row)
     {
         if (row is null)
             return;
@@ -197,7 +179,7 @@ public sealed partial class TriggersViewModel : ObservableObject
         _manager.Triggers.SetEnabled(row.Key, enabled);
         foreach (var item in Rows)
         {
-            if (item is TriggerCategoryRow header
+            if (item is CategoryRow header
                 && header.Name.Equals(row.Category, StringComparison.OrdinalIgnoreCase))
             {
                 header.EnabledCount += enabled ? 1 : -1;

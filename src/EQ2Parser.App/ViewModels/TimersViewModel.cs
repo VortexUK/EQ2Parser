@@ -11,7 +11,7 @@ namespace EQ2Parser.App.ViewModels;
 
 /// <summary>One timer definition in the list. Enabled is live — the
 /// checkbox pushes straight through to the shared timer service.</summary>
-public sealed partial class TimerDefRow : ObservableObject
+public sealed partial class TimerDefRow : ObservableObject, ICategoryDropTarget
 {
     private readonly TimersViewModel _owner;
 
@@ -25,10 +25,15 @@ public sealed partial class TimerDefRow : ObservableObject
     public TimerDefinition Definition { get; }
     public string Name => Definition.Name;
     public string Category => Definition.Category;
+    public string CategoryName => Definition.Category;
     public string Key => Definition.Key;
 
     [ObservableProperty]
     private bool _enabled;
+
+    /// <summary>Drop-target hover highlight; reused as the landing flash.</summary>
+    [ObservableProperty]
+    private bool _isDropTarget;
 
     partial void OnEnabledChanged(bool value) => _owner.SetRowEnabled(this, value);
 
@@ -91,8 +96,12 @@ public sealed partial class TimersViewModel : ObservableObject
     private readonly OverlayController _overlay;
     private string? _editingKey;
 
-    public ObservableCollection<TimerDefRow> Rows { get; } = [];
+    /// <summary>Flat virtualized tree: CategoryRow headers with TimerDefRow
+    /// children under the expanded ones — same idiom as Triggers.</summary>
+    public ObservableCollection<object> Rows { get; } = [];
     public ObservableCollection<TimerBarRow> LiveBars { get; } = [];
+
+    private readonly HashSet<string> _expandedCategories = new(StringComparer.OrdinalIgnoreCase);
 
     public TimersViewModel(SourceManager manager, OverlayController overlay)
     {
@@ -115,24 +124,91 @@ public sealed partial class TimersViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasTimers;
 
+    private bool MatchesFilter(TimerDefinition def) =>
+        FilterText.Length == 0
+        || def.Name.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
+        || def.Category.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
+
     private void RebuildRows()
     {
         Rows.Clear();
-        foreach (var def in _manager.SpellTimers.Definitions
-                     .OrderBy(d => d.Category, StringComparer.OrdinalIgnoreCase)
-                     .ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase))
+        var filtering = FilterText.Length > 0;
+        foreach (var group in _manager.SpellTimers.Definitions
+                     .GroupBy(d => d.Category, StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
         {
-            if (FilterText.Length > 0
-                && !def.Name.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
-                && !def.Category.Contains(FilterText, StringComparison.OrdinalIgnoreCase))
+            List<TimerDefinition> members = [.. group
+                .Where(MatchesFilter)
+                .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)];
+            if (members.Count == 0)
                 continue;
-            Rows.Add(new TimerDefRow(this, def));
+            // A filter opens everything it touches; otherwise remembered state.
+            var expanded = filtering || _expandedCategories.Contains(group.Key);
+            Rows.Add(new CategoryRow(group.Key, expanded)
+            {
+                Count = members.Count,
+                EnabledCount = members.Count(d => d.Enabled),
+            });
+            if (!expanded)
+                continue;
+            foreach (var def in members)
+                Rows.Add(new TimerDefRow(this, def));
         }
         HasTimers = _manager.SpellTimers.Definitions.Count > 0;
     }
 
-    internal void SetRowEnabled(TimerDefRow row, bool enabled) =>
+    [RelayCommand]
+    private void ToggleCategory(CategoryRow? row)
+    {
+        if (row is null)
+            return;
+        if (!_expandedCategories.Add(row.Name))
+            _expandedCategories.Remove(row.Name);
+        RebuildRows();
+    }
+
+    /// <summary>Drag-and-drop re-file: the category is half the identity
+    /// key, so this is a keyed replace that persists immediately.</summary>
+    public void MoveTimer(TimerDefRow row, string targetCategory)
+    {
+        targetCategory = targetCategory.Trim();
+        if (targetCategory.Length == 0
+            || string.Equals(row.Category, targetCategory, StringComparison.OrdinalIgnoreCase))
+            return;
+        var current = _manager.SpellTimers.Definitions.FirstOrDefault(d => d.Key == row.Key) ?? row.Definition;
+        var moved = current with { Category = targetCategory };
+        _manager.SpellTimers.AddOrUpdate(moved, replaceKey: current.Key);
+        _expandedCategories.Add(targetCategory);
+        if (_editingKey == current.Key)
+            _editingKey = moved.Key;
+        RebuildRows();
+        foreach (var item in Rows)
+        {
+            if (item is TimerDefRow landed && landed.Key == moved.Key)
+            {
+                TimerMoved?.Invoke(landed);
+                break;
+            }
+        }
+    }
+
+    /// <summary>Raised after a drag-move with the row at its new home — the
+    /// view scrolls it into view and flashes it.</summary>
+    public event Action<TimerDefRow>? TimerMoved;
+
+    internal void SetRowEnabled(TimerDefRow row, bool enabled)
+    {
         _manager.SpellTimers.SetEnabled(row.Key, enabled);
+        foreach (var item in Rows)
+        {
+            if (item is CategoryRow header
+                && header.Name.Equals(row.Category, StringComparison.OrdinalIgnoreCase))
+            {
+                header.EnabledCount += enabled ? 1 : -1;
+                break;
+            }
+        }
+    }
 
     [RelayCommand]
     private void DeleteRow(TimerDefRow? row)
@@ -299,6 +375,7 @@ public sealed partial class TimersViewModel : ObservableObject
         };
         _manager.SpellTimers.AddOrUpdate(definition, _editingKey);
         _editingKey = null;
+        _expandedCategories.Add(definition.Category);
         NewTimer();
         RebuildRows();
     }

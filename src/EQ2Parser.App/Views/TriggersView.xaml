@@ -57,7 +57,7 @@
                         <ListBox.Resources>
                             <!-- Category header: click to expand/collapse, and
                                  the drop target when dragging a trigger. -->
-                            <DataTemplate DataType="{x:Type vm:TriggerCategoryRow}">
+                            <DataTemplate DataType="{x:Type vm:CategoryRow}">
                                 <Border Background="{StaticResource SurfaceRaisedBrush}" CornerRadius="4"
                                         Margin="0,3,0,1" Padding="8,6" AllowDrop="True" Cursor="Hand"
                                         MouseLeftButtonUp="CategoryHeader_Click"

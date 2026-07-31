@@ -7,13 +7,16 @@ namespace EQ2Parser.App.Views;
 
 public partial class TriggersView
 {
-    private TriggerRow? _dragCandidate;
-    private Point _dragStart;
-    private object? _highlighted;
+    private readonly CategoryDragDrop _dragDrop;
 
     public TriggersView()
     {
         InitializeComponent();
+        _dragDrop = new CategoryDragDrop((dragged, category) =>
+        {
+            if (DataContext is TriggersViewModel vm && dragged is TriggerRow row)
+                vm.MoveTrigger(row, category);
+        });
         DataContextChanged += (_, e) =>
         {
             if (e.OldValue is TriggersViewModel oldVm)
@@ -28,6 +31,11 @@ public partial class TriggersView
     private void OnTriggerMoved(TriggerRow row)
     {
         TriggerList.ScrollIntoView(row);
+        FlashRow(row);
+    }
+
+    internal static void FlashRow(ICategoryDropTarget row)
+    {
         row.IsDropTarget = true;
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.6) };
         timer.Tick += (_, _) =>
@@ -38,114 +46,18 @@ public partial class TriggersView
         timer.Start();
     }
 
-    // ---- drag source: the ⠿ grip on each trigger row ----
-
-    private void DragGrip_MouseDown(object sender, MouseButtonEventArgs e)
-    {
-        _dragCandidate = (sender as FrameworkElement)?.DataContext as TriggerRow;
-        _dragStart = e.GetPosition(null);
-    }
-
-    private void DragGrip_MouseUp(object sender, MouseButtonEventArgs e) =>
-        _dragCandidate = null;
-
-    private void DragGrip_MouseMove(object sender, MouseEventArgs e)
-    {
-        if (_dragCandidate is null || e.LeftButton != MouseButtonState.Pressed)
-            return;
-        var pos = e.GetPosition(null);
-        if (Math.Abs(pos.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance
-            && Math.Abs(pos.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance)
-            return;
-        var row = _dragCandidate;
-        _dragCandidate = null;
-        DragDrop.DoDragDrop((DependencyObject)sender, new DataObject(typeof(TriggerRow), row), DragDropEffects.Move);
-        ClearHighlight();
-    }
-
-    // ---- drop targets: category headers and trigger rows. Both highlight;
-    //      a drop that would change nothing shows the no-drop cursor. ----
-
-    private static TriggerRow? Dragged(DragEventArgs e) =>
-        e.Data.GetData(typeof(TriggerRow)) as TriggerRow;
-
-    /// <summary>The category a drop on this element would file into, or null
-    /// when it isn't a move (not a target / same category / onto itself).</summary>
-    private static string? EffectiveTarget(object? context, TriggerRow dragged)
-    {
-        var category = context switch
-        {
-            TriggerCategoryRow header => header.Name,
-            TriggerRow row => row.Category,
-            _ => null,
-        };
-        return category is not null
-            && !string.Equals(category, dragged.Category, StringComparison.OrdinalIgnoreCase)
-            ? category
-            : null;
-    }
-
-    private static void SetHighlight(object? target, bool on)
-    {
-        switch (target)
-        {
-            case TriggerCategoryRow header:
-                header.IsDropTarget = on;
-                break;
-            case TriggerRow row:
-                row.IsDropTarget = on;
-                break;
-        }
-    }
-
-    private void DropTarget_DragOver(object sender, DragEventArgs e)
-    {
-        e.Handled = true;
-        var context = (sender as FrameworkElement)?.DataContext;
-        if (Dragged(e) is not { } dragged || EffectiveTarget(context, dragged) is null)
-        {
-            e.Effects = DragDropEffects.None;
-            ClearHighlight();
-            return;
-        }
-        e.Effects = DragDropEffects.Move;
-        if (!ReferenceEquals(context, _highlighted))
-        {
-            ClearHighlight();
-            SetHighlight(context, true);
-            _highlighted = context;
-        }
-    }
-
-    private void DropTarget_DragLeave(object sender, DragEventArgs e)
-    {
-        if (ReferenceEquals((sender as FrameworkElement)?.DataContext, _highlighted))
-            ClearHighlight();
-    }
-
-    private void DropTarget_Drop(object sender, DragEventArgs e)
-    {
-        e.Handled = true;
-        ClearHighlight();
-        if (Dragged(e) is not { } dragged || DataContext is not TriggersViewModel vm)
-            return;
-        var context = (sender as FrameworkElement)?.DataContext;
-        if (EffectiveTarget(context, dragged) is { } category)
-            vm.MoveTrigger(dragged, category);
-    }
-
-    private void ClearHighlight()
-    {
-        SetHighlight(_highlighted, false);
-        _highlighted = null;
-    }
-
-    // ---- header click: expand/collapse ----
+    // XAML event forwarders → the shared drag-drop behaviour.
+    private void DragGrip_MouseDown(object sender, MouseButtonEventArgs e) => _dragDrop.GripMouseDown(sender, e);
+    private void DragGrip_MouseUp(object sender, MouseButtonEventArgs e) => _dragDrop.GripMouseUp();
+    private void DragGrip_MouseMove(object sender, MouseEventArgs e) => _dragDrop.GripMouseMove(sender, e);
+    private void DropTarget_DragOver(object sender, DragEventArgs e) => _dragDrop.DragOver(sender, e);
+    private void DropTarget_DragLeave(object sender, DragEventArgs e) => _dragDrop.DragLeave(sender, e);
+    private void DropTarget_Drop(object sender, DragEventArgs e) => _dragDrop.Drop(sender, e);
 
     private void CategoryHeader_Click(object sender, MouseButtonEventArgs e)
     {
         if (DataContext is TriggersViewModel vm
-            && (sender as FrameworkElement)?.DataContext is TriggerCategoryRow row)
+            && (sender as FrameworkElement)?.DataContext is CategoryRow row)
             vm.ToggleCategoryCommand.Execute(row);
     }
 }
