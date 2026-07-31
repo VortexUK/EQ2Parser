@@ -20,7 +20,43 @@
                     <TextBlock Grid.Row="1" Text="Log poll interval (ms)" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
                     <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding PollMilliseconds}" Margin="0,2" />
                 </Grid>
-                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                <TextBlock Text="Alerts" Style="{StaticResource SectionLabel}" Margin="0,20,0,8" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Voice" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding Voices}" SelectedItem="{Binding SelectedVoice}"
+                              DisplayMemberPath="DisplayName" Margin="0,2" FontSize="13" />
+                    <Button Grid.Column="2" Content="Test" Style="{StaticResource GoldButton}" Margin="8,2,0,2"
+                            Padding="12,3" Command="{Binding TestVoiceCommand}" />
+
+                    <TextBlock Grid.Row="1" Style="{StaticResource MutedText}" VerticalAlignment="Center">
+                        <Run Text="Speaking rate " /><Run Text="{Binding TtsRateLabel, Mode=OneWay}" Foreground="{StaticResource GoldBrush}" />
+                    </TextBlock>
+                    <Slider Grid.Row="1" Grid.Column="1" Minimum="0.5" Maximum="2" TickFrequency="0.1"
+                            IsSnapToTickEnabled="True" Value="{Binding TtsRate}" VerticalAlignment="Center" Margin="0,6" />
+
+                    <TextBlock Grid.Row="2" Style="{StaticResource MutedText}" VerticalAlignment="Center">
+                        <Run Text="Alert volume " /><Run Text="{Binding AlertVolumeLabel, Mode=OneWay}" Foreground="{StaticResource GoldBrush}" />
+                    </TextBlock>
+                    <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="1" TickFrequency="0.05"
+                            IsSnapToTickEnabled="True" Value="{Binding AlertVolume}" VerticalAlignment="Center" Margin="0,6" />
+                    <Button Grid.Row="2" Grid.Column="2" Content="♪" Style="{StaticResource GoldButton}" Margin="8,2,0,2"
+                            Padding="12,3" ToolTip="Test the chime" Command="{Binding TestChimeCommand}" />
+                </Grid>
+                <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"
+                           Text="Voices come from Windows. For far better quality, install a free neural voice: Settings › Accessibility › Narrator › Add natural voices — it appears here after a restart and is picked automatically." />
+
+                <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                     <Button Content="Save" Style="{StaticResource GoldButton}" Command="{Binding SaveCommand}" />
                     <TextBlock Text="{Binding Status}" Style="{StaticResource MutedText}" FontSize="12"
                                Margin="12,6,0,0" />

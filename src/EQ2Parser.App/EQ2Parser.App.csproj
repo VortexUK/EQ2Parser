@@ -2,7 +2,11 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- Windows-10 TFM (not bare -windows) so WinRT speech is projected:
+         Windows.Media.SpeechSynthesis carries the modern OneCore/natural
+         voices — far better than System.Speech's 2006 SAPI Desktop set. -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <UseWPF>true</UseWPF>
     <StartupObject>EQ2Parser.App.Program</StartupObject>
     <!-- WPF0001: ThemeMode (Fluent) is marked experimental in .NET 9/10 —
@@ -20,7 +24,7 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.0-rc5.4" />
-    <PackageReference Include="System.Speech" Version="10.0.10" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Velopack" Version="1.2.0" />
   </ItemGroup>
 

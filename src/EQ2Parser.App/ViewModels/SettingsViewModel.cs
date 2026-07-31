@@ -17,12 +17,58 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _status = "";
 
+    // ---- alert audio (applied to the live service immediately; Save persists) ----
+
+    public IReadOnlyList<TtsVoice> Voices { get; }
+
+    [ObservableProperty]
+    private TtsVoice? _selectedVoice;
+
+    [ObservableProperty]
+    private double _ttsRate;
+
+    [ObservableProperty]
+    private double _alertVolume;
+
+    public string TtsRateLabel => $"{TtsRate:0.0}×";
+    public string AlertVolumeLabel => $"{AlertVolume:P0}";
+
+    partial void OnTtsRateChanged(double value)
+    {
+        _manager.Audio.SpeakingRate = value;
+        OnPropertyChanged(nameof(TtsRateLabel));
+    }
+
+    partial void OnAlertVolumeChanged(double value)
+    {
+        _manager.Audio.Volume = value;
+        OnPropertyChanged(nameof(AlertVolumeLabel));
+    }
+
+    partial void OnSelectedVoiceChanged(TtsVoice? value) =>
+        _manager.Audio.VoiceId = value?.Id;
+
     public SettingsViewModel(SourceManager manager)
     {
         _manager = manager;
         _idleEndSeconds = manager.Settings.IdleEndSeconds.ToString("0.#");
         _pollMilliseconds = manager.Settings.PollMilliseconds.ToString();
+
+        Voices = AlertAudioService.ListVoices();
+        _selectedVoice = Voices.FirstOrDefault(v => v.Id == manager.Settings.TtsVoiceId)
+            ?? Voices.FirstOrDefault(v => v.DisplayName.Contains("Natural", StringComparison.OrdinalIgnoreCase))
+            ?? Voices.FirstOrDefault();
+        _ttsRate = manager.Settings.TtsRate;
+        _alertVolume = manager.Settings.AlertVolume;
     }
+
+    [RelayCommand]
+    private void TestVoice() =>
+        _manager.Audio.Speak("Fire circle — move out of the raid.");
+
+    [RelayCommand]
+    private void TestChime() =>
+        _manager.Audio.PlayChime();
 
     [RelayCommand]
     private void Save()
@@ -37,8 +83,15 @@ public sealed partial class SettingsViewModel : ObservableObject
             Status = "Poll interval must be 1–1000 ms.";
             return;
         }
-        _manager.Settings = _manager.Settings with { IdleEndSeconds = idle, PollMilliseconds = poll };
+        _manager.Settings = _manager.Settings with
+        {
+            IdleEndSeconds = idle,
+            PollMilliseconds = poll,
+            TtsVoiceId = SelectedVoice?.Id,
+            TtsRate = TtsRate,
+            AlertVolume = AlertVolume,
+        };
         _manager.Settings.Save();
-        Status = "Saved. New values apply to sources added from now on.";
+        Status = "Saved. Parsing values apply to sources added from now on; audio applies immediately.";
     }
 }

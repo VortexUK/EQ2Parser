@@ -17,7 +17,8 @@ public sealed class SourceManager : IDisposable
     public object Sync { get; } = new();
     public EncounterCorrelator Correlator { get; } = new();
     public CombatantClassifier Classifier { get; } = new(new ClassIdentifier(SpellClassMap.LoadEmbedded()));
-    public TriggerService Triggers { get; } = new();
+    public AlertAudioService Audio { get; }
+    public TriggerService Triggers { get; }
     public AppSettings Settings { get; set; } = AppSettings.Load();
 
     /// <summary>Raised (on a background thread) whenever a correlated fight
@@ -26,6 +27,13 @@ public sealed class SourceManager : IDisposable
 
     public SourceManager()
     {
+        Audio = new AlertAudioService
+        {
+            Volume = Settings.AlertVolume,
+            SpeakingRate = Settings.TtsRate,
+            VoiceId = Settings.TtsVoiceId,
+        };
+        Triggers = new TriggerService(Audio);
         Correlator.Created += _ => HistoryChanged?.Invoke();
         Correlator.Merged += _ => HistoryChanged?.Invoke();
     }
@@ -89,6 +97,6 @@ public sealed class SourceManager : IDisposable
     {
         foreach (var source in Sources)
             source.Dispose();
-        Triggers.Dispose();
+        Audio.Dispose();
     }
 }

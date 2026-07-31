@@ -1,5 +1,4 @@
 using System.IO;
-using System.Speech.Synthesis;
 using System.Text.Json;
 using EQ2Parser.Core.Triggers;
 
@@ -25,20 +24,20 @@ public sealed record TriggerSetting(
 /// audio actions the Core engine decides on but never performs — beep, WAV,
 /// TTS. Definition edits fan out to every live engine immediately.
 /// </summary>
-public sealed class TriggerService : IDisposable
+public sealed class TriggerService
 {
     private readonly object _gate = new();
     private readonly List<Trigger> _definitions = [];
     private readonly List<TriggerEngine> _engines = [];
-    private readonly SpeechSynthesizer _tts = new();
+    private readonly AlertAudioService _audio;
 
     /// <summary>Raised on a background thread each time any source's engine
     /// fires a trigger — the Triggers page shows a recent-fires feed off it.</summary>
     public event Action<TriggerFired>? AlertFired;
 
-    public TriggerService()
+    public TriggerService(AlertAudioService audio)
     {
-        _tts.SetOutputToDefaultAudioDevice();
+        _audio = audio;
         Load();
     }
 
@@ -146,27 +145,14 @@ public sealed class TriggerService : IDisposable
     private void HandleFired(TriggerFired fired)
     {
         // Runs under the manager's sync lock on the log pump thread — every
-        // audio call below hands off (SystemSounds/SoundPlayer play async,
-        // SpeakAsync queues), so nothing here blocks the parse.
-        try
-        {
-            if (fired.PlayBeep)
-                System.Media.SystemSounds.Exclamation.Play();
-            else if (fired.WavFile is { Length: > 0 } wav && File.Exists(wav))
-                new System.Media.SoundPlayer(wav).Play();
-            else if (fired.TtsText is { Length: > 0 } text)
-            {
-                lock (_tts)
-                {
-                    _tts.SpeakAsync(text);
-                }
-            }
-        }
-        catch (Exception)
-        {
-            // A broken WAV path or missing audio device must never kill the
-            // log pump.
-        }
+        // audio call hands off to the audio service's own tasks/queue, so
+        // nothing here blocks the parse.
+        if (fired.PlayBeep)
+            _audio.PlayChime();
+        else if (fired.WavFile is { Length: > 0 } wav)
+            _audio.PlayFile(wav);
+        else if (fired.TtsText is { Length: > 0 } text)
+            _audio.Speak(text);
         AlertFired?.Invoke(fired);
     }
 
@@ -225,10 +211,5 @@ public sealed class TriggerService : IDisposable
         {
             // Persistence failure degrades to in-memory triggers.
         }
-    }
-
-    public void Dispose()
-    {
-        _tts.Dispose();
     }
 }

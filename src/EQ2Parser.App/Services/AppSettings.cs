@@ -12,6 +12,11 @@ public sealed record AppSettings
     public double IdleEndSeconds { get; init; } = 6;
     public int PollMilliseconds { get; init; } = 10;
 
+    // Alert audio: null voice = best available (natural voice if exposed).
+    public string? TtsVoiceId { get; init; }
+    public double TtsRate { get; init; } = 1.0;
+    public double AlertVolume { get; init; } = 1.0;
+
     public static string Directory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EQ2Parser");
 

@@ -264,30 +264,19 @@ public sealed partial class TriggersViewModel : ObservableObject
     private void TestSound()
     {
         var text = SoundData.Trim();
-        try
+        switch ((TriggerSound)SoundChoice)
         {
-            switch ((TriggerSound)SoundChoice)
-            {
-                case TriggerSound.Beep:
-                    System.Media.SystemSounds.Exclamation.Play();
-                    break;
-                case TriggerSound.WavFile when text.Length > 0 && System.IO.File.Exists(text):
-                    new System.Media.SoundPlayer(text).Play();
-                    break;
-                case TriggerSound.Tts when text.Length > 0:
-                    // Strip $1-style substitutions for the preview.
-                    var preview = System.Text.RegularExpressions.Regex.Replace(text, @"\$\{?\w+\}?", "something");
-                    using (var tts = new System.Speech.Synthesis.SpeechSynthesizer())
-                    {
-                        tts.SetOutputToDefaultAudioDevice();
-                        tts.Speak(preview);
-                    }
-                    break;
-            }
-        }
-        catch (Exception ex)
-        {
-            EditorError = $"Sound test failed: {ex.Message}";
+            case TriggerSound.Beep:
+                _manager.Audio.PlayChime();
+                break;
+            case TriggerSound.WavFile when text.Length > 0:
+                _manager.Audio.PlayFile(text);
+                break;
+            case TriggerSound.Tts when text.Length > 0:
+                // Stand in for $1-style capture substitutions in the preview.
+                _manager.Audio.Speak(
+                    System.Text.RegularExpressions.Regex.Replace(text, @"\$\{?\w+\}?", "something"));
+                break;
         }
     }
 
