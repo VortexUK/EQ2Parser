@@ -6,10 +6,21 @@ using SharpCompress.Compressors.BZip2;
 
 namespace EQ2Parser.App.Services;
 
-/// <summary>One downloadable neural voice (a Piper VITS model run by
-/// sherpa-onnx). Key is the id stored in settings ("piper:" prefix keeps it
-/// distinct from WinRT voice ids).</summary>
-public sealed record PiperVoice(string Key, string DisplayName, string ArchiveId, int SizeMb);
+/// <summary>Model family a neural voice runs on.</summary>
+public enum NeuralVoiceKind
+{
+    PiperVits,
+    Kokoro,
+}
+
+/// <summary>One downloadable neural voice. Key is the id stored in settings
+/// ("piper:"/"kokoro:" prefixes keep them distinct from WinRT voice ids).
+/// Kokoro voices share one archive — eleven speakers in a single model,
+/// selected by <paramref name="SpeakerId"/> — so installing any of them
+/// installs them all.</summary>
+public sealed record PiperVoice(
+    string Key, string DisplayName, string Archive, string ModelFile, int SizeMb,
+    NeuralVoiceKind Kind = NeuralVoiceKind.PiperVits, int SpeakerId = 0);
 
 /// <summary>
 /// The curated neural voice set and its on-disk lifecycle. Models download
@@ -20,12 +31,19 @@ public sealed record PiperVoice(string Key, string DisplayName, string ArchiveId
 /// </summary>
 public static class PiperVoiceCatalog
 {
+    private const string KokoroArchive = "kokoro-en-v0_19";
+
     public static readonly IReadOnlyList<PiperVoice> Voices =
     [
-        new("piper:en_GB-alba-medium", "Neural — Alba (British)", "en_GB-alba-medium", 65),
-        new("piper:en_GB-jenny_dioco-medium", "Neural — Jenny (British)", "en_GB-jenny_dioco-medium", 65),
-        new("piper:en_GB-northern_english_male-medium", "Neural — Male (Northern English)", "en_GB-northern_english_male-medium", 65),
-        new("piper:en_US-amy-medium", "Neural — Amy (American)", "en_US-amy-medium", 65),
+        new("piper:en_GB-alba-medium", "Neural — Alba (British)", "vits-piper-en_GB-alba-medium", "en_GB-alba-medium.onnx", 65),
+        new("piper:en_GB-jenny_dioco-medium", "Neural — Jenny (British)", "vits-piper-en_GB-jenny_dioco-medium", "en_GB-jenny_dioco-medium.onnx", 65),
+        new("piper:en_GB-northern_english_male-medium", "Neural — Male (Northern English)", "vits-piper-en_GB-northern_english_male-medium", "en_GB-northern_english_male-medium.onnx", 65),
+        new("piper:en_US-amy-medium", "Neural — Amy (American)", "vits-piper-en_US-amy-medium", "en_US-amy-medium.onnx", 65),
+        new("kokoro:af_bella", "Neural — Bella (warm & sultry)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 1),
+        new("kokoro:af_nicole", "Neural — Nicole (breathy whisper)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 2),
+        new("kokoro:am_adam", "Neural — Adam (deep American)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 5),
+        new("kokoro:bf_emma", "Neural — Emma (British)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 7),
+        new("kokoro:bf_isabella", "Neural — Isabella (posh British)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 8),
     ];
 
     private static string RootDir => Path.Combine(AppSettings.Directory, "voices");
@@ -34,10 +52,10 @@ public static class PiperVoiceCatalog
         voiceId is null ? null : Voices.FirstOrDefault(v => v.Key == voiceId);
 
     public static string ModelDir(PiperVoice voice) =>
-        Path.Combine(RootDir, $"vits-piper-{voice.ArchiveId}");
+        Path.Combine(RootDir, voice.Archive);
 
     public static string ModelPath(PiperVoice voice) =>
-        Path.Combine(ModelDir(voice), $"{voice.ArchiveId}.onnx");
+        Path.Combine(ModelDir(voice), voice.ModelFile);
 
     public static string TokensPath(PiperVoice voice) =>
         Path.Combine(ModelDir(voice), "tokens.txt");
@@ -51,10 +69,10 @@ public static class PiperVoiceCatalog
     {
         if (IsInstalled(voice))
             return;
-        var url = $"https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-{voice.ArchiveId}.tar.bz2";
+        var url = $"https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/{voice.Archive}.tar.bz2";
         Directory.CreateDirectory(RootDir);
-        var archiveFile = Path.Combine(RootDir, $"{voice.ArchiveId}.tar.bz2.partial");
-        var staging = Path.Combine(RootDir, $".staging-{voice.ArchiveId}");
+        var archiveFile = Path.Combine(RootDir, $"{voice.Archive}.tar.bz2.partial");
+        var staging = Path.Combine(RootDir, $".staging-{voice.Archive}");
         try
         {
             using (var http = new HttpClient())
@@ -85,10 +103,10 @@ public static class PiperVoiceCatalog
                 TarFile.ExtractToDirectory(bz, staging, overwriteFiles: true);
             }, ct);
 
-            // The archive contains one top-level "vits-piper-<id>" folder.
-            var extracted = Path.Combine(staging, $"vits-piper-{voice.ArchiveId}");
-            if (!File.Exists(Path.Combine(extracted, $"{voice.ArchiveId}.onnx")))
-                throw new InvalidDataException($"Voice archive for {voice.ArchiveId} did not contain the expected model.");
+            // The archive contains one top-level folder named after itself.
+            var extracted = Path.Combine(staging, voice.Archive);
+            if (!File.Exists(Path.Combine(extracted, voice.ModelFile)))
+                throw new InvalidDataException($"Voice archive {voice.Archive} did not contain the expected model.");
             var final = ModelDir(voice);
             if (Directory.Exists(final))
                 Directory.Delete(final, recursive: true);

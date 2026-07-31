@@ -16,7 +16,7 @@ public sealed class PiperTtsEngine : IDisposable
 {
     private readonly object _gate = new();
     private OfflineTts? _tts;
-    private string? _loadedKey;
+    private string? _loadedArchive;
 
     /// <summary>Synthesize to 16-bit WAV bytes, or null when the model
     /// can't load or produces nothing.</summary>
@@ -26,23 +26,36 @@ public sealed class PiperTtsEngine : IDisposable
         {
             try
             {
-                if (_loadedKey != voice.Key)
+                // Cache by archive: Kokoro packs eleven speakers into one
+                // model, so switching between them never reloads.
+                if (_loadedArchive != voice.Archive)
                 {
                     _tts?.Dispose();
                     _tts = null;
-                    _loadedKey = null;
+                    _loadedArchive = null;
                     var config = new OfflineTtsConfig();
-                    config.Model.Vits.Model = PiperVoiceCatalog.ModelPath(voice);
-                    config.Model.Vits.Tokens = PiperVoiceCatalog.TokensPath(voice);
                     var espeakData = Path.Combine(PiperVoiceCatalog.ModelDir(voice), "espeak-ng-data");
-                    if (Directory.Exists(espeakData))
-                        config.Model.Vits.DataDir = espeakData;
+                    if (voice.Kind == NeuralVoiceKind.Kokoro)
+                    {
+                        config.Model.Kokoro.Model = PiperVoiceCatalog.ModelPath(voice);
+                        config.Model.Kokoro.Voices = Path.Combine(PiperVoiceCatalog.ModelDir(voice), "voices.bin");
+                        config.Model.Kokoro.Tokens = PiperVoiceCatalog.TokensPath(voice);
+                        if (Directory.Exists(espeakData))
+                            config.Model.Kokoro.DataDir = espeakData;
+                    }
+                    else
+                    {
+                        config.Model.Vits.Model = PiperVoiceCatalog.ModelPath(voice);
+                        config.Model.Vits.Tokens = PiperVoiceCatalog.TokensPath(voice);
+                        if (Directory.Exists(espeakData))
+                            config.Model.Vits.DataDir = espeakData;
+                    }
                     config.Model.NumThreads = 2;
                     _tts = new OfflineTts(config);
-                    _loadedKey = voice.Key;
+                    _loadedArchive = voice.Archive;
                 }
 
-                var audio = _tts!.Generate(text, (float)Math.Clamp(rate, 0.5, 3.0), 0);
+                var audio = _tts!.Generate(text, (float)Math.Clamp(rate, 0.5, 3.0), voice.SpeakerId);
                 if (audio.Samples.Length == 0)
                     return null;
                 using var ms = new MemoryStream();
@@ -58,7 +71,7 @@ public sealed class PiperTtsEngine : IDisposable
                 // voice fallback in AlertAudioService.
                 _tts?.Dispose();
                 _tts = null;
-                _loadedKey = null;
+                _loadedArchive = null;
                 return null;
             }
         }
