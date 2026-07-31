@@ -236,6 +236,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         }
         LogLevel = true;
         DrillChartVisible = false;
+        ReportLevel = false;
+        ReportChartVisible = false;
+        _reportScope = 0;
     }
 
     private static long LineEpoch(string raw)
@@ -364,6 +367,10 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         DetailTitle = $"{fight.Title} › log";
         SwingLevel = true;
         LogLevel = true;
+        // A report may be open underneath — clear its panel and chart.
+        ReportLevel = false;
+        ReportChartVisible = false;
+        _reportScope = 0;
         DrillChartVisible = false;
         DetailOpen = true;
     }
