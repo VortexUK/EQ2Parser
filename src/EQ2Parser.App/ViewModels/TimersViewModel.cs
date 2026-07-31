@@ -9,12 +9,28 @@ using Trigger = EQ2Parser.Core.Triggers.Trigger;
 
 namespace EQ2Parser.App.ViewModels;
 
-/// <summary>One timer definition in the list.</summary>
-public sealed record TimerDefRow(TimerDefinition Definition)
+/// <summary>One timer definition in the list. Enabled is live — the
+/// checkbox pushes straight through to the shared timer service.</summary>
+public sealed partial class TimerDefRow : ObservableObject
 {
+    private readonly TimersViewModel _owner;
+
+    public TimerDefRow(TimersViewModel owner, TimerDefinition definition)
+    {
+        _owner = owner;
+        Definition = definition;
+        _enabled = definition.Enabled;
+    }
+
+    public TimerDefinition Definition { get; }
     public string Name => Definition.Name;
     public string Category => Definition.Category;
     public string Key => Definition.Key;
+
+    [ObservableProperty]
+    private bool _enabled;
+
+    partial void OnEnabledChanged(bool value) => _owner.SetRowEnabled(this, value);
 
     public string DetailLabel
     {
@@ -110,10 +126,13 @@ public sealed partial class TimersViewModel : ObservableObject
                 && !def.Name.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
                 && !def.Category.Contains(FilterText, StringComparison.OrdinalIgnoreCase))
                 continue;
-            Rows.Add(new TimerDefRow(def));
+            Rows.Add(new TimerDefRow(this, def));
         }
         HasTimers = _manager.SpellTimers.Definitions.Count > 0;
     }
+
+    internal void SetRowEnabled(TimerDefRow row, bool enabled) =>
+        _manager.SpellTimers.SetEnabled(row.Key, enabled);
 
     [RelayCommand]
     private void DeleteRow(TimerDefRow? row)

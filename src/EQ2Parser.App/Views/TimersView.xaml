@@ -57,12 +57,14 @@
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <Border Width="10" Height="10" CornerRadius="2" Background="{Binding ColorBrush}"
+                                        <CheckBox IsChecked="{Binding Enabled}" VerticalAlignment="Top" Margin="0,2,8,0" />
+                                        <Border Grid.Column="1" Width="10" Height="10" CornerRadius="2" Background="{Binding ColorBrush}"
                                                 VerticalAlignment="Top" Margin="0,5,10,0" />
-                                        <StackPanel Grid.Column="1">
+                                        <StackPanel Grid.Column="2">
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="{Binding Name}" FontSize="14"
                                                            FontFamily="{StaticResource BodySemiBoldFont}"
@@ -75,7 +77,7 @@
                                             <TextBlock Text="{Binding DetailLabel}" Style="{StaticResource MutedText}"
                                                        FontSize="11" Margin="0,3,0,0" />
                                         </StackPanel>
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+                                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Top">
                                             <Button Content="▶" Style="{StaticResource GoldButton}" Padding="8,3"
                                                     ToolTip="Test: start this timer now (watch the preview / overlay)"
                                                     Command="{Binding DataContext.TestRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"

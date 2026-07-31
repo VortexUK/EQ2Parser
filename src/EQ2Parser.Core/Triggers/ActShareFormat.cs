@@ -85,32 +85,45 @@ public static class ActShareFormat
 
     private static TimerDefinition? ImportSpell(XmlElement e)
     {
-        var name = e.GetAttribute("N");
-        var category = e.GetAttribute("C");
+        // Same two dialects as triggers: share-snippet short names
+        // (N/T/OM/R/A/WV/RD/M/Tt/FC/RV/C/RC/SS/WS) and the config-file
+        // long names ACT's settings XML uses (Name/Timer/OnlyMasterTicks/
+        // Restrict/Absolute/WarningValue/RadialDisplay/Modable/Tooltip/
+        // FillColor/RemoveValue/Category/RestrictCategory/StartWav/
+        // WarningWav, plus Checked which the share form doesn't carry).
+        string Attr(string shortName, string longName) =>
+            e.HasAttribute(shortName) ? e.GetAttribute(shortName) : e.GetAttribute(longName);
+        static bool IsTrue(string value) =>
+            value is "T" || value.Equals("True", StringComparison.OrdinalIgnoreCase);
+        static bool IsFalse(string value) =>
+            value is "F" || value.Equals("False", StringComparison.OrdinalIgnoreCase);
+        static int IntOr(string value, int fallback) =>
+            int.TryParse(value, out var v) ? v : fallback;
+
+        var name = Attr("N", "Name");
+        var category = Attr("C", "Category").Trim();
         if (name.Length == 0 || category.Length == 0)
             return null;
         return new TimerDefinition
         {
             Name = name,
             Category = category,
-            DurationSeconds = IntAttr(e, "T", 30),
-            WarningSeconds = IntAttr(e, "WV", 10),
-            RemoveSeconds = IntAttr(e, "RV", -15),
-            AbsoluteTiming = e.GetAttribute("A") == "T",
-            RestrictToMe = e.GetAttribute("R") == "T",
-            RestrictToCategory = e.GetAttribute("RC") == "T",
-            OnlyMasterTicks = e.GetAttribute("OM") == "T",
-            Modable = e.GetAttribute("M") != "F",
-            RadialDisplay = e.GetAttribute("RD") != "F",
-            FillColorArgb = IntAttr(e, "FC", unchecked((int)0xFF0000FF)),
-            Tooltip = e.GetAttribute("Tt"),
-            StartSoundData = e.GetAttribute("SS"),
-            WarningSoundData = e.GetAttribute("WS"),
+            Enabled = !e.HasAttribute("Checked") || IsTrue(e.GetAttribute("Checked")),
+            DurationSeconds = IntOr(Attr("T", "Timer"), 30),
+            WarningSeconds = IntOr(Attr("WV", "WarningValue"), 10),
+            RemoveSeconds = IntOr(Attr("RV", "RemoveValue"), -15),
+            AbsoluteTiming = IsTrue(Attr("A", "Absolute")),
+            RestrictToMe = IsTrue(Attr("R", "Restrict")),
+            RestrictToCategory = IsTrue(Attr("RC", "RestrictCategory")),
+            OnlyMasterTicks = IsTrue(Attr("OM", "OnlyMasterTicks")),
+            Modable = !IsFalse(Attr("M", "Modable")),
+            RadialDisplay = !IsFalse(Attr("RD", "RadialDisplay")),
+            FillColorArgb = IntOr(Attr("FC", "FillColor"), unchecked((int)0xFF0000FF)),
+            Tooltip = Attr("Tt", "Tooltip"),
+            StartSoundData = Attr("SS", "StartWav"),
+            WarningSoundData = Attr("WS", "WarningWav"),
         };
     }
-
-    private static int IntAttr(XmlElement e, string name, int fallback) =>
-        int.TryParse(e.GetAttribute(name), out var v) ? v : fallback;
 
     public static string Export(Trigger t)
     {

@@ -9,6 +9,10 @@ public sealed record TimerDefinition
     public required string Name { get; init; }
     public string Category { get; init; } = "General";
 
+    /// <summary>ACT's Checked flag: a disabled definition never starts a
+    /// bar but stays in the list.</summary>
+    public bool Enabled { get; init; } = true;
+
     /// <summary>Base duration, seconds. ACT default 30.</summary>
     public int DurationSeconds { get; init; } = 30;
 

@@ -107,6 +107,8 @@ public sealed class SpellTimerService(TimerOptions? options = null)
         TimerDefinition? restricted = null, unrestricted = null;
         foreach (var def in candidates)
         {
+            if (!def.Enabled)
+                continue;
             if (def.RestrictToCategory)
             {
                 var cat = def.Category.ToLowerInvariant();

@@ -37,21 +37,31 @@ public sealed class TimerService
         Service.TimerStarted += (frame, timer) =>
         {
             if (timer.IsMaster)
-                PlaySound(frame.Definition.StartSoundData);
+                PlaySound(frame.Definition, frame.Definition.StartSoundData, warning: false);
         };
-        Service.WarningReached += (frame, _) => PlaySound(frame.Definition.WarningSoundData);
+        Service.WarningReached += (frame, _) => PlaySound(frame.Definition, frame.Definition.WarningSoundData, warning: true);
         Load();
     }
 
-    /// <summary>TTS text or a WAV/MP3 path — same convention as triggers.</summary>
-    private void PlaySound(string data)
+    /// <summary>A WAV/MP3 path, spoken text, or ACT's "tts" convention —
+    /// "tts some words" speaks the words, a bare "tts" speaks the timer's
+    /// name (plus "soon" for the warning), matching what 20 years of
+    /// exported spell timers expect.</summary>
+    private void PlaySound(TimerDefinition definition, string data, bool warning)
     {
+        data = data.Trim();
         if (data.Length == 0)
             return;
         if (File.Exists(data))
+        {
             _audio.PlayFile(data);
-        else
-            _audio.Speak(data);
+            return;
+        }
+        if (data.Equals("tts", StringComparison.OrdinalIgnoreCase))
+            data = warning ? $"{definition.Name} soon" : definition.Name;
+        else if (data.StartsWith("tts ", StringComparison.OrdinalIgnoreCase))
+            data = data[4..].Trim();
+        _audio.Speak(data);
     }
 
     public IReadOnlyList<TimerDefinition> Definitions
@@ -82,6 +92,18 @@ public sealed class TimerService
         {
             if (Service.RemoveDefinition(key))
                 Save();
+        }
+    }
+
+    public void SetEnabled(string key, bool enabled)
+    {
+        lock (_sync)
+        {
+            var current = Service.Definitions.FirstOrDefault(d => d.Key == key);
+            if (current is null || current.Enabled == enabled)
+                return;
+            Service.AddOrUpdateDefinition(current with { Enabled = enabled });
+            Save();
         }
     }
 

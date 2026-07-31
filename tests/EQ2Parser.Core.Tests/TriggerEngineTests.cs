@@ -161,6 +161,55 @@ public class TriggerEngineTests
     }
 
     [Fact]
+    public void Import_Accepts_Act_Config_File_Spell_Dialect()
+    {
+        // ACT's config XML uses long names for <Spell> too. Checked maps to
+        // Enabled; padded categories are trimmed; negative FillColor round-
+        // trips; StartWav/WarningWav land in the sound fields verbatim.
+        var d = Assert.IsType<TimerDefinition>(ActShareFormat.TryImport(
+            """<Spell Checked="False" Name="Acidic Mist" Timer="60" OnlyMasterTicks="False" Restrict="False" Absolute="False" StartWav="" WarningWav="" WarningValue="10" RadialDisplay="False" Modable="True" Tooltip="" FillColor="-16776961" Panel1="True" Panel2="False" RemoveValue="-15" Category=" General" RestrictCategory="False" />"""));
+        Assert.False(d.Enabled);
+        Assert.Equal("Acidic Mist", d.Name);
+        Assert.Equal("General", d.Category);
+        Assert.Equal(60, d.DurationSeconds);
+        Assert.Equal(10, d.WarningSeconds);
+        Assert.Equal(-15, d.RemoveSeconds);
+        Assert.Equal(unchecked((int)0xFF0000FF), d.FillColorArgb);
+        Assert.False(d.RadialDisplay);
+        Assert.True(d.Modable);
+
+        var d2 = Assert.IsType<TimerDefinition>(ActShareFormat.TryImport(
+            """<Spell Checked="True" Name="Damage Shield" Timer="46" OnlyMasterTicks="True" Restrict="False" Absolute="False" StartWav="" WarningWav="tts Shield off" WarningValue="11" RadialDisplay="False" Modable="False" Tooltip="" FillColor="-16744448" Panel1="True" Panel2="False" RemoveValue="0" Category=" General" RestrictCategory="False" />"""));
+        Assert.True(d2.Enabled);
+        Assert.True(d2.OnlyMasterTicks);
+        Assert.False(d2.Modable);
+        Assert.Equal("tts Shield off", d2.WarningSoundData);
+        Assert.Equal(0, d2.RemoveSeconds);
+
+        // Empty Name (ACT's junk default row) is rejected, not imported.
+        Assert.Null(ActShareFormat.TryImport(
+            """<Spell Checked="True" Name="" Timer="30" Category=" General" />"""));
+
+        // The short share dialect still imports.
+        var d3 = Assert.IsType<TimerDefinition>(ActShareFormat.TryImport(
+            """<Spell N="Ancient" T="60" OM="F" R="F" A="F" WV="10" RD="F" M="F" Tt="" FC="-16776961" RV="-15" C="General" RC="F" />"""));
+        Assert.True(d3.Enabled);
+        Assert.Equal(60, d3.DurationSeconds);
+    }
+
+    [Fact]
+    public void Disabled_Timer_Definition_Never_Starts_A_Bar()
+    {
+        var timers = new SpellTimerService();
+        timers.AddOrUpdateDefinition(new TimerDefinition { Name = "Mayong's Touch", Enabled = false });
+        Assert.False(timers.Notify("mayong", "Mayong's Touch", self: false, "nimrael", T0));
+        Assert.Empty(timers.Frames);
+
+        timers.AddOrUpdateDefinition(new TimerDefinition { Name = "Mayong's Touch", Enabled = true });
+        Assert.True(timers.Notify("mayong", "Mayong's Touch", self: false, "nimrael", T0));
+    }
+
+    [Fact]
     public void Processor_Skips_Triggers_For_Replayed_History()
     {
         // Parse-from-start replays hours of old lines in seconds — those
