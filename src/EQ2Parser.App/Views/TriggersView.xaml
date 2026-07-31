@@ -1,6 +1,7 @@
 <UserControl x:Class="EQ2Parser.App.Views.TriggersView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:EQ2Parser.App.ViewModels">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -53,50 +54,104 @@
                                 </Setter>
                             </Style>
                         </ListBox.ItemContainerStyle>
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,8">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <CheckBox IsChecked="{Binding Enabled}" VerticalAlignment="Top" Margin="0,2,10,0" />
-                                            <StackPanel Grid.Column="1">
-                                                <TextBlock Text="{Binding RegexText}" FontFamily="Consolas" FontSize="13"
-                                                           Foreground="{StaticResource GoldBrightBrush}" TextWrapping="Wrap" />
-                                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                                    <Border Background="#26C8A96E" CornerRadius="99" Padding="8,1">
-                                                        <TextBlock Text="{Binding Category}" FontSize="10"
-                                                                   Foreground="{StaticResource GoldBrush}" />
-                                                    </Border>
-                                                    <TextBlock Text="zone-locked" FontSize="10" Margin="8,2,0,0"
-                                                               Foreground="{StaticResource WarningBrush}"
-                                                               Visibility="{Binding ZoneRestricted, Converter={StaticResource BoolToVis}}" />
-                                                    <TextBlock Text="{Binding SoundLabel}" FontSize="11" Margin="8,1,0,0"
-                                                               Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding TimerLabel}" FontSize="11" Margin="8,1,0,0"
-                                                               Foreground="{StaticResource SuccessBrush}" />
-                                                </StackPanel>
+                        <ListBox.Resources>
+                            <!-- Category header: click to expand/collapse, and
+                                 the drop target when dragging a trigger. -->
+                            <DataTemplate DataType="{x:Type vm:TriggerCategoryRow}">
+                                <Border Background="{StaticResource SurfaceRaisedBrush}" CornerRadius="4"
+                                        Margin="0,3,0,1" Padding="8,6" AllowDrop="True" Cursor="Hand"
+                                        MouseLeftButtonUp="CategoryHeader_Click"
+                                        DragOver="DropTarget_DragOver" DragLeave="DropTarget_DragLeave" Drop="DropTarget_Drop">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="BorderBrush" Value="Transparent" />
+                                            <Setter Property="BorderThickness" Value="1" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDropTarget}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="{StaticResource GoldBrush}" />
+                                                    <Setter Property="Background" Value="#26C8A96E" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Width="16" FontSize="11" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource GoldDimBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="▸" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                            <Setter Property="Text" Value="▾" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13"
+                                                   FontFamily="{StaticResource BodySemiBoldFont}"
+                                                   Foreground="{StaticResource GoldBrightBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center">
+                                            <Run Text="{Binding EnabledCount, Mode=OneWay}" /><Run Text="/" /><Run Text="{Binding Count, Mode=OneWay}" /><Run Text=" on" />
+                                        </TextBlock>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+
+                            <!-- Trigger row: drag by the grip to re-file it. -->
+                            <DataTemplate DataType="{x:Type vm:TriggerRow}">
+                                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                        Padding="4,8,8,8" Margin="16,0,0,0" AllowDrop="True" Background="Transparent"
+                                        DragOver="DropTarget_DragOver" DragLeave="DropTarget_DragLeave" Drop="DropTarget_Drop">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="⠿" FontSize="13" Foreground="{StaticResource TextMutedBrush}"
+                                                   VerticalAlignment="Center" Margin="0,0,8,0" Cursor="SizeAll"
+                                                   ToolTip="Drag to another category" Background="Transparent"
+                                                   PreviewMouseLeftButtonDown="DragGrip_MouseDown"
+                                                   PreviewMouseMove="DragGrip_MouseMove"
+                                                   PreviewMouseLeftButtonUp="DragGrip_MouseUp" />
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding Enabled}" VerticalAlignment="Top" Margin="0,2,10,0" />
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{Binding RegexText}" FontFamily="Consolas" FontSize="13"
+                                                       Foreground="{StaticResource GoldBrightBrush}" TextWrapping="Wrap" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                <TextBlock Text="zone-locked" FontSize="10" Margin="0,2,0,0"
+                                                           Foreground="{StaticResource WarningBrush}"
+                                                           Visibility="{Binding ZoneRestricted, Converter={StaticResource BoolToVis}}" />
+                                                <TextBlock Text="{Binding SoundLabel}" FontSize="11" Margin="0,1,0,0"
+                                                           Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding TimerLabel}" FontSize="11" Margin="8,1,0,0"
+                                                           Foreground="{StaticResource SuccessBrush}" />
                                             </StackPanel>
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
-                                                <Button Content="Edit" Style="{StaticResource GoldButton}" Padding="10,3"
-                                                        Command="{Binding DataContext.EditRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                        CommandParameter="{Binding}" />
-                                                <Button Content="⧉" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
-                                                        ToolTip="Copy as ACT share XML"
-                                                        Command="{Binding DataContext.CopyRowXmlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                        CommandParameter="{Binding}" />
-                                                <Button Content="✕" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
-                                                        ToolTip="Delete trigger"
-                                                        Command="{Binding DataContext.DeleteRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                        CommandParameter="{Binding}" />
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Top">
+                                            <Button Content="Edit" Style="{StaticResource GoldButton}" Padding="10,3"
+                                                    Command="{Binding DataContext.EditRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" />
+                                            <Button Content="⧉" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
+                                                    ToolTip="Copy as ACT share XML"
+                                                    Command="{Binding DataContext.CopyRowXmlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" />
+                                            <Button Content="✕" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
+                                                    ToolTip="Delete trigger"
+                                                    Command="{Binding DataContext.DeleteRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.Resources>
                     </ListBox>
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                                 Visibility="{Binding HasTriggers, Converter={StaticResource InverseBoolToVis}}">

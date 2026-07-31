@@ -45,6 +45,25 @@ public sealed partial class TriggerRow : ObservableObject
     partial void OnEnabledChanged(bool value) => _owner.SetRowEnabled(this, value);
 }
 
+/// <summary>A collapsible category header in the trigger tree — also the
+/// drop target when dragging a trigger into another category.</summary>
+public sealed partial class TriggerCategoryRow(string name, bool expanded) : ObservableObject
+{
+    public string Name { get; } = name;
+
+    [ObservableProperty]
+    private int _count;
+
+    [ObservableProperty]
+    private int _enabledCount;
+
+    [ObservableProperty]
+    private bool _isExpanded = expanded;
+
+    [ObservableProperty]
+    private bool _isDropTarget;
+}
+
 /// <summary>One line in the recent-fires feed.</summary>
 public sealed record FiredRow(string Time, string Category, string Matched);
 
@@ -58,8 +77,13 @@ public sealed partial class TriggersViewModel : ObservableObject
     private readonly SourceManager _manager;
     private string? _editingKey;
 
-    public ObservableCollection<TriggerRow> Rows { get; } = [];
+    /// <summary>Flat virtualized tree: TriggerCategoryRow headers with
+    /// TriggerRow children under the expanded ones (same idiom as the
+    /// encounter tree on the Main page).</summary>
+    public ObservableCollection<object> Rows { get; } = [];
     public ObservableCollection<FiredRow> RecentFires { get; } = [];
+
+    private readonly HashSet<string> _expandedCategories = new(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyList<string> SoundChoices { get; } = ["Silent", "Beep", "Play WAV file", "Speak text (TTS)"];
 
@@ -80,25 +104,90 @@ public sealed partial class TriggersViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasTriggers;
 
+    private bool MatchesFilter(Trigger trigger) =>
+        FilterText.Length == 0
+        || trigger.RegexText.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
+        || trigger.Category.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
+        || trigger.SoundData.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
+
     private void RebuildRows()
     {
         Rows.Clear();
-        foreach (var trigger in _manager.Triggers.Definitions
-                     .OrderBy(t => t.Category, StringComparer.OrdinalIgnoreCase)
-                     .ThenBy(t => t.RegexText, StringComparer.OrdinalIgnoreCase))
+        var filtering = FilterText.Length > 0;
+        foreach (var group in _manager.Triggers.Definitions
+                     .GroupBy(t => t.Category, StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
         {
-            if (FilterText.Length > 0
-                && !trigger.RegexText.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
-                && !trigger.Category.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
-                && !trigger.SoundData.Contains(FilterText, StringComparison.OrdinalIgnoreCase))
+            List<Trigger> members = [.. group
+                .Where(MatchesFilter)
+                .OrderBy(t => t.RegexText, StringComparer.OrdinalIgnoreCase)];
+            if (members.Count == 0)
                 continue;
-            Rows.Add(new TriggerRow(this, trigger));
+            // A filter opens everything it touches; otherwise remembered state.
+            var expanded = filtering || _expandedCategories.Contains(group.Key);
+            Rows.Add(new TriggerCategoryRow(group.Key, expanded)
+            {
+                Count = members.Count,
+                EnabledCount = members.Count(t => t.Enabled),
+            });
+            if (!expanded)
+                continue;
+            foreach (var trigger in members)
+                Rows.Add(new TriggerRow(this, trigger));
         }
         HasTriggers = _manager.Triggers.Definitions.Count > 0;
     }
 
-    internal void SetRowEnabled(TriggerRow row, bool enabled) =>
+    [RelayCommand]
+    private void ToggleCategory(TriggerCategoryRow? row)
+    {
+        if (row is null)
+            return;
+        if (!_expandedCategories.Add(row.Name))
+            _expandedCategories.Remove(row.Name);
+        RebuildRows();
+    }
+
+    /// <summary>Drag-and-drop re-file: rebuild the trigger under its new
+    /// category (the category is half the identity key, so this is a keyed
+    /// replace that fans out to every engine and persists).</summary>
+    public void MoveTrigger(TriggerRow row, string targetCategory)
+    {
+        targetCategory = targetCategory.Trim();
+        if (targetCategory.Length == 0
+            || string.Equals(row.Category, targetCategory, StringComparison.OrdinalIgnoreCase))
+            return;
+        var current = _manager.Triggers.Definitions.FirstOrDefault(t => t.Key == row.Key) ?? row.Trigger;
+        var moved = new Trigger(current.RegexText, targetCategory)
+        {
+            Enabled = current.Enabled,
+            RestrictToCategoryZone = current.RestrictToCategoryZone,
+            SoundType = current.SoundType,
+            SoundData = current.SoundData,
+            StartsTimer = current.StartsTimer,
+            TimerName = current.TimerName,
+            AudioCooldown = current.AudioCooldown,
+        };
+        _manager.Triggers.AddOrUpdate(moved, replaceKey: current.Key);
+        _expandedCategories.Add(targetCategory);
+        if (_editingKey == current.Key)
+            _editingKey = moved.Key;
+        RebuildRows();
+    }
+
+    internal void SetRowEnabled(TriggerRow row, bool enabled)
+    {
         _manager.Triggers.SetEnabled(row.Key, enabled);
+        foreach (var item in Rows)
+        {
+            if (item is TriggerCategoryRow header
+                && header.Name.Equals(row.Category, StringComparison.OrdinalIgnoreCase))
+            {
+                header.EnabledCount += enabled ? 1 : -1;
+                break;
+            }
+        }
+    }
 
     [RelayCommand]
     private void DeleteRow(TriggerRow? row)
@@ -244,6 +333,7 @@ public sealed partial class TriggersViewModel : ObservableObject
         }
         _manager.Triggers.AddOrUpdate(trigger, _editingKey);
         _editingKey = null;
+        _expandedCategories.Add(category);
         NewTrigger();
         RebuildRows();
     }
