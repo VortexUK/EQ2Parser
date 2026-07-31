@@ -59,11 +59,12 @@ public sealed class LogLineProcessor
         var anchor = line.ObservedAt ?? line.Timestamp;
         LastLineTime = anchor;
         Engine.OnLineTime(line.Timestamp);
-        // Triggers are live alerts: a line only fires them when it was
-        // written moments before we read it. Replaying an old file
-        // (parse-from-start) must never spam beeps/TTS for history. No
-        // arrival stamp (direct feeds, tests) means live.
-        if (line.ObservedAt is null || line.ObservedAt.Value - line.Timestamp < TriggerFreshness)
+        // Triggers and timers are live alerts: a line only fires them when
+        // it was written moments before we read it. Replaying an old file
+        // (parse-from-start) must never spam beeps/TTS/timer bars for
+        // history. No arrival stamp (direct feeds, tests) means live.
+        var live = line.ObservedAt is null || line.ObservedAt.Value - line.Timestamp < TriggerFreshness;
+        if (live)
             _triggers?.Process(line.Message, anchor);
 
         var parsed = EnglishGrammar.TryParse(line.Message);
@@ -100,11 +101,15 @@ public sealed class LogLineProcessor
                 // Every combat action notifies the spell timers by ability
                 // name (ACT semantics) — how cast-driven timers start. Timers
                 // anchor to the arrival stamp so bars start the instant the
-                // line lands, not on the next whole second.
-                _timers?.Notify(
-                    attacker, swing.Ability,
-                    self: attacker == Engine.OwnerName || victim == Engine.OwnerName,
-                    victim, anchor, Engine.CurrentZone);
+                // line lands, not on the next whole second. Replayed history
+                // never starts bars (same freshness rule as triggers).
+                if (live)
+                {
+                    _timers?.Notify(
+                        attacker, swing.Ability,
+                        self: attacker == Engine.OwnerName || victim == Engine.OwnerName,
+                        victim, anchor, Engine.CurrentZone);
+                }
                 break;
             }
 

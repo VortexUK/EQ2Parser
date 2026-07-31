@@ -399,7 +399,7 @@ public sealed partial class TriggersViewModel : ObservableObject
     private void ImportXml()
     {
         List<Trigger> imported = [];
-        var timers = 0;
+        List<TimerDefinition> timers = [];
         List<int> failedLines = [];
         var lineNo = 0;
         foreach (var line in ImportText.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -410,8 +410,8 @@ public sealed partial class TriggersViewModel : ObservableObject
                 case Trigger t:
                     imported.Add(t);
                     break;
-                case TimerDefinition:
-                    timers++;
+                case TimerDefinition d:
+                    timers.Add(d);
                     break;
                 default:
                     failedLines.Add(lineNo);
@@ -419,11 +419,12 @@ public sealed partial class TriggersViewModel : ObservableObject
             }
         }
         _manager.Triggers.AddOrUpdateMany(imported);
+        _manager.SpellTimers.ImportMany(timers);
         List<string> parts = [];
         if (imported.Count > 0)
             parts.Add($"{imported.Count} trigger{(imported.Count == 1 ? "" : "s")} imported");
-        if (timers > 0)
-            parts.Add($"{timers} spell timer{(timers == 1 ? "" : "s")} skipped (Timers page is next)");
+        if (timers.Count > 0)
+            parts.Add($"{timers.Count} spell timer{(timers.Count == 1 ? "" : "s")} imported (see Timers page)");
         if (failedLines.Count > 0)
             parts.Add($"{failedLines.Count} line{(failedLines.Count == 1 ? "" : "s")} not recognised (line {string.Join(", ", failedLines.Take(5))}{(failedLines.Count > 5 ? ", …" : "")})");
         ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : "Nothing to import — paste ACT share XML first.";

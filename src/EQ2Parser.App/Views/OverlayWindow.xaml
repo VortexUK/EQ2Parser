@@ -1,0 +1,86 @@
+<Window x:Class="EQ2Parser.App.Views.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="EQ2Parser Overlay" Width="280" SizeToContent="Height"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False" ShowActivated="False" ResizeMode="NoResize">
+    <Border x:Name="Root" CornerRadius="8" Padding="8"
+            MouseLeftButtonDown="Root_MouseDown">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="Background" Value="#B010131C" />
+                <Setter Property="BorderBrush" Value="#402E3150" />
+                <Setter Property="BorderThickness" Value="1" />
+            </Style>
+        </Border.Style>
+        <StackPanel>
+            <!-- Header: only while unlocked (drag handle + lock/close). -->
+            <Grid x:Name="Header" Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="⠿  TIMERS — drag to place, then lock" FontSize="10" Foreground="#C8A96E"
+                           VerticalAlignment="Center" FontFamily="Segoe UI" />
+                <Button Grid.Column="1" Content="🔒" FontSize="11" Padding="6,2" Margin="6,0,0,0"
+                        Background="Transparent" BorderThickness="0" Foreground="#C8A96E" Cursor="Hand"
+                        ToolTip="Lock: click-through, header hidden (unlock from the Timers page)"
+                        Click="Lock_Click" />
+                <Button Grid.Column="2" Content="✕" FontSize="11" Padding="6,2" Margin="2,0,0,0"
+                        Background="Transparent" BorderThickness="0" Foreground="#8B90AB" Cursor="Hand"
+                        ToolTip="Hide overlay" Click="Close_Click" />
+            </Grid>
+
+            <ItemsControl x:Name="Bars">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,1.5">
+                            <Border Height="20" CornerRadius="3" Background="#5A1C1F2E" />
+                            <!-- Fill: width driven by Fraction via the bar-width trick
+                                 (ScaleTransform keeps it layout-free). -->
+                            <Border Height="20" CornerRadius="3" Background="{Binding BarBrush}"
+                                    Opacity="0.55" RenderTransformOrigin="0,0.5">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleX="{Binding Fraction}" />
+                                </Border.RenderTransform>
+                            </Border>
+                            <Grid Margin="6,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Label}" FontSize="12" Foreground="#F0F2FA"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                           FontFamily="Segoe UI">
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                                    </TextBlock.Effect>
+                                </TextBlock>
+                                <TextBlock Grid.Column="1" Text="{Binding SecondsText}" FontSize="12"
+                                           VerticalAlignment="Center" FontFamily="Consolas" FontWeight="Bold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#E2E4F0" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                                    <Setter Property="Foreground" Value="#F87171" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                                    </TextBlock.Effect>
+                                </TextBlock>
+                            </Grid>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock x:Name="EmptyHint" Text="Timer bars appear here when a timer fires."
+                       FontSize="11" Foreground="#8B90AB" Margin="0,2" FontFamily="Segoe UI" />
+        </StackPanel>
+    </Border>
+</Window>

@@ -19,6 +19,7 @@ public sealed class SourceManager : IDisposable
     public CombatantClassifier Classifier { get; } = new(new ClassIdentifier(SpellClassMap.LoadEmbedded()));
     public AlertAudioService Audio { get; }
     public TriggerService Triggers { get; }
+    public TimerService SpellTimers { get; }
     public AppSettings Settings { get; set; } = AppSettings.Load();
 
     /// <summary>Raised (on a background thread) whenever a correlated fight
@@ -34,6 +35,7 @@ public sealed class SourceManager : IDisposable
             VoiceId = Settings.TtsVoiceId,
         };
         Triggers = new TriggerService(Audio);
+        SpellTimers = new TimerService(Audio, Sync);
         Correlator.Created += _ => HistoryChanged?.Invoke();
         Correlator.Merged += _ => HistoryChanged?.Invoke();
     }
@@ -55,7 +57,8 @@ public sealed class SourceManager : IDisposable
             path, parseFromStart, Sync,
             new EngineOptions { IdleEndSeconds = Settings.IdleEndSeconds },
             TimeSpan.FromMilliseconds(Settings.PollMilliseconds),
-            Triggers.CreateEngine(LogSource.DeriveOwner(path)));
+            Triggers.CreateEngine(LogSource.DeriveOwner(path)),
+            SpellTimers.Service);
         lock (Sync)
         {
             Correlator.Attach(source.Engine);

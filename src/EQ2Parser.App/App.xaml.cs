@@ -15,9 +15,11 @@ public partial class App : Application
         LiveChartsCore.LiveCharts.Configure(config => config.AddDarkTheme());
         _manager = new SourceManager();
         _manager.RestoreFromSettings();
-        var window = new MainWindow(new MainViewModel(_manager));
+        var overlay = new OverlayController(_manager);
+        var window = new MainWindow(new MainViewModel(_manager, overlay));
         MainWindow = window;
         window.Show();
+        overlay.RestoreFromSettings();
     }
 
     protected override void OnExit(ExitEventArgs e)

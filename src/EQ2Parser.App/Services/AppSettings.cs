@@ -17,6 +17,12 @@ public sealed record AppSettings
     public double TtsRate { get; init; } = 1.0;
     public double AlertVolume { get; init; } = 1.0;
 
+    // In-game timer overlay: null position = top-right of the primary screen.
+    public bool OverlayVisible { get; init; }
+    public bool OverlayLocked { get; init; }
+    public double? OverlayLeft { get; init; }
+    public double? OverlayTop { get; init; }
+
     public static string Directory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EQ2Parser");
 

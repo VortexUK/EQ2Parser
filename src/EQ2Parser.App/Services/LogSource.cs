@@ -28,7 +28,7 @@ public sealed class LogSource : IDisposable
     public Exception? Error { get; private set; }
     public bool Completed => _task.IsCompleted;
 
-    public LogSource(string path, bool parseFromStart, object sync, EngineOptions engineOptions, TimeSpan pollInterval, TriggerEngine? triggers = null)
+    public LogSource(string path, bool parseFromStart, object sync, EngineOptions engineOptions, TimeSpan pollInterval, TriggerEngine? triggers = null, SpellTimerService? timers = null)
     {
         Path = path;
         ParseFromStart = parseFromStart;
@@ -36,7 +36,7 @@ public sealed class LogSource : IDisposable
         Owner = DeriveOwner(path);
         Engine = new ParserEngine(path, Owner, engineOptions);
         TriggerEngine = triggers;
-        Processor = new LogLineProcessor(Engine, triggers);
+        Processor = new LogLineProcessor(Engine, triggers, timers);
         var reader = new LogTailReader(path, new LogTailOptions
         {
             StartAtEnd = !parseFromStart,
