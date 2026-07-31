@@ -1901,7 +1901,10 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             if (fight is null)
                 return;
             resolvedFight = fight;
-            if (DetailOpen && _detailKey is not null)
+            // While a report overlays the drill, the drill must not keep
+            // driving the view (it was overwriting the report's title and
+            // un-hiding its tables every tick).
+            if (DetailOpen && _detailKey is not null && !ReportLevel)
                 detail = SnapshotDetail(fight, _detailKey);
 
             switch (fight)
