@@ -508,7 +508,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         _reportBuilder.AppendLine(string.Concat(parts.Select(t => t.Text)));
     }
 
-    private void OpenReport(string title)
+    private void OpenReport(string title, bool keepDrill = false)
     {
         ReportRows.Clear();
         foreach (var line in _reportLines)
@@ -516,9 +516,12 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         _reportText = _reportBuilder.ToString();
         _reportLines.Clear();
         _reportBuilder.Clear();
-        _detailKey = null;
-        _detailBucket = null;
-        _detailAbility = null;
+        if (!keepDrill)
+        {
+            _detailKey = null;
+            _detailBucket = null;
+            _detailAbility = null;
+        }
         DetailTitle = title;
         SwingLevel = true;
         LogLevel = false;
@@ -529,6 +532,155 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     [RelayCommand]
     private void CopyReport() => SetClipboard(_reportText);
+
+    /// <summary>Right-click a bucket (or ability) in the drill: break it
+    /// down BY THE OTHER COMBATANT — who this bucket healed / who healed
+    /// them / who the damage came from or went to.</summary>
+    [RelayCommand]
+    private void LookupBucketByCombatant(AbilityRow? row)
+    {
+        if (row is null || row.IsGroupLabel || _detailKey is null)
+            return;
+        lock (manager.Sync)
+        {
+            if (ResolveFight() is not { } fight)
+                return;
+            var bucketName = _detailBucket ?? row.Name;
+            var abilityFilter = _detailBucket is null ? null : row.Name;
+            var isAutoBucket = bucketName == BucketConfig.AutoAttackOut;
+            var incoming = IsIncomingBucket(bucketName);
+
+            List<Combatant> instances = fight switch
+            {
+                Encounter e => e.Combatants.TryGetValue(_detailKey, out var c) ? [c] : [],
+                CorrelatedEncounter m => m.MergedCombatants.TryGetValue(_detailKey, out var mc) ? [mc.Combatant] : [],
+                AggregateFights a =>
+                    [.. a.Fights
+                        .Select(f => f.MergedCombatants.TryGetValue(_detailKey, out var mc) ? mc.Combatant : null)
+                        .Where(c => c is not null)
+                        .Select(c => c!)],
+                _ => [],
+            };
+            if (instances.Count == 0)
+                return;
+            var selfName = instances[0].Name;
+
+            var perOther = new Dictionary<string, AbilityAcc>(StringComparer.OrdinalIgnoreCase);
+            foreach (var combatant in instances)
+            {
+                if (FindBucket(combatant, bucketName) is not { } bucket)
+                    continue;
+                foreach (var sw in bucket.All.Swings)
+                {
+                    if (sw.Ability == Combatant.KillingAbility)
+                        continue;
+                    if (abilityFilter is not null)
+                    {
+                        if (isAutoBucket)
+                        {
+                            if (!SwingInAutoGroup(sw, abilityFilter))
+                                continue;
+                        }
+                        else if (sw.Ability != abilityFilter)
+                        {
+                            continue;
+                        }
+                    }
+                    var other = incoming ? sw.Attacker : sw.Victim;
+                    GetOrAdd(perOther, other).AddSwing(sw);
+                }
+            }
+
+            var classMap = ClassMapFor(fight);
+            var total = Math.Max(1, perOther.Values.Sum(a => a.Total));
+            var suffix = abilityFilter is not null ? $" › {abilityFilter}" : "";
+
+            ReportLine(
+                ("NAME".PadRight(20), ClassColors.TreeHeader),
+                ("SWINGS   HITS   CRIT%       AVG       MAX       TOTAL       %", ClassColors.TreeHeader));
+            foreach (var (other, acc) in perOther.OrderByDescending(kv => kv.Value.Total))
+            {
+                ReportLine(
+                    (other.PadRight(20), ClassColors.TreeText),
+                    ($"{acc.Swings,6}  {acc.Hits,5}  ", ClassColors.Neutral),
+                    ($"{(acc.Hits > 0 ? 100.0 * acc.Crits / acc.Hits : 0),5:F0}%  ", ClassColors.Neutral),
+                    ($"{(acc.Hits > 0 ? CombatantRow.Compact((double)acc.Total / acc.Hits) : "—"),8}  ", ClassColors.TreeText),
+                    ($"{(acc.Max > 0 ? CombatantRow.Compact(acc.Max) : "—"),8}  ", ClassColors.TreeText),
+                    (CombatantRow.Compact(acc.Total).PadLeft(10), ClassColors.SourceClass),
+                    ($"{100.0 * acc.Total / total,7:F1}%", ClassColors.Neutral));
+            }
+
+            OpenReport($"{selfName} › {bucketName}{suffix} › by combatant", keepDrill: true);
+
+            // Doughnuts: share per combatant + rolled up by archetype.
+            SKColor ColorOf(string name)
+            {
+                var media = ((System.Windows.Media.SolidColorBrush)ClassColors.For(
+                    classMap.GetValueOrDefault(name))).Color;
+                return new SKColor(media.R, media.G, media.B);
+            }
+            ReportChartTitle1 = "SHARE BY COMBATANT";
+            ReportChartTitle2 = "BY ARCHETYPE";
+            ReportDonutInner = [.. perOther
+                .OrderByDescending(kv => kv.Value.Total)
+                .Where(kv => kv.Value.Total > 0)
+                .Take(12)
+                .Select(ISeries (kv) => Ring(kv.Key, (int)Math.Min(int.MaxValue, kv.Value.Total), ColorOf(kv.Key), (int)Math.Min(int.MaxValue, total), 44))];
+            var byArch = perOther
+                .Where(kv => kv.Value.Total > 0)
+                .GroupBy(kv => classMap.GetValueOrDefault(kv.Key) is { } cls
+                    ? ClassColors.For(cls) == ClassColors.Fighter ? "Fighters"
+                    : ClassColors.For(cls) == ClassColors.Priest ? "Priests"
+                    : ClassColors.For(cls) == ClassColors.Scout ? "Scouts"
+                    : ClassColors.For(cls) == ClassColors.Mage ? "Mages"
+                    : "Other"
+                    : "Other")
+                .Select(g => (Label: g.Key, Total: g.Sum(kv => kv.Value.Total)))
+                .OrderByDescending(t => t.Total)
+                .ToList();
+            ReportDonutOuter = [.. byArch.Select(ISeries (t) =>
+            {
+                var color = t.Label switch
+                {
+                    "Fighters" => ClassColors.Fighter,
+                    "Priests" => ClassColors.Priest,
+                    "Scouts" => ClassColors.Scout,
+                    "Mages" => ClassColors.Mage,
+                    _ => ClassColors.Neutral,
+                };
+                return Ring(t.Label, (int)Math.Min(int.MaxValue, t.Total), new SKColor(color.Color.R, color.Color.G, color.Color.B), (int)Math.Min(int.MaxValue, total), 44);
+            })];
+            ReportDonutsVisible = true;
+            ReportCartesianVisible = false;
+            ReportChartVisible = ReportDonutInner.Length > 0;
+            _reportScope = -1; // fight-scoped: close on selection change
+        }
+    }
+
+    /// <summary>Combatant name → detected class for the fight (all shapes).</summary>
+    private Dictionary<string, string?> ClassMapFor(object fight)
+    {
+        Dictionary<string, string?> map = new(StringComparer.OrdinalIgnoreCase);
+        void AddFrom(Encounter primary)
+        {
+            var tags = manager.Classifier.Classify(primary);
+            foreach (var combatant in primary.Combatants.Values)
+            {
+                if (tags.TryGetValue(combatant.Key, out var tag))
+                    map[combatant.Name] = tag.Class.ClassName;
+            }
+        }
+        switch (fight)
+        {
+            case Encounter e: AddFrom(e); break;
+            case CorrelatedEncounter m: AddFrom(m.Primary); break;
+            case AggregateFights a:
+                foreach (var f in a.Fights)
+                    AddFrom(f.Primary);
+                break;
+        }
+        return map;
+    }
 
     private void RecordReportScope(object? parameter, int combatantScope)
     {
@@ -1414,7 +1566,12 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             {
                 DetailOpen = false;
                 SwingLevel = false;
+                return;
             }
+            // A drill sits underneath (bucket lookup) — restore its view.
+            SwingLevel = _detailAbility is not null;
+            _drillChartKey = ("\0", null, null);
+            RefreshGrid();
             return;
         }
         if (LogLevel)

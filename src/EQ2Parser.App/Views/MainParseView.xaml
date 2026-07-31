@@ -392,6 +392,9 @@
                                               Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                             <Grid.ContextMenu>
                                                 <ContextMenu>
+                                                <MenuItem Header="Lookup by combatant"
+                                                          Command="{Binding PlacementTarget.Tag.LookupBucketByCombatantCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                                 <MenuItem Header="Copy row"
                                                           Command="{Binding PlacementTarget.Tag.CopyAbilityCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
