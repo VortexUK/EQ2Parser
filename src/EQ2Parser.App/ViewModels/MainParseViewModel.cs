@@ -597,6 +597,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         lock (manager.Sync)
         {
             var targets = ReportTargets(parameter, out var context);
+            var enemies = EnemyAttackerKeys(
+                parameter is ParseNode { Fight: { } nodeFight } ? nodeFight : ResolveFight());
             ReportLine(
                 ("NAME".PadRight(18), ClassColors.TreeHeader),
                 ("ATTACKS   HIT%   MISS  PARRY  RIPOSTE  BLOCK  DODGE  RESIST  AVOIDED", ClassColors.TreeHeader));
@@ -612,6 +614,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                         continue;
                     foreach (var sw in bucket.All.Swings)
                     {
+                        if (sw.Ability == Combatant.KillingAbility || !enemies.Contains(sw.Attacker.ToUpperInvariant()))
+                            continue;
                         attempts++;
                         switch (sw.Damage.Number)
                         {
@@ -670,6 +674,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             var hitCount = 0;
             var stoneskin = 0;
             long landedTotal = 0;
+            var enemies = EnemyAttackerKeys(ResolveFight());
 
             foreach (var (targetName, combatant) in targets)
             {
@@ -677,6 +682,10 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                     continue;
                 foreach (var sw in bucket.All.Swings)
                 {
+                    // Enemy attacks only — self-procs, ally utility hits and
+                    // death bookkeeping are not avoidance events.
+                    if (sw.Ability == Combatant.KillingAbility || !enemies.Contains(sw.Attacker.ToUpperInvariant()))
+                        continue;
                     attempts++;
                     switch (sw.Damage.Number)
                     {
@@ -809,6 +818,37 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         HoverPushout = 5,
         ToolTipLabelFormatter = _ => $"{count} / {total}",
     };
+
+    /// <summary>Keys of combatants classified Enemy in the current fight —
+    /// the avoidance population is enemy attacks only, matching ACT (self
+    /// lifetap procs and ally utility hits would otherwise flood the
+    /// stoneskin/landed counts).</summary>
+    private HashSet<string> EnemyAttackerKeys(object? fight)
+    {
+        HashSet<string> keys = new(StringComparer.Ordinal);
+        void AddFrom(Encounter primary)
+        {
+            foreach (var (key, tag) in manager.Classifier.Classify(primary))
+            {
+                if (tag.Kind == CombatantKind.Enemy)
+                    keys.Add(key);
+            }
+        }
+        switch (fight)
+        {
+            case Encounter encounter:
+                AddFrom(encounter);
+                break;
+            case CorrelatedEncounter merged:
+                AddFrom(merged.Primary);
+                break;
+            case AggregateFights aggregate:
+                foreach (var f in aggregate.Fights)
+                    AddFrom(f.Primary);
+                break;
+        }
+        return keys;
+    }
 
     /// <summary>Who defeated an incoming attack: the character themselves,
     /// their weapon, or another player (a helper's weapon credits the
