@@ -463,6 +463,21 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [ObservableProperty]
     private string _reportChartTitle2 = "AVOIDANCE BREAKDOWN";
 
+    [ObservableProperty]
+    private bool _reportDonutsVisible = true;
+
+    [ObservableProperty]
+    private bool _reportCartesianVisible;
+
+    [ObservableProperty]
+    private ISeries[] _reportCartesianSeries = [];
+
+    [ObservableProperty]
+    private Axis[] _reportCartesianXAxes = [];
+
+    [ObservableProperty]
+    private Axis[] _reportCartesianYAxes = [];
+
     /// <summary>What the open report is bound to: 0 none/fight-independent,
     /// -1 a specific fight (close on switch), 1/2/3 death/avoidance/specials
     /// for one combatant (re-run for them in the new fight).</summary>
@@ -570,7 +585,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         return targets;
     }
 
-    /// <summary>Every ally death with its killing context (last hits + heals).</summary>
+    /// <summary>Every ally death with its killing context, plus a timeline
+    /// chart of when each death happened across the fight.</summary>
     [RelayCommand]
     private void DeathReport(object? parameter)
     {
@@ -578,38 +594,147 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         lock (manager.Sync)
         {
             var targets = ReportTargets(parameter, out var context);
-            var any = false;
+            var fightObj = parameter is ParseNode { Fight: { } nodeFight } ? nodeFight : ResolveFight();
+            var (fightStart, fightSeconds) = fightObj switch
+            {
+                Encounter e => (e.StartTime, Math.Max(1, e.Duration.TotalSeconds)),
+                CorrelatedEncounter m => (m.StartTime, Math.Max(1, m.Duration.TotalSeconds)),
+                AggregateFights a when a.Fights.Count > 0 => (a.Fights[0].StartTime, Math.Max(1, SumDuration(a.Fights).TotalSeconds)),
+                _ => (DateTimeOffset.MinValue, 1.0),
+            };
+
+            Dictionary<string, string?> classByName = new(StringComparer.OrdinalIgnoreCase);
+            if (fightObj is CorrelatedEncounter cf)
+            {
+                var tags = manager.Classifier.Classify(cf.Primary);
+                foreach (var (key, entry) in cf.MergedCombatants)
+                {
+                    if (tags.TryGetValue(key, out var tag))
+                        classByName[entry.Combatant.Name] = tag.Class.ClassName;
+                }
+            }
+
+            // Collect every death with its lead-up, ordered by time.
+            List<(DateTimeOffset Time, string Victim, string Killer, List<Core.Combat.Swing> Lead)> deaths = [];
             foreach (var (targetName, combatant) in targets)
             {
                 if (combatant.IncomingBuckets.GetValueOrDefault(BucketConfig.AllIncomingRef) is not { } incoming)
                     continue;
                 foreach (var death in incoming.All.Swings.Where(sw => sw.Damage.IsDeath))
                 {
-                    any = true;
-                    ReportLine(
-                        ($"{death.Time.ToLocalTime():HH:mm:ss}  ", ClassColors.Neutral),
-                        (targetName, ClassColors.OutcomeLoss),
-                        (" — killed by ", ClassColors.TreeText),
-                        (death.Attacker, ClassColors.TreeHeader));
                     var lead = incoming.All.Swings
                         .Where(sw => !sw.Damage.IsDeath && sw.Time <= death.Time && sw.Damage.Number != 0)
                         .OrderBy(sw => sw.Time).ThenBy(sw => sw.TimeSorter)
-                        .TakeLast(6);
-                    foreach (var sw in lead)
-                    {
-                        var isHeal = sw.Category == SwingCategory.Healing;
-                        ReportLine(
-                            ($"    {sw.Time.ToLocalTime():HH:mm:ss}  ", ClassColors.Neutral),
-                            (isHeal ? "heal " : "hit  ", isHeal ? ClassColors.OutcomeWin : ClassColors.OutcomeLoss),
-                            (sw.Damage.Number > 0 ? CombatantRow.Compact(sw.Damage.Number) : sw.Damage.ToString(), ClassColors.SourceClass),
-                            ($"  {sw.Ability}", ClassColors.SourceRaid),
-                            ($"  from {sw.Attacker}", ClassColors.Neutral));
-                    }
+                        .TakeLast(6)
+                        .ToList();
+                    deaths.Add((death.Time, targetName, death.Attacker, lead));
                 }
             }
-            if (!any)
-                ReportLine(("No deaths.", ClassColors.Neutral));
+            deaths.Sort((a, b) => a.Time.CompareTo(b.Time));
+
+            if (deaths.Count == 0)
+            {
+                ReportLine(("No deaths.", ClassColors.OutcomeWin));
+                OpenReport($"{context} › death report");
+                ReportChartVisible = false;
+                return;
+            }
+
+            string Rel(DateTimeOffset t) =>
+                TimeSpan.FromSeconds(Math.Max(0, (t - fightStart).TotalSeconds)).ToString(@"m\:ss");
+
+            ReportLine(
+                ($"{deaths.Count} death{(deaths.Count == 1 ? "" : "s")}", ClassColors.OutcomeLoss),
+                ($"   first {Rel(deaths[0].Time)}   last {Rel(deaths[^1].Time)}", ClassColors.Neutral));
+            ReportLine(("", ClassColors.Neutral));
+            foreach (var (time, victim, killer, lead) in deaths)
+            {
+                ReportLine(
+                    ($"{Rel(time)}  ", ClassColors.TreeHeader),
+                    (victim, ClassColors.OutcomeLoss),
+                    (" — killed by ", ClassColors.TreeText),
+                    (killer, ClassColors.TreeHeader));
+                foreach (var sw in lead)
+                {
+                    var isHeal = sw.Category == SwingCategory.Healing;
+                    ReportLine(
+                        ($"    {Rel(sw.Time)}  ", ClassColors.Neutral),
+                        (isHeal ? "heal " : "hit  ", isHeal ? ClassColors.OutcomeWin : ClassColors.OutcomeLoss),
+                        (sw.Damage.Number > 0 ? CombatantRow.Compact(sw.Damage.Number) : sw.Damage.ToString(), ClassColors.SourceClass),
+                        ($"  {sw.Ability}", ClassColors.SourceRaid),
+                        ($"  from {sw.Attacker}", ClassColors.Neutral));
+                }
+            }
+
             OpenReport($"{context} › death report");
+
+            // Timeline: cumulative deaths step-line + a class-coloured marker
+            // per death (hover = who and when).
+            List<LiveChartsCore.Defaults.ObservablePoint> stepped = [new(0, 0)];
+            List<ISeries> series = [];
+            var index = 0;
+            foreach (var (time, victim, killer, _) in deaths)
+            {
+                index++;
+                var sec = Math.Clamp((time - fightStart).TotalSeconds, 0, fightSeconds);
+                stepped.Add(new(sec, index - 1));
+                stepped.Add(new(sec, index));
+                var media = ((System.Windows.Media.SolidColorBrush)ClassColors.For(
+                    classByName.GetValueOrDefault(victim))).Color;
+                var label = $"{Rel(time)}  {victim} — {killer}";
+                series.Add(new ScatterSeries<LiveChartsCore.Defaults.ObservablePoint>
+                {
+                    Values = new LiveChartsCore.Defaults.ObservablePoint[] { new(sec, index) },
+                    Name = victim,
+                    GeometrySize = 12,
+                    Fill = new SolidColorPaint(new SKColor(media.R, media.G, media.B)),
+                    YToolTipLabelFormatter = _ => label,
+                });
+            }
+            stepped.Add(new(fightSeconds, deaths.Count));
+            series.Insert(0, new LineSeries<LiveChartsCore.Defaults.ObservablePoint>
+            {
+                Values = stepped,
+                Name = "deaths",
+                Stroke = new SolidColorPaint(new SKColor(0xA0, 0x78, 0x40, 0xB0)) { StrokeThickness = 1.6f },
+                Fill = null,
+                GeometrySize = 0,
+                GeometryStroke = null,
+                GeometryFill = null,
+                LineSmoothness = 0,
+            });
+            ReportCartesianSeries = [.. series];
+            ReportCartesianXAxes =
+            [
+                new Axis
+                {
+                    Labeler = v => TimeSpan.FromSeconds(Math.Max(0, v)).ToString(@"m\:ss"),
+                    LabelsPaint = MutedPaint(),
+                    TextSize = 11,
+                    SeparatorsPaint = null,
+                    MinLimit = 0,
+                    MaxLimit = fightSeconds,
+                },
+            ];
+            ReportCartesianYAxes =
+            [
+                new Axis
+                {
+                    Name = "deaths",
+                    NamePaint = MutedPaint(),
+                    NameTextSize = 11,
+                    LabelsPaint = MutedPaint(),
+                    TextSize = 11,
+                    Labeler = v => v.ToString("F0"),
+                    MinStep = 1,
+                    SeparatorsPaint = SeparatorPaint(),
+                    MinLimit = 0,
+                    MaxLimit = deaths.Count + 1,
+                },
+            ];
+            ReportDonutsVisible = false;
+            ReportCartesianVisible = true;
+            ReportChartVisible = true;
         }
     }
 
@@ -770,6 +895,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             {
                 ReportChartTitle1 = "OUTCOME";
                 ReportChartTitle2 = "AVOIDANCE BREAKDOWN";
+                ReportDonutsVisible = true;
+                ReportCartesianVisible = false;
                 ReportDonutInner =
                 [
                     Ring("Landed", tHit, new SKColor(0xF8, 0x71, 0x71), tAtt, 44),
@@ -1003,6 +1130,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             // avoidance breakdown (shares of the avoids).
             ReportChartTitle1 = "OUTCOME";
             ReportChartTitle2 = "AVOIDANCE BREAKDOWN";
+                ReportDonutsVisible = true;
+                ReportCartesianVisible = false;
             ReportDonutInner =
             [
                 Ring("Landed", hitCount, new SKColor(0xF8, 0x71, 0x71), attempts, 44),
@@ -1180,6 +1309,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             {
                 ReportChartTitle1 = "ATTACK KINDS";
                 ReportChartTitle2 = "EXTRA ATTACKS BY ALLY";
+                ReportDonutsVisible = true;
+                ReportCartesianVisible = false;
                 ReportDonutInner =
                 [
                     Ring("Normal", tNorm, new SKColor(0x8B, 0x90, 0xAB), tSw, 44),
