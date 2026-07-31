@@ -9,7 +9,7 @@ namespace EQ2Parser.App.Services;
 /// </summary>
 public static class LogWindowReader
 {
-    public static IReadOnlyList<string> Read(string path, long epoch, int beforeSeconds, int afterSeconds, int maxLines = 250)
+    public static IReadOnlyList<string> Read(string path, long epoch, int beforeSeconds, int afterSeconds, int maxPerSide = 200)
     {
         try
         {
@@ -17,18 +17,36 @@ public static class LogWindowReader
             var start = FindOffsetForEpoch(stream, epoch - beforeSeconds);
             stream.Position = start;
             using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
-            List<string> lines = [];
-            while (lines.Count < maxLines && reader.ReadLine() is { } line)
+
+            // Budget the lines AROUND the target: keep the LAST maxPerSide
+            // before the clicked second and the first maxPerSide from it —
+            // raid seconds can hold hundreds of lines, and a flat cap used
+            // to fill up before ever reaching the clicked swing.
+            var before = new Queue<string>();
+            List<string> fromTarget = [];
+            while (reader.ReadLine() is { } line)
             {
                 var lineEpoch = ParseEpoch(line);
                 if (lineEpoch < 0)
                     continue;
                 if (lineEpoch > epoch + afterSeconds)
                     break;
-                if (lineEpoch >= epoch - beforeSeconds)
-                    lines.Add(line);
+                if (lineEpoch < epoch - beforeSeconds)
+                    continue;
+                if (lineEpoch < epoch)
+                {
+                    before.Enqueue(line);
+                    if (before.Count > maxPerSide)
+                        before.Dequeue();
+                }
+                else
+                {
+                    fromTarget.Add(line);
+                    if (fromTarget.Count >= maxPerSide)
+                        break;
+                }
             }
-            return lines;
+            return [.. before, .. fromTarget];
         }
         catch (Exception)
         {
