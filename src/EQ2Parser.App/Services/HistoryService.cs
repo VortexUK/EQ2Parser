@@ -9,15 +9,18 @@ namespace EQ2Parser.App.Services;
 
 /// <summary>
 /// Cross-session parse history: every finished encounter queues to a
-/// background writer (the log pump never blocks on SQLite), the last
-/// sessions' fights restore into the correlator at startup — re-merging
-/// multi-log raids exactly like live parsing — and deleting a fight in the
-/// UI deletes its stored rows so it stays gone. Retention prunes on start.
+/// background writer (the log pump never blocks on SQLite). Retention is
+/// split — trash hard-deletes after its window, BOSS fights stay in the
+/// archive until explicitly purged. At startup the recent window of each
+/// restores into the correlator; anything older is searchable in the
+/// archive and can be pulled back into the parser on demand. Deleting a
+/// fight from the tree only unloads it from the session — the archive
+/// keeps it (purging lives in the archive window).
 /// </summary>
 public sealed class HistoryService : IDisposable
 {
-    /// <summary>Restore cap — enough for several raid nights without a
-    /// startup stall; older fights stay on disk until retention.</summary>
+    /// <summary>Startup-restore cap — several raid nights without a startup
+    /// stall; everything else stays reachable through the archive.</summary>
     private const int MaxRestoredFights = 150;
 
     private readonly HistoryStore _store;
@@ -25,6 +28,7 @@ public sealed class HistoryService : IDisposable
     private readonly Channel<Encounter> _saves = Channel.CreateUnbounded<Encounter>();
     private readonly Task _writer;
     private readonly ConditionalWeakTable<Encounter, StrongBox<long>> _storedIds = [];
+    private readonly HashSet<long> _inParser = [];
 
     public HistoryService()
     {
@@ -40,6 +44,7 @@ public sealed class HistoryService : IDisposable
                     lock (_gate)
                     {
                         id = _store.SaveEncounter(encounter);
+                        _inParser.Add(id);
                     }
                     _storedIds.Add(encounter, new StrongBox<long>(id));
                 }
@@ -60,39 +65,92 @@ public sealed class HistoryService : IDisposable
         _saves.Writer.TryWrite(encounter);
     }
 
-    /// <summary>Startup: prune to retention, then replay the most recent
-    /// fights (oldest first) through the correlator. Returns fights loaded.</summary>
-    public int RestoreInto(EncounterCorrelator correlator, int retentionDays)
+    /// <summary>Startup: hard-delete old trash, then replay the recent
+    /// window (bosses and trash on their own clocks, oldest first) through
+    /// the correlator. Returns fights loaded.</summary>
+    public int RestoreInto(EncounterCorrelator correlator, int bossDays, int trashDays)
     {
         lock (_gate)
         {
-            _store.PruneBefore(DateTimeOffset.Now.AddDays(-Math.Max(1, retentionDays)));
-            var summaries = _store.QueryEncounters(limit: MaxRestoredFights);
-            foreach (var summary in summaries)
+            var now = DateTimeOffset.Now;
+            _store.PruneTrashBefore(now.AddDays(-Math.Max(1, trashDays)));
+            var recent = _store
+                .SearchEncounters(since: now.AddDays(-Math.Max(1, bossDays)), bossOnly: true, limit: MaxRestoredFights)
+                .Concat(_store.SearchEncounters(since: now.AddDays(-Math.Max(1, trashDays)), bossOnly: false, limit: MaxRestoredFights))
+                .OrderByDescending(s => s.Start)
+                .Take(MaxRestoredFights)
+                .Reverse()
+                .ToList();
+            foreach (var summary in recent)
                 correlator.RegisterOwner(summary.Owner);
-            foreach (var summary in summaries.Reverse())
-            {
-                var encounter = _store.RestoreEncounter(summary);
-                _storedIds.Add(encounter, new StrongBox<long>(summary.Id));
-                correlator.Accept(encounter);
-            }
-            return summaries.Count;
+            foreach (var summary in recent)
+                LoadLocked(summary, correlator);
+            return recent.Count;
         }
     }
 
-    /// <summary>UI deletion of a fight: remove every source encounter's
-    /// stored rows so it doesn't resurrect next start.</summary>
-    public void DeleteFight(CorrelatedEncounter fight)
+    // ---- the archive (search / pull back / purge) ----
+
+    public IReadOnlyList<EncounterSummary> Search(string? text, DateTimeOffset? since, int limit = 500)
     {
-        foreach (var encounter in fight.Sources)
+        lock (_gate)
         {
-            if (_storedIds.TryGetValue(encounter, out var box))
+            return _store.SearchEncounters(titleContains: text, since: since, limit: limit);
+        }
+    }
+
+    public bool IsLoaded(long encounterId)
+    {
+        lock (_gate)
+        {
+            return _inParser.Contains(encounterId);
+        }
+    }
+
+    /// <summary>Pull one archived fight back into the parser. Caller holds
+    /// the manager sync lock (the correlator is not thread-safe).</summary>
+    public bool LoadFight(EncounterSummary summary, EncounterCorrelator correlator)
+    {
+        lock (_gate)
+        {
+            if (_inParser.Contains(summary.Id))
+                return false;
+            correlator.RegisterOwner(summary.Owner);
+            LoadLocked(summary, correlator);
+            return true;
+        }
+    }
+
+    private void LoadLocked(EncounterSummary summary, EncounterCorrelator correlator)
+    {
+        var encounter = _store.RestoreEncounter(summary);
+        _storedIds.Add(encounter, new StrongBox<long>(summary.Id));
+        _inParser.Add(summary.Id);
+        correlator.Accept(encounter);
+    }
+
+    /// <summary>Tree deletion: the fight leaves the session but stays in
+    /// the archive, ready to pull back.</summary>
+    public void MarkUnloaded(CorrelatedEncounter fight)
+    {
+        lock (_gate)
+        {
+            foreach (var encounter in fight.Sources)
             {
-                lock (_gate)
-                {
-                    _store.DeleteEncounter(box.Value);
-                }
+                if (_storedIds.TryGetValue(encounter, out var box))
+                    _inParser.Remove(box.Value);
             }
+        }
+    }
+
+    /// <summary>The explicit purge: rows gone for good. (A copy already
+    /// loaded in the session stays until removed from the tree.)</summary>
+    public void PurgeFromArchive(long encounterId)
+    {
+        lock (_gate)
+        {
+            _store.DeleteEncounter(encounterId);
+            _inParser.Remove(encounterId);
         }
     }
 

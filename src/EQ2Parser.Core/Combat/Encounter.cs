@@ -222,6 +222,16 @@ public sealed class Encounter(string sourceId, string ownerName, string zone)
 
     // ── Title + outcome ─────────────────────────────────────────────────────
 
+    /// <summary>Named mob = boss: EQ2 trash carries an article ("a vampire
+    /// thrall"), named encounters don't ("Mayong Mistmoore"). Shared by the
+    /// tree filter and history retention so they never disagree.</summary>
+    public static bool IsBossTitle(string title) =>
+        title != PlaceholderTitle
+        && !title.StartsWith("a ", StringComparison.Ordinal)
+        && !title.StartsWith("an ", StringComparison.Ordinal);
+
+    public bool IsBossFight => IsBossTitle(Title);
+
     /// <summary>The non-ally that soaked the most damage per death
     /// (integer division), i.e. what the fight was "about".</summary>
     public string? GetStrongestEnemy()

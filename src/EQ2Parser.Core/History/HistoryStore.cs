@@ -14,7 +14,8 @@ public sealed record EncounterSummary(
     double DurationSeconds,
     SuccessLevel Success,
     long Damage,
-    string? CorrelationId);
+    string? CorrelationId,
+    bool IsBoss);
 
 public sealed record CombatantSummary(
     string Name,
@@ -34,7 +35,7 @@ public sealed record CombatantSummary(
 /// </summary>
 public sealed class HistoryStore : IDisposable
 {
-    private const int SchemaVersion = 1;
+    private const int SchemaVersion = 2;
     private readonly SqliteConnection _conn;
 
     public HistoryStore(string path)
@@ -43,7 +44,33 @@ public sealed class HistoryStore : IDisposable
         _conn.Open();
         Execute("PRAGMA journal_mode=WAL");
         Execute("PRAGMA foreign_keys=ON");
+        // Migrations run BEFORE the idempotent schema pass — a new index may
+        // reference a column the migration adds.
+        Migrate(CurrentVersion());
         CreateSchema();
+    }
+
+    private int CurrentVersion()
+    {
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = "PRAGMA user_version;";
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    /// <summary>Upgrade an older database in place — v1 lacked is_boss;
+    /// backfill it from the same named-mob rule the classifier uses.</summary>
+    private void Migrate(int fromVersion)
+    {
+        if (fromVersion == 1)
+        {
+            Execute("""
+                ALTER TABLE encounters ADD COLUMN is_boss INTEGER NOT NULL DEFAULT 0;
+                UPDATE encounters SET is_boss = 1
+                 WHERE title <> 'Encounter'
+                   AND substr(title, 1, 2) <> 'a '
+                   AND substr(title, 1, 3) <> 'an ';
+                """);
+        }
     }
 
     public void Dispose() => _conn.Dispose();
@@ -63,11 +90,13 @@ public sealed class HistoryStore : IDisposable
                 success        INTEGER NOT NULL,
                 damage         INTEGER NOT NULL,
                 correlation_id TEXT,
-                saved_at       INTEGER NOT NULL
+                saved_at       INTEGER NOT NULL,
+                is_boss        INTEGER NOT NULL DEFAULT 0
             );
             CREATE INDEX IF NOT EXISTS idx_encounters_start ON encounters(start_ts);
             CREATE INDEX IF NOT EXISTS idx_encounters_zone ON encounters(zone);
             CREATE INDEX IF NOT EXISTS idx_encounters_correlation ON encounters(correlation_id);
+            CREATE INDEX IF NOT EXISTS idx_encounters_boss ON encounters(is_boss, start_ts);
 
             CREATE TABLE IF NOT EXISTS combatants (
                 encounter_id INTEGER NOT NULL REFERENCES encounters(id) ON DELETE CASCADE,
@@ -112,8 +141,8 @@ public sealed class HistoryStore : IDisposable
         using var insertEnc = _conn.CreateCommand();
         insertEnc.Transaction = tx;
         insertEnc.CommandText = """
-            INSERT INTO encounters (source_id, owner, zone, title, start_ts, end_ts, duration_s, success, damage, correlation_id, saved_at)
-            VALUES ($source, $owner, $zone, $title, $start, $end, $duration, $success, $damage, $correlation, unixepoch())
+            INSERT INTO encounters (source_id, owner, zone, title, start_ts, end_ts, duration_s, success, damage, correlation_id, saved_at, is_boss)
+            VALUES ($source, $owner, $zone, $title, $start, $end, $duration, $success, $damage, $correlation, unixepoch(), $boss)
             RETURNING id;
             """;
         insertEnc.Parameters.AddWithValue("$source", encounter.SourceId);
@@ -126,6 +155,7 @@ public sealed class HistoryStore : IDisposable
         insertEnc.Parameters.AddWithValue("$success", (int)encounter.GetSuccessLevel());
         insertEnc.Parameters.AddWithValue("$damage", encounter.Damage);
         insertEnc.Parameters.AddWithValue("$correlation", (object?)correlationId ?? DBNull.Value);
+        insertEnc.Parameters.AddWithValue("$boss", encounter.IsBossFight ? 1 : 0);
         var encounterId = (long)insertEnc.ExecuteScalar()!;
 
         var allyKeys = new HashSet<string>(encounter.GetAllies().Select(a => a.Key), StringComparer.Ordinal);
@@ -187,18 +217,45 @@ public sealed class HistoryStore : IDisposable
             .SelectMany(c => c.OutgoingBuckets[BucketConfig.AllOutgoingRef].All.Swings)
             .OrderBy(s => s.TimeSorter);
 
-    public IReadOnlyList<EncounterSummary> QueryEncounters(string? zone = null, int limit = 100)
+    public IReadOnlyList<EncounterSummary> QueryEncounters(string? zone = null, int limit = 100) =>
+        SearchEncounters(zone: zone, limit: limit);
+
+    /// <summary>The archive query: filter by title/zone substring, start
+    /// cutoff, and boss-ness in any combination; newest first.</summary>
+    public IReadOnlyList<EncounterSummary> SearchEncounters(
+        string? titleContains = null, string? zone = null,
+        DateTimeOffset? since = null, bool? bossOnly = null, int limit = 100)
     {
+        List<string> where = [];
         using var cmd = _conn.CreateCommand();
+        if (titleContains is { Length: > 0 })
+        {
+            where.Add("(title LIKE $title ESCAPE '\\' OR zone LIKE $title ESCAPE '\\')");
+            var escaped = titleContains.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+            cmd.Parameters.AddWithValue("$title", $"%{escaped}%");
+        }
+        if (zone is not null)
+        {
+            where.Add("zone = $zone");
+            cmd.Parameters.AddWithValue("$zone", zone);
+        }
+        if (since is not null)
+        {
+            where.Add("start_ts >= $since");
+            cmd.Parameters.AddWithValue("$since", since.Value.ToUnixTimeSeconds());
+        }
+        if (bossOnly is not null)
+        {
+            where.Add("is_boss = $boss");
+            cmd.Parameters.AddWithValue("$boss", bossOnly.Value ? 1 : 0);
+        }
+        cmd.Parameters.AddWithValue("$limit", limit);
         cmd.CommandText = $"""
-            SELECT id, source_id, owner, zone, title, start_ts, end_ts, duration_s, success, damage, correlation_id
+            SELECT id, source_id, owner, zone, title, start_ts, end_ts, duration_s, success, damage, correlation_id, is_boss
             FROM encounters
-            {(zone is null ? "" : "WHERE zone = $zone")}
+            {(where.Count > 0 ? "WHERE " + string.Join(" AND ", where) : "")}
             ORDER BY start_ts DESC LIMIT $limit;
             """;
-        if (zone is not null)
-            cmd.Parameters.AddWithValue("$zone", zone);
-        cmd.Parameters.AddWithValue("$limit", limit);
 
         var results = new List<EncounterSummary>();
         using var reader = cmd.ExecuteReader();
@@ -209,7 +266,8 @@ public sealed class HistoryStore : IDisposable
                 DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64(5)),
                 DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64(6)),
                 reader.GetDouble(7), (SuccessLevel)reader.GetInt32(8), reader.GetInt64(9),
-                reader.IsDBNull(10) ? null : reader.GetString(10)));
+                reader.IsDBNull(10) ? null : reader.GetString(10),
+                reader.GetInt32(11) == 1));
         }
         return results;
     }
@@ -275,12 +333,12 @@ public sealed class HistoryStore : IDisposable
         return encounter;
     }
 
-    /// <summary>Retention sweep: drop every encounter that started before
-    /// the cutoff (swings/combatants cascade). Returns rows removed.</summary>
-    public int PruneBefore(DateTimeOffset cutoff)
+    /// <summary>Retention sweep for TRASH only: named (boss) fights stay in
+    /// the archive until explicitly purged. Returns rows removed.</summary>
+    public int PruneTrashBefore(DateTimeOffset cutoff)
     {
         using var cmd = _conn.CreateCommand();
-        cmd.CommandText = "DELETE FROM encounters WHERE start_ts < $cutoff;";
+        cmd.CommandText = "DELETE FROM encounters WHERE is_boss = 0 AND start_ts < $cutoff;";
         cmd.Parameters.AddWithValue("$cutoff", cutoff.ToUnixTimeSeconds());
         return cmd.ExecuteNonQuery();
     }

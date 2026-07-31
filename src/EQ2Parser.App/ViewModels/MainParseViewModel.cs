@@ -108,6 +108,9 @@ public sealed record LogRow(IReadOnlyList<LogSegment> Segments, bool IsFocus);
 /// </summary>
 public sealed partial class MainParseViewModel(SourceManager manager) : ObservableObject
 {
+    /// <summary>Exposed for view-owned windows (the Archive).</summary>
+    public SourceManager Manager => manager;
+
     private object? _pinnedFight;
     private (int HistoryCount, bool AnyActive) _treeSignature = (-1, false);
 
@@ -332,7 +335,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 foreach (var fight in group)
                 {
                     manager.Correlator.Remove(fight);
-                    manager.History.DeleteFight(fight);
+                    manager.History.MarkUnloaded(fight);
                     if (ReferenceEquals(_pinnedFight, fight))
                         _pinnedFight = null;
                 }
@@ -340,7 +343,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             else if (node.Fight is CorrelatedEncounter fight)
             {
                 manager.Correlator.Remove(fight);
-                manager.History.DeleteFight(fight);
+                manager.History.MarkUnloaded(fight);
                 if (ReferenceEquals(_pinnedFight, fight))
                     _pinnedFight = null;
             }
@@ -1872,10 +1875,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     /// <summary>Trash mobs are articled ("a bloom custodian"); named bosses
     /// are not. Placeholder-titled scraps are never bosses.</summary>
-    private static bool IsBossTitle(string title) =>
-        title != Encounter.PlaceholderTitle
-        && !title.StartsWith("a ", StringComparison.Ordinal)
-        && !title.StartsWith("an ", StringComparison.Ordinal);
+    private static bool IsBossTitle(string title) => Encounter.IsBossTitle(title);
 
     private static TimeSpan SumDuration(IReadOnlyList<CorrelatedEncounter> fights)
     {

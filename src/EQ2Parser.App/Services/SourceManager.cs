@@ -86,7 +86,7 @@ public sealed class SourceManager : IDisposable
     {
         lock (Sync)
         {
-            History.RestoreInto(Correlator, Settings.HistoryRetentionDays);
+            History.RestoreInto(Correlator, Settings.HistoryBossDays, Settings.HistoryTrashDays);
         }
     }
 

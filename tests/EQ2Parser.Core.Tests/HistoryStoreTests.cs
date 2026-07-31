@@ -139,13 +139,75 @@ public sealed class HistoryStoreTests : IDisposable
     }
 
     [Fact]
-    public void PruneBefore_Drops_Old_Fights_And_Keeps_Recent()
+    public void PruneTrash_Never_Touches_Bosses()
+    {
+        using var store = Store();
+        // "Lord Bob" is a named fight — a boss — and immune to the sweep.
+        store.SaveEncounter(BuildEncounter());
+        Assert.Equal(0, store.PruneTrashBefore(T0.AddDays(1)));
+        var summary = Assert.Single(store.QueryEncounters());
+        Assert.True(summary.IsBoss);
+        // Explicit purge is the only way a boss leaves.
+        Assert.True(store.DeleteEncounter(summary.Id));
+        Assert.Empty(store.QueryEncounters());
+    }
+
+    [Fact]
+    public void SearchEncounters_Filters_By_Title_Since_And_Bossness()
     {
         using var store = Store();
         store.SaveEncounter(BuildEncounter());
-        Assert.Equal(0, store.PruneBefore(T0)); // fight starts AT T0 — kept
-        Assert.Single(store.QueryEncounters());
-        Assert.Equal(1, store.PruneBefore(T0.AddDays(1)));
-        Assert.Empty(store.QueryEncounters());
+
+        Assert.Single(store.SearchEncounters(titleContains: "lord"));
+        Assert.Single(store.SearchEncounters(titleContains: "Deathtoll")); // zone matches too
+        Assert.Empty(store.SearchEncounters(titleContains: "Mayong"));
+        Assert.Empty(store.SearchEncounters(titleContains: "%")); // wildcards are literal
+        Assert.Single(store.SearchEncounters(since: T0));
+        Assert.Empty(store.SearchEncounters(since: T0.AddHours(1)));
+        Assert.Single(store.SearchEncounters(bossOnly: true));
+        Assert.Empty(store.SearchEncounters(bossOnly: false));
+    }
+
+    [Fact]
+    public void V1_Database_Migrates_In_Place_With_Boss_Backfill()
+    {
+        // Replicate the v1 shape exactly (no is_boss column) with one named
+        // and one trash row, then open it with the current store.
+        var path = Path.Combine(_dir, "old.db");
+        using (var conn = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={path}"))
+        {
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                CREATE TABLE encounters (
+                    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_id      TEXT NOT NULL,
+                    owner          TEXT NOT NULL,
+                    zone           TEXT NOT NULL,
+                    title          TEXT NOT NULL,
+                    start_ts       INTEGER NOT NULL,
+                    end_ts         INTEGER NOT NULL,
+                    duration_s     REAL NOT NULL,
+                    success        INTEGER NOT NULL,
+                    damage         INTEGER NOT NULL,
+                    correlation_id TEXT,
+                    saved_at       INTEGER NOT NULL
+                );
+                INSERT INTO encounters (source_id, owner, zone, title, start_ts, end_ts, duration_s, success, damage, saved_at)
+                VALUES ('log-a', 'Menludiir', 'Deathtoll', 'Mayong Mistmoore', 1000, 1060, 60, 1, 5000, 1000),
+                       ('log-a', 'Menludiir', 'Deathtoll', 'a vampire thrall', 2000, 2020, 20, 1, 500, 2000);
+                PRAGMA user_version = 1;
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        using var store = new HistoryStore(path);
+        var all = store.QueryEncounters();
+        Assert.Equal(2, all.Count);
+        Assert.True(all.Single(s => s.Title == "Mayong Mistmoore").IsBoss);
+        Assert.False(all.Single(s => s.Title == "a vampire thrall").IsBoss);
+        // And the store keeps working on the migrated file.
+        store.SaveEncounter(BuildEncounter());
+        Assert.Equal(3, store.QueryEncounters().Count);
     }
 }

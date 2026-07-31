@@ -12,8 +12,14 @@ public sealed record AppSettings
     public double IdleEndSeconds { get; init; } = 6;
     public int PollMilliseconds { get; init; } = 10;
 
-    /// <summary>Days of parse history kept on disk (pruned at startup).</summary>
-    public int HistoryRetentionDays { get; init; } = 14;
+    /// <summary>Days of BOSS fights loaded into the parser at startup —
+    /// older ones stay in the archive (never auto-deleted) and can be
+    /// pulled back from the Archive window.</summary>
+    public int HistoryBossDays { get; init; } = 7;
+
+    /// <summary>Days of trash fights kept at all — loaded at startup within
+    /// the window, hard-deleted past it.</summary>
+    public int HistoryTrashDays { get; init; } = 1;
 
     // Alert audio: null voice = best available (natural voice if exposed).
     public string? TtsVoiceId { get; init; }

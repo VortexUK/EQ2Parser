@@ -31,7 +31,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     private string _pollMilliseconds;
 
     [ObservableProperty]
-    private string _historyRetentionDays;
+    private string _historyBossDays;
+
+    [ObservableProperty]
+    private string _historyTrashDays;
 
     [ObservableProperty]
     private string _status = "";
@@ -170,7 +173,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _manager = manager;
         _idleEndSeconds = manager.Settings.IdleEndSeconds.ToString("0.#");
         _pollMilliseconds = manager.Settings.PollMilliseconds.ToString();
-        _historyRetentionDays = manager.Settings.HistoryRetentionDays.ToString();
+        _historyBossDays = manager.Settings.HistoryBossDays.ToString();
+        _historyTrashDays = manager.Settings.HistoryTrashDays.ToString();
 
         Voices = AlertAudioService.ListVoices();
         PackRows = [.. PiperVoiceCatalog.Packs.Select(p => new VoicePackRow(p))];
@@ -206,16 +210,22 @@ public sealed partial class SettingsViewModel : ObservableObject
             Status = "Poll interval must be 1–1000 ms.";
             return;
         }
-        if (!int.TryParse(HistoryRetentionDays, out var retention) || retention < 1 || retention > 365)
+        if (!int.TryParse(HistoryBossDays, out var bossDays) || bossDays < 1 || bossDays > 365)
         {
-            Status = "History retention must be 1–365 days.";
+            Status = "Boss history must load 1–365 days (bosses stay archived beyond that).";
+            return;
+        }
+        if (!int.TryParse(HistoryTrashDays, out var trashDays) || trashDays < 1 || trashDays > 365)
+        {
+            Status = "Trash retention must be 1–365 days.";
             return;
         }
         _manager.Settings = _manager.Settings with
         {
             IdleEndSeconds = idle,
             PollMilliseconds = poll,
-            HistoryRetentionDays = retention,
+            HistoryBossDays = bossDays,
+            HistoryTrashDays = trashDays,
             TtsVoiceId = SelectedVoice?.Id,
             TtsRate = TtsRate,
             AlertVolume = AlertVolume,
