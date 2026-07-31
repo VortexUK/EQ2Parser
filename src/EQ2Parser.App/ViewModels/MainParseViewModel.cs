@@ -457,6 +457,12 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [ObservableProperty]
     private bool _reportChartVisible;
 
+    [ObservableProperty]
+    private string _reportChartTitle1 = "OUTCOME";
+
+    [ObservableProperty]
+    private string _reportChartTitle2 = "AVOIDANCE BREAKDOWN";
+
     /// <summary>What the open report is bound to: 0 none/fight-independent,
     /// -1 a specific fight (close on switch), 1/2/3 death/avoidance/specials
     /// for one combatant (re-run for them in the new fight).</summary>
@@ -762,6 +768,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             // Raid-wide doughnuts, same pair as the combatant view.
             if (tAtt > 0)
             {
+                ReportChartTitle1 = "OUTCOME";
+                ReportChartTitle2 = "AVOIDANCE BREAKDOWN";
                 ReportDonutInner =
                 [
                     Ring("Landed", tHit, new SKColor(0xF8, 0x71, 0x71), tAtt, 44),
@@ -993,6 +1001,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
             // Side-by-side doughnuts: outcome (of all attacks) and the
             // avoidance breakdown (shares of the avoids).
+            ReportChartTitle1 = "OUTCOME";
+            ReportChartTitle2 = "AVOIDANCE BREAKDOWN";
             ReportDonutInner =
             [
                 Ring("Landed", hitCount, new SKColor(0xF8, 0x71, 0x71), attempts, 44),
@@ -1073,7 +1083,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         return actor;
     }
 
-    /// <summary>Outgoing autoattack specials: normal/multi/double/flurry/AoE + crit%.</summary>
+    /// <summary>Fight-level autoattack composition: per-ally normal/multi/
+    /// double/flurry/AoE with rates + crit%, raid totals, and doughnuts for
+    /// the raid kind-mix and who generates the extra attacks.</summary>
     [RelayCommand]
     private void SpecialReport(object? parameter)
     {
@@ -1081,16 +1093,27 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         lock (manager.Sync)
         {
             var targets = ReportTargets(parameter, out var context);
-            ReportLine(
-                ("NAME".PadRight(18), ClassColors.TreeHeader),
-                ("SWINGS   NORMAL   MULTI  DOUBLE  FLURRY    AOE   CRIT%", ClassColors.TreeHeader));
-            foreach (var (targetName, combatant) in targets
+
+            // Class colours for the per-ally doughnut.
+            Dictionary<string, string?> classByName = new(StringComparer.OrdinalIgnoreCase);
+            var fightObj = parameter is ParseNode { Fight: { } nodeFight } ? nodeFight : ResolveFight();
+            if (fightObj is CorrelatedEncounter cf)
+            {
+                var tags = manager.Classifier.Classify(cf.Primary);
+                foreach (var (key, entry) in cf.MergedCombatants)
+                {
+                    if (tags.TryGetValue(key, out var tag))
+                        classByName[entry.Combatant.Name] = tag.Class.ClassName;
+                }
+            }
+
+            List<(string Name, int Swings, int Normal, int Multi, int Dbl, int Flurry, int Aoe, int Hits, int Crits)> rows = [];
+            foreach (var (targetName, combatants) in targets
                 .GroupBy(t => t.Name)
-                .Select(g => (g.Key, g.Select(t => t.C).ToList()))
-                .OrderBy(t => t.Key, StringComparer.OrdinalIgnoreCase))
+                .Select(g => (g.Key, g.Select(t => t.C).ToList())))
             {
                 int swings = 0, normal = 0, multi = 0, dbl = 0, flurry = 0, aoe = 0, crits = 0, hits = 0;
-                foreach (var c in combatant)
+                foreach (var c in combatants)
                 {
                     if (c.OutgoingBuckets.GetValueOrDefault(BucketConfig.AutoAttackOut) is not { } bucket)
                         continue;
@@ -1115,14 +1138,71 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                         }
                     }
                 }
-                if (swings == 0)
-                    continue;
-                ReportLine(
-                    (targetName.PadRight(18), ClassColors.TreeText),
-                    ($"{swings,6}  {normal,7}  {multi,6}  {dbl,6}  {flurry,6}  {aoe,5}  ", ClassColors.Neutral),
-                    ($"{(hits > 0 ? 100.0 * crits / hits : 0),5:F0}%", ClassColors.SourceClass));
+                if (swings > 0)
+                    rows.Add((targetName, swings, normal, multi, dbl, flurry, aoe, hits, crits));
             }
+
+            ReportLine(
+                ("NAME".PadRight(18), ClassColors.TreeHeader),
+                ("SWINGS  NORMAL   MULTI    DBL  FLURRY   AOE   MULTI%  FLURRY%   CRIT%", ClassColors.TreeHeader));
+            static string Cell(int n, int width) => (n > 0 ? n.ToString() : "—").PadLeft(width);
+            int tSw = 0, tNorm = 0, tMulti = 0, tDbl = 0, tFlurry = 0, tAoe = 0, tHits = 0, tCrits = 0;
+            foreach (var r in rows.OrderByDescending(r => r.Swings))
+            {
+                ReportLine(
+                    (r.Name.PadRight(18), ClassColors.TreeText),
+                    ($"{r.Swings,6}  ", ClassColors.TreeText),
+                    (Cell(r.Normal, 6) + Cell(r.Multi, 8) + Cell(r.Dbl, 7) + Cell(r.Flurry, 8) + Cell(r.Aoe, 6), ClassColors.Neutral),
+                    ($"{100.0 * r.Multi / r.Swings,8:F1}%", ClassColors.SourceRaid),
+                    ($"{100.0 * r.Flurry / r.Swings,8:F1}%", ClassColors.OutcomePartial),
+                    ($"{(r.Hits > 0 ? 100.0 * r.Crits / r.Hits : 0),7:F1}%", ClassColors.SourceClass));
+                tSw += r.Swings;
+                tNorm += r.Normal;
+                tMulti += r.Multi;
+                tDbl += r.Dbl;
+                tFlurry += r.Flurry;
+                tAoe += r.Aoe;
+                tHits += r.Hits;
+                tCrits += r.Crits;
+            }
+            if (tSw > 0)
+            {
+                ReportLine(
+                    ("TOTAL".PadRight(18), ClassColors.TreeHeader),
+                    ($"{tSw,6}  ", ClassColors.TreeText),
+                    (Cell(tNorm, 6) + Cell(tMulti, 8) + Cell(tDbl, 7) + Cell(tFlurry, 8) + Cell(tAoe, 6), ClassColors.Neutral),
+                    ($"{100.0 * tMulti / tSw,8:F1}%", ClassColors.SourceRaid),
+                    ($"{100.0 * tFlurry / tSw,8:F1}%", ClassColors.OutcomePartial),
+                    ($"{(tHits > 0 ? 100.0 * tCrits / tHits : 0),7:F1}%", ClassColors.SourceClass));
+            }
+
             OpenReport($"{context} › special attacks");
+
+            if (tSw > 0)
+            {
+                ReportChartTitle1 = "ATTACK KINDS";
+                ReportChartTitle2 = "EXTRA ATTACKS BY ALLY";
+                ReportDonutInner =
+                [
+                    Ring("Normal", tNorm, new SKColor(0x8B, 0x90, 0xAB), tSw, 44),
+                    Ring("Multi Attack", tMulti, new SKColor(0x93, 0xB4, 0xFF), tSw, 44),
+                    Ring("Double Attack", tDbl, new SKColor(0x22, 0xD3, 0xEE), tSw, 44),
+                    Ring("Flurry", tFlurry, new SKColor(0xFB, 0xBF, 0x24), tSw, 44),
+                    Ring("AoE Attack", tAoe, new SKColor(0xE8, 0xBB, 0xFF), tSw, 44),
+                ];
+                var totalExtra = Math.Max(1, tSw - tNorm);
+                ReportDonutOuter = [.. rows
+                    .Select(r => (r.Name, Extra: r.Swings - r.Normal))
+                    .Where(t => t.Extra > 0)
+                    .OrderByDescending(t => t.Extra)
+                    .Select(ISeries (t) =>
+                    {
+                        var media = ((System.Windows.Media.SolidColorBrush)ClassColors.For(
+                            classByName.GetValueOrDefault(t.Name))).Color;
+                        return Ring(t.Name, t.Extra, new SKColor(media.R, media.G, media.B), totalExtra, 44);
+                    })];
+                ReportChartVisible = true;
+            }
         }
     }
 

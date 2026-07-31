@@ -53,9 +53,6 @@
                         <MenuItem Header="Avoidance report"
                                   Command="{Binding PlacementTarget.Tag.AvoidanceReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                        <MenuItem Header="Special attacks report"
-                                  Command="{Binding PlacementTarget.Tag.SpecialReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                         <MenuItem Header="Lookup across fights"
                                   Command="{Binding PlacementTarget.Tag.LookupCombatantCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
@@ -574,7 +571,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Text="OUTCOME" Style="{StaticResource SectionLabel}"
+                            <TextBlock Text="{Binding ReportChartTitle1}" Style="{StaticResource SectionLabel}"
                                        HorizontalAlignment="Center" Margin="0,2,0,0" />
                             <lvc:PieChart Grid.Row="1" Series="{Binding ReportDonutInner}"
                                           InitialRotation="-90"
@@ -588,7 +585,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Text="AVOIDANCE BREAKDOWN" Style="{StaticResource SectionLabel}"
+                            <TextBlock Text="{Binding ReportChartTitle2}" Style="{StaticResource SectionLabel}"
                                        HorizontalAlignment="Center" Margin="0,2,0,0" />
                             <lvc:PieChart Grid.Row="1" Series="{Binding ReportDonutOuter}"
                                           InitialRotation="-90"
