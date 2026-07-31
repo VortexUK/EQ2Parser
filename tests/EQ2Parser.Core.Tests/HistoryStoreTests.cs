@@ -169,6 +169,37 @@ public sealed class HistoryStoreTests : IDisposable
     }
 
     [Fact]
+    public void FindEncounter_Matches_The_Reparse_Identity()
+    {
+        using var store = Store();
+        var encounter = BuildEncounter();
+        var id = store.SaveEncounter(encounter);
+
+        Assert.Equal(id, store.FindEncounter(
+            encounter.SourceId, encounter.OwnerName, encounter.StartTime, encounter.EndTime, encounter.Title));
+        Assert.Null(store.FindEncounter(
+            "other-log", encounter.OwnerName, encounter.StartTime, encounter.EndTime, encounter.Title));
+        Assert.Null(store.FindEncounter(
+            encounter.SourceId, encounter.OwnerName, encounter.StartTime.AddSeconds(1), encounter.EndTime, encounter.Title));
+    }
+
+    [Fact]
+    public void RemoveDuplicateEncounters_Keeps_The_Oldest_Copy()
+    {
+        using var store = Store();
+        var encounter = BuildEncounter();
+        var first = store.SaveEncounter(encounter);
+        store.SaveEncounter(encounter);
+        store.SaveEncounter(encounter);
+        Assert.Equal(3, store.QueryEncounters().Count);
+
+        Assert.Equal(2, store.RemoveDuplicateEncounters());
+        Assert.Equal(first, Assert.Single(store.QueryEncounters()).Id);
+        // Cascade removed the duplicate swing sets too — the survivor drills.
+        Assert.Equal(4, store.LoadSwings(first).Count);
+    }
+
+    [Fact]
     public void V1_Database_Migrates_In_Place_With_Boss_Backfill()
     {
         // Replicate the v1 shape exactly (no is_boss column) with one named

@@ -43,7 +43,12 @@ public sealed class HistoryService : IDisposable
                     long id;
                     lock (_gate)
                     {
-                        id = _store.SaveEncounter(encounter);
+                        // A re-parse of an already-archived fight maps to
+                        // its existing row instead of saving a duplicate.
+                        id = _store.FindEncounter(
+                                encounter.SourceId, encounter.OwnerName,
+                                encounter.StartTime, encounter.EndTime, encounter.Title)
+                            ?? _store.SaveEncounter(encounter);
                         _inParser.Add(id);
                     }
                     _storedIds.Add(encounter, new StrongBox<long>(id));
@@ -73,6 +78,8 @@ public sealed class HistoryService : IDisposable
         lock (_gate)
         {
             var now = DateTimeOffset.Now;
+            // Heal archives from before the duplicate-save guard existed.
+            _store.RemoveDuplicateEncounters();
             _store.PruneTrashBefore(now.AddDays(-Math.Max(1, trashDays)));
             var recent = _store
                 .SearchEncounters(since: now.AddDays(-Math.Max(1, bossDays)), bossOnly: true, limit: MaxRestoredFights)

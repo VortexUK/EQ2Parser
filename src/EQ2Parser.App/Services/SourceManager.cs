@@ -94,8 +94,12 @@ public sealed class SourceManager : IDisposable
     {
         foreach (var saved in Settings.Sources)
         {
+            // "Parse existing" is a one-time backfill at add time. On
+            // restart the archive already holds that history — re-chewing
+            // the log would duplicate every fight — so saved sources always
+            // resume as live tails.
             if (System.IO.File.Exists(saved.Path))
-                Add(saved.Path, saved.ParseFromStart);
+                Add(saved.Path, parseFromStart: false);
         }
     }
 

@@ -333,6 +333,40 @@ public sealed class HistoryStore : IDisposable
         return encounter;
     }
 
+    /// <summary>The identity a re-parse reproduces exactly: same log, same
+    /// owner, same fight window, same title. Returns the stored id when the
+    /// fight is already archived — the duplicate-save guard.</summary>
+    public long? FindEncounter(string sourceId, string owner, DateTimeOffset start, DateTimeOffset end, string title)
+    {
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT id FROM encounters
+            WHERE source_id = $source AND owner = $owner AND start_ts = $start AND end_ts = $end AND title = $title
+            LIMIT 1;
+            """;
+        cmd.Parameters.AddWithValue("$source", sourceId);
+        cmd.Parameters.AddWithValue("$owner", owner);
+        cmd.Parameters.AddWithValue("$start", start.ToUnixTimeSeconds());
+        cmd.Parameters.AddWithValue("$end", end.ToUnixTimeSeconds());
+        cmd.Parameters.AddWithValue("$title", title);
+        return cmd.ExecuteScalar() is long id ? id : null;
+    }
+
+    /// <summary>One-time repair for archives that accumulated re-parse
+    /// duplicates before the save guard existed: keeps the oldest row of
+    /// each identity. Returns rows removed.</summary>
+    public int RemoveDuplicateEncounters()
+    {
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = """
+            DELETE FROM encounters WHERE id NOT IN (
+                SELECT MIN(id) FROM encounters
+                GROUP BY source_id, owner, start_ts, end_ts, title
+            );
+            """;
+        return cmd.ExecuteNonQuery();
+    }
+
     /// <summary>Retention sweep for TRASH only: named (boss) fights stay in
     /// the archive until explicitly purged. Returns rows removed.</summary>
     public int PruneTrashBefore(DateTimeOffset cutoff)
