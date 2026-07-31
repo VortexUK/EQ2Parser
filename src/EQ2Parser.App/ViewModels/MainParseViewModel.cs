@@ -823,6 +823,20 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 ($"{avoided,4} / {attempts,-4}  {100.0 * avoided / attempts,6:F1}%   ", ClassColors.TreeText),
                 ("100%".PadLeft(8), ClassColors.Neutral),
                 (CombatantRow.Compact(avoidedEst).PadLeft(15), ClassColors.OutcomeWin));
+            var withStoneskin = avoided + stoneskin;
+            ReportLine(
+                ("INCL. STONESKIN".PadRight(28), ClassColors.TreeHeader),
+                ($"{withStoneskin,4} / {attempts,-4}  {100.0 * withStoneskin / attempts,6:F1}%   ", ClassColors.TreeText),
+                ("".PadLeft(8), ClassColors.Neutral),
+                (CombatantRow.Compact(avoidedEst + stoneskin * avgHit).PadLeft(15), ClassColors.TreeHeader),
+                ("   (ACT counts stoneskins as avoids)", ClassColors.Neutral));
+            var notLanded = attempts - hitCount;
+            ReportLine(
+                ("NOT LANDED".PadRight(28), ClassColors.SourceRaid),
+                ($"{notLanded,4} / {attempts,-4}  {100.0 * notLanded / attempts,6:F1}%   ", ClassColors.TreeText),
+                ("".PadLeft(8), ClassColors.Neutral),
+                (CombatantRow.Compact(avoidedEst + stoneskin * avgHit + wardedTotal).PadLeft(15), ClassColors.SourceRaid),
+                ("   (avoids + stoneskin + warded)", ClassColors.Neutral));
 
             OpenReport($"{context} › avoidance report");
 
