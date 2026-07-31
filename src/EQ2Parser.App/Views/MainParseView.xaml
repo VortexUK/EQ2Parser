@@ -408,7 +408,7 @@
                 </Grid>
 
                 <!-- Swing list (depth 3) -->
-                <Grid Grid.Row="2" Visibility="{Binding SwingLevel, Converter={StaticResource BoolToVis}}">
+                <Grid Grid.Row="2" Visibility="{Binding SwingTableVisible, Converter={StaticResource BoolToVis}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
@@ -450,7 +450,12 @@
                             </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:SwingRow}">
-                                    <Grid>
+                                    <Grid Cursor="Hand" Background="Transparent">
+                                        <Grid.InputBindings>
+                                            <MouseBinding MouseAction="LeftClick"
+                                                          Command="{Binding DataContext.OpenSwingLogCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          CommandParameter="{Binding}" />
+                                        </Grid.InputBindings>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="80" />
                                             <ColumnDefinition Width="100" />
@@ -477,6 +482,45 @@
                         </ListBox>
                     </Border>
                 </Grid>
+
+                <!-- Raw log view (deepest drill: one swing in context) -->
+                <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8"
+                        Visibility="{Binding LogLevel, Converter={StaticResource BoolToVis}}">
+                    <ListBox ItemsSource="{Binding LogRows}" Background="Transparent" BorderThickness="0"
+                             HorizontalContentAlignment="Stretch"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             VirtualizingPanel.IsVirtualizing="True">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="6,1" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border x:Name="Row" Background="Transparent" CornerRadius="3"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding IsFocus}" Value="True">
+                                                    <Setter TargetName="Row" Property="Background" Value="#26C8A96E" />
+                                                    <Setter TargetName="Row" Property="BorderBrush" Value="{StaticResource GoldDimBrush}" />
+                                                    <Setter TargetName="Row" Property="BorderThickness" Value="2,0,0,0" />
+                                                </DataTrigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:LogRow}">
+                                <TextBlock views:SegmentedText.Segments="{Binding Segments}"
+                                           FontFamily="Consolas" FontSize="12.5"
+                                           TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
             </Grid>
         </Grid>
     </Grid>

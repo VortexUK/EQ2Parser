@@ -86,8 +86,14 @@ public sealed partial class AbilityRow : ObservableObject
     private bool _isGroupLabel;
 }
 
-/// <summary>One swing of the deepest drill level.</summary>
-public sealed record SwingRow(string Time, string Result, string Crit, string Special, string Type, string Other);
+/// <summary>One swing of the deepest drill level. Epoch/SourcePath/Amount/
+/// Ability identify the swing so clicking it can open the raw log view.</summary>
+public sealed record SwingRow(
+    string Time, string Result, string Crit, string Special, string Type, string Other,
+    long Epoch, string SourcePath, long Amount, string Ability);
+
+/// <summary>One rendered raw-log line (colour segments + focus flag).</summary>
+public sealed record LogRow(IReadOnlyList<LogSegment> Segments, bool IsFocus);
 
 /// <summary>
 /// The ACT-style Main page: zone/fight tree on the left, sortable combatant
@@ -177,8 +183,51 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     private string? _detailAbility;
     private (string, string, string, int) _swingSignature;
 
+    [ObservableProperty]
+    private bool _logLevel;
+
+    /// <summary>The swing table shows at swing depth unless the log view is open.</summary>
+    public bool SwingTableVisible => SwingLevel && !LogLevel;
+
+    partial void OnSwingLevelChanged(bool value) => OnPropertyChanged(nameof(SwingTableVisible));
+
+    partial void OnLogLevelChanged(bool value) => OnPropertyChanged(nameof(SwingTableVisible));
+
     public ObservableCollection<AbilityRow> DrillRows { get; } = [];
     public ObservableCollection<SwingRow> SwingRows { get; } = [];
+    public ObservableCollection<LogRow> LogRows { get; } = [];
+
+    /// <summary>Deepest drill: click a swing to see the raw log around it,
+    /// with the matching line highlighted and tokens colourised.</summary>
+    [RelayCommand]
+    private void OpenSwingLog(SwingRow? row)
+    {
+        if (row is null || string.IsNullOrEmpty(row.SourcePath))
+            return;
+        LogRows.Clear();
+        var focusFound = false;
+        foreach (var raw in LogWindowReader.Read(row.SourcePath, row.Epoch, beforeSeconds: 5, afterSeconds: 5))
+        {
+            var isFocus = false;
+            if (!focusFound && LineEpoch(raw) == row.Epoch
+                && (row.Amount <= 0 || raw.Contains(row.Amount.ToString("N0"), StringComparison.Ordinal))
+                && (row.Ability == Core.Grammar.EnglishGrammar.AutoAttackAbility
+                    || raw.Contains(row.Ability, StringComparison.Ordinal)))
+            {
+                isFocus = true;
+                focusFound = true;
+            }
+            LogRows.Add(new LogRow(LogLineHighlighter.Build(raw), isFocus));
+        }
+        LogLevel = true;
+        DrillChartVisible = false;
+    }
+
+    private static long LineEpoch(string raw)
+    {
+        var close = raw.IndexOf(')');
+        return close > 1 && long.TryParse(raw.AsSpan(1, close - 1), out var epoch) ? epoch : -1;
+    }
 
     [RelayCommand]
     private void OpenDetail(CombatantRow? row)
@@ -209,6 +258,13 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [RelayCommand]
     private void CloseDetail()
     {
+        if (LogLevel)
+        {
+            LogLevel = false;
+            _drillChartKey = ("\0", null, null); // force chart rebuild
+            RefreshGrid();
+            return;
+        }
         if (_detailAbility is not null)
         {
             _detailAbility = null;
@@ -500,7 +556,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
         if (detail is not null)
         {
-            DetailTitle = detail.Title;
+            DetailTitle = LogLevel ? $"{detail.Title} › log" : detail.Title;
             DrillNameHeader = detail.NameHeader;
             SwingLevel = detail.IsSwingLevel;
             if (detail.Table is not null)
@@ -512,7 +568,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 foreach (var swing in detail.Swings)
                     SwingRows.Add(swing);
             }
-            if (detail.Chart is { } drillChart)
+            if (detail.Chart is { } drillChart && !LogLevel)
                 ApplyDrillChart(drillChart);
         }
     }
@@ -919,28 +975,28 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     /// the live buckets for the current drill depth.</summary>
     private DetailData? SnapshotDetail(object fight, string key)
     {
-        List<Combatant> instances = fight switch
+        List<(Combatant C, string Src)> instances = fight switch
         {
             Encounter encounter =>
-                encounter.Combatants.TryGetValue(key, out var c) ? [c] : [],
+                encounter.Combatants.TryGetValue(key, out var c) ? [(c, encounter.SourceId)] : [],
             CorrelatedEncounter merged =>
-                merged.MergedCombatants.TryGetValue(key, out var mc) ? [mc.Combatant] : [],
+                merged.MergedCombatants.TryGetValue(key, out var mc) ? [(mc.Combatant, mc.AuthoritySourceId)] : [],
             AggregateFights aggregate =>
                 [.. aggregate.Fights
-                    .Select(f => f.MergedCombatants.TryGetValue(key, out var mc) ? mc.Combatant : null)
-                    .Where(c => c is not null)
-                    .Select(c => c!)],
+                    .Select(f => f.MergedCombatants.TryGetValue(key, out var mc) ? ((Combatant, string)?)(mc.Combatant, mc.AuthoritySourceId) : null)
+                    .Where(t => t is not null)
+                    .Select(t => t!.Value)],
             _ => [],
         };
         if (instances.Count == 0)
             return null;
 
-        var name = instances[0].Name;
-        var detection = manager.Classifier.Identifier.Detect(instances[0]);
+        var name = instances[0].C.Name;
+        var detection = manager.Classifier.Identifier.Detect(instances[0].C);
         var cls = detection.ClassName is not null ? $" · {detection.ClassName}" : "";
-        var chartVersion = instances.Sum(c =>
-            (long)(c.OutgoingBuckets.GetValueOrDefault(BucketConfig.AllOutgoingRef)?.All.Swings.Count ?? 0)
-            + (c.IncomingBuckets.GetValueOrDefault(BucketConfig.AllIncomingRef)?.All.Swings.Count ?? 0));
+        var chartVersion = instances.Sum(t =>
+            (long)(t.C.OutgoingBuckets.GetValueOrDefault(BucketConfig.AllOutgoingRef)?.All.Swings.Count ?? 0)
+            + (t.C.IncomingBuckets.GetValueOrDefault(BucketConfig.AllIncomingRef)?.All.Swings.Count ?? 0));
         var seconds = Math.Max(1, fight switch
         {
             Encounter e => e.Duration.TotalSeconds,
@@ -962,7 +1018,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 if (bucketName == BucketConfig.IncomingDamage)
                     pendingDivider = "INCOMING";
                 var acc = new AbilityAcc();
-                foreach (var combatant in instances)
+                foreach (var (combatant, _) in instances)
                 {
                     if (FindBucket(combatant, bucketName) is not { } bucket)
                         continue;
@@ -994,7 +1050,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                     foreach (var (lineBucket, color) in DrillLineBuckets)
                     {
                         var rates = new double[window.Slots];
-                        foreach (var combatant in instances)
+                        foreach (var (combatant, _) in instances)
                         {
                             if (combatant.OutgoingBuckets.GetValueOrDefault(lineBucket) is { } b)
                                 AccumulateRates(rates, b.All.Swings, window.Start, window.BucketSeconds);
@@ -1021,7 +1077,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             foreach (var group in AutoAttackGroups)
             {
                 var acc = new AbilityAcc();
-                foreach (var combatant in instances)
+                foreach (var (combatant, _) in instances)
                 {
                     if (FindBucket(combatant, _detailBucket) is not { } bucket)
                         continue;
@@ -1053,7 +1109,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         if (_detailAbility is null)
         {
             var abilities = new Dictionary<string, AbilityAcc>(StringComparer.Ordinal);
-            foreach (var combatant in instances)
+            foreach (var (combatant, _) in instances)
             {
                 if (FindBucket(combatant, _detailBucket) is not { } bucket)
                     continue;
@@ -1095,8 +1151,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         // inside the Auto-Attack bucket).
         var title = $"{name}{cls} › {_detailBucket} › {_detailAbility}";
         var incoming = IsIncomingBucket(_detailBucket);
-        List<Core.Combat.Swing> collected = [];
-        foreach (var combatant in instances)
+        List<(Core.Combat.Swing S, string Src)> collected = [];
+        foreach (var (combatant, source) in instances)
         {
             if (FindBucket(combatant, _detailBucket) is not { } bucket)
                 continue;
@@ -1105,12 +1161,13 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 foreach (var swing in bucket.All.Swings)
                 {
                     if (swing.Ability != Combatant.KillingAbility && SwingInAutoGroup(swing, _detailAbility))
-                        collected.Add(swing);
+                        collected.Add((swing, source));
                 }
             }
             else if (bucket.Abilities.TryGetValue(_detailAbility, out var stats))
             {
-                collected.AddRange(stats.Swings);
+                foreach (var swing in stats.Swings)
+                    collected.Add((swing, source));
             }
         }
         DrillChart? heatChart = null;
@@ -1120,7 +1177,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             if (FightWindow(fight) is { } window)
             {
                 var heat = new double[window.Slots];
-                AccumulateRates(heat, collected, window.Start, window.BucketSeconds);
+                AccumulateRates(heat, collected.Select(t => t.S), window.Start, window.BucketSeconds);
                 heatChart = new DrillChart(3, null, window.BucketSeconds, null, heat);
             }
         }
@@ -1132,16 +1189,20 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
         collected.Sort((a, b) =>
         {
-            var byTime = a.Time.CompareTo(b.Time);
-            return byTime != 0 ? byTime : a.TimeSorter.CompareTo(b.TimeSorter);
+            var byTime = a.S.Time.CompareTo(b.S.Time);
+            return byTime != 0 ? byTime : a.S.TimeSorter.CompareTo(b.S.TimeSorter);
         });
-        List<SwingRow> swings = [.. collected.Select(s => new SwingRow(
-            s.Time.ToLocalTime().ToString("HH:mm:ss"),
-            s.Damage.ToString(),
-            s.Critical ? "crit" : "",
-            s.Special == "None" ? "" : s.Special,
-            s.DamageType,
-            incoming ? s.Attacker : s.Victim))];
+        List<SwingRow> swings = [.. collected.Select(t => new SwingRow(
+            t.S.Time.ToLocalTime().ToString("HH:mm:ss"),
+            t.S.Damage.ToString(),
+            t.S.Critical ? "crit" : "",
+            t.S.Special == "None" ? "" : t.S.Special,
+            t.S.DamageType,
+            incoming ? t.S.Attacker : t.S.Victim,
+            t.S.Time.ToUnixTimeSeconds(),
+            t.Src,
+            t.S.Damage.Number,
+            t.S.Ability))];
         return new DetailData(title, "ABILITY", SortTable: false, Bars: true, IsSwingLevel: true, null, swings, heatChart);
     }
 
