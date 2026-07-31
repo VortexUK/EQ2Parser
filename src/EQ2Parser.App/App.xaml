@@ -30,6 +30,9 @@
             <DataTemplate DataType="{x:Type vm:TimersViewModel}">
                 <views:TimersView />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:OverlaysViewModel}">
+                <views:OverlaysView />
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
                 <views:SettingsView />
             </DataTemplate>

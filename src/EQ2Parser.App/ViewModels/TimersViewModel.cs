@@ -97,7 +97,6 @@ public sealed partial class TimerBarRow : ObservableObject
 public sealed partial class TimersViewModel : ObservableObject
 {
     private readonly SourceManager _manager;
-    private readonly OverlayController _overlay;
     private string? _editingKey;
 
     /// <summary>Flat virtualized tree: CategoryRow headers with TimerDefRow
@@ -107,14 +106,9 @@ public sealed partial class TimersViewModel : ObservableObject
 
     private readonly HashSet<string> _expandedCategories = new(StringComparer.OrdinalIgnoreCase);
 
-    public TimersViewModel(SourceManager manager, OverlayController overlay)
+    public TimersViewModel(SourceManager manager)
     {
         _manager = manager;
-        _overlay = overlay;
-        _overlayVisible = manager.Settings.OverlayVisible;
-        _overlayLocked = manager.Settings.OverlayLocked;
-        overlay.VisibleChanged += v => SetProperty(ref _overlayVisible, v, nameof(OverlayVisible));
-        overlay.LockChanged += v => SetProperty(ref _overlayLocked, v, nameof(OverlayLocked));
         RebuildRows();
     }
 
@@ -476,24 +470,6 @@ public sealed partial class TimersViewModel : ObservableObject
             RebuildRows();
         }
     }
-
-    // ---- overlay controls ----
-
-    [ObservableProperty]
-    private bool _overlayVisible;
-
-    [ObservableProperty]
-    private bool _overlayLocked;
-
-    partial void OnOverlayVisibleChanged(bool value)
-    {
-        if (value)
-            _overlay.Show();
-        else
-            _overlay.Hide();
-    }
-
-    partial void OnOverlayLockedChanged(bool value) => _overlay.SetLocked(value);
 
     // ---- live preview (driven by the shell tick while this page is visible) ----
 

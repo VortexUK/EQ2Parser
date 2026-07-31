@@ -1,0 +1,76 @@
+<UserControl x:Class="EQ2Parser.App.Views.TimerPanelContent"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <ItemsControl x:Name="Bars">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Grid Margin="0,1.5">
+                        <Border Height="21" CornerRadius="4" Background="#521A1D2C" />
+                        <Border Height="21" CornerRadius="4" Background="{Binding BarBrush}"
+                                Opacity="0.6" RenderTransformOrigin="0,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform ScaleX="{Binding Fraction}" />
+                            </Border.RenderTransform>
+                        </Border>
+                        <!-- Warning shimmer: the bar pulses while inside the
+                             warning window. -->
+                        <Border Height="21" CornerRadius="4" Background="#66F87171">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Opacity" Value="0" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard x:Name="Pulse">
+                                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                         From="0.05" To="0.55" Duration="0:0:0.45" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <StopStoryboard BeginStoryboardName="Pulse" />
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                        </Border>
+                        <Grid Margin="7,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding Label}" FontSize="12" Foreground="#F0F2FA"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                       FontFamily="Segoe UI">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                                </TextBlock.Effect>
+                            </TextBlock>
+                            <TextBlock Grid.Column="1" Text="{Binding SecondsText}" FontSize="12"
+                                       VerticalAlignment="Center" FontFamily="Consolas" FontWeight="Bold">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#E2E4F0" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                                <Setter Property="Foreground" Value="#F87171" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                                <TextBlock.Effect>
+                                    <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                                </TextBlock.Effect>
+                            </TextBlock>
+                        </Grid>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock x:Name="EmptyHint" Text="Timer bars appear here when a timer fires."
+                   FontSize="11" Foreground="#8B90AB" Margin="1,2" FontFamily="Segoe UI" />
+    </StackPanel>
+</UserControl>

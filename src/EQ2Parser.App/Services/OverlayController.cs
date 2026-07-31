@@ -2,64 +2,104 @@ using EQ2Parser.App.Views;
 
 namespace EQ2Parser.App.Services;
 
+public enum OverlayKind
+{
+    MiniParse = 0,
+    TimerA = 1,
+    TimerB = 2,
+}
+
 /// <summary>
-/// Owns the in-game overlay window: show/hide, the locked (click-through)
-/// state, and persisting position + visibility across sessions.
+/// Owns the in-game overlay windows (mini parse + the two timer panels):
+/// show/hide, lock (click-through), and live-applied appearance settings —
+/// everything persisted per window.
 /// </summary>
 public sealed class OverlayController(SourceManager manager)
 {
-    private OverlayWindow? _window;
+    private readonly Dictionary<OverlayKind, OverlayShellWindow> _windows = [];
 
-    /// <summary>Keep the Timers page toggles honest when the overlay's own
-    /// buttons (lock, close) change state.</summary>
-    public event Action<bool>? VisibleChanged;
-    public event Action<bool>? LockChanged;
+    /// <summary>Raised when any kind's settings change — the Overlays page
+    /// mirrors its controls off this.</summary>
+    public event Action<OverlayKind>? SettingsChanged;
 
-    public void Show()
+    public OverlayWindowSettings GetSettings(OverlayKind kind) => kind switch
     {
-        if (_window is null)
+        OverlayKind.MiniParse => manager.Settings.MiniParseOverlay ?? new OverlayWindowSettings(),
+        OverlayKind.TimerB => manager.Settings.TimerOverlayB ?? new OverlayWindowSettings(),
+        // Panel A inherits the legacy single-overlay fields on first run.
+        _ => manager.Settings.TimerOverlayA ?? new OverlayWindowSettings
         {
-            _window = new OverlayWindow(manager, this);
-            _window.Closed += (_, _) => _window = null;
-            _window.Show();
+            Visible = manager.Settings.OverlayVisible,
+            Locked = manager.Settings.OverlayLocked,
+            Left = manager.Settings.OverlayLeft,
+            Top = manager.Settings.OverlayTop,
+        },
+    };
+
+    /// <summary>Persist a settings change and push it onto the live window.</summary>
+    public void Update(OverlayKind kind, Func<OverlayWindowSettings, OverlayWindowSettings> change)
+    {
+        var updated = change(GetSettings(kind));
+        manager.Settings = kind switch
+        {
+            OverlayKind.MiniParse => manager.Settings with { MiniParseOverlay = updated },
+            OverlayKind.TimerB => manager.Settings with { TimerOverlayB = updated },
+            _ => manager.Settings with { TimerOverlayA = updated },
+        };
+        manager.Settings.Save();
+        if (_windows.TryGetValue(kind, out var window))
+            window.Apply(updated);
+        SettingsChanged?.Invoke(kind);
+    }
+
+    public void Show(OverlayKind kind)
+    {
+        if (!_windows.ContainsKey(kind))
+        {
+            var settings = GetSettings(kind);
+            System.Windows.Controls.UserControl content = kind switch
+            {
+                OverlayKind.MiniParse => new MiniParseContent(manager),
+                OverlayKind.TimerB => new TimerPanelContent(manager, panel: 2),
+                _ => new TimerPanelContent(manager, panel: 1),
+            };
+            var title = kind switch
+            {
+                OverlayKind.MiniParse => "MINI PARSE — drag, then lock",
+                OverlayKind.TimerB => "TIMERS B — drag, then lock",
+                _ => "TIMERS — drag, then lock",
+            };
+            var window = new OverlayShellWindow(this, kind, title, content, settings);
+            window.Closed += (_, _) => _windows.Remove(kind);
+            _windows[kind] = window;
+            window.Show();
         }
-        Persist(visible: true);
-        VisibleChanged?.Invoke(true);
+        Update(kind, s => s with { Visible = true });
     }
 
-    public void Hide()
+    public void Hide(OverlayKind kind)
     {
-        _window?.Close();
-        _window = null;
-        Persist(visible: false);
-        VisibleChanged?.Invoke(false);
+        if (_windows.TryGetValue(kind, out var window))
+        {
+            _windows.Remove(kind);
+            window.Close();
+        }
+        Update(kind, s => s with { Visible = false });
     }
 
-    public void SetLocked(bool locked)
-    {
-        _window?.ApplyLock(locked);
-        manager.Settings = manager.Settings with { OverlayLocked = locked };
-        manager.Settings.Save();
-        LockChanged?.Invoke(locked);
-    }
+    public void SetLocked(OverlayKind kind, bool locked) =>
+        Update(kind, s => s with { Locked = locked });
 
-    /// <summary>Called by the window after a drag so position survives.</summary>
-    public void SavePosition(double left, double top)
-    {
-        manager.Settings = manager.Settings with { OverlayLeft = left, OverlayTop = top };
-        manager.Settings.Save();
-    }
+    public void SavePosition(OverlayKind kind, double left, double top) =>
+        Update(kind, s => s with { Left = left, Top = top });
 
-    private void Persist(bool visible)
-    {
-        manager.Settings = manager.Settings with { OverlayVisible = visible };
-        manager.Settings.Save();
-    }
-
-    /// <summary>Restore the overlay at startup if it was open last session.</summary>
+    /// <summary>Restore whichever overlays were open last session.</summary>
     public void RestoreFromSettings()
     {
-        if (manager.Settings.OverlayVisible)
-            Show();
+        foreach (var kind in Enum.GetValues<OverlayKind>())
+        {
+            if (GetSettings(kind).Visible)
+                Show(kind);
+        }
     }
 }

@@ -10,6 +10,21 @@ namespace EQ2Parser.App.Services;
 /// folder watcher (not RestoreFromSettings) re-adds them when active.</summary>
 public sealed record SourceSetting(string Path, bool ParseFromStart, long? LastPosition = null, bool AutoDiscovered = false);
 
+/// <summary>One overlay window's persisted shape. Null position = the
+/// default spot on the primary screen. MaxItems = rows (mini parse) or
+/// bars (timer panels).</summary>
+public sealed record OverlayWindowSettings
+{
+    public bool Visible { get; init; }
+    public bool Locked { get; init; }
+    public double? Left { get; init; }
+    public double? Top { get; init; }
+    public double Width { get; init; } = 280;
+    public double Opacity { get; init; } = 0.95;
+    public double Scale { get; init; } = 1.0;
+    public int MaxItems { get; init; } = 10;
+}
+
 /// <summary>Persisted app settings — %LocalAppData%\EQ2Parser\settings.json.</summary>
 public sealed record AppSettings
 {
@@ -37,11 +52,21 @@ public sealed record AppSettings
     public double TtsRate { get; init; } = 1.0;
     public double AlertVolume { get; init; } = 1.0;
 
-    // In-game timer overlay: null position = top-right of the primary screen.
+    // Legacy single-overlay fields (pre-Overlays-page) — migrated into
+    // TimerOverlayA on load, never written again.
     public bool OverlayVisible { get; init; }
     public bool OverlayLocked { get; init; }
     public double? OverlayLeft { get; init; }
     public double? OverlayTop { get; init; }
+
+    // The three overlay windows. Null = never configured (defaults apply,
+    // seeded from the legacy fields for timer panel A).
+    public OverlayWindowSettings? MiniParseOverlay { get; init; }
+    public OverlayWindowSettings? TimerOverlayA { get; init; }
+    public OverlayWindowSettings? TimerOverlayB { get; init; }
+
+    /// <summary>Mini parse metric: DPS, HPS, or Tanking (damage taken).</summary>
+    public string MiniParseMetric { get; init; } = "DPS";
 
     public static string Directory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EQ2Parser");

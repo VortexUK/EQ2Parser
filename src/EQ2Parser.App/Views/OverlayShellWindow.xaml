@@ -1,0 +1,47 @@
+<Window x:Class="EQ2Parser.App.Views.OverlayShellWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        SizeToContent="Height"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False" ShowActivated="False" ResizeMode="NoResize">
+    <!-- Glass card: layered fills + gold hairline; the whole thing fades to
+         nothing while locked with no content. -->
+    <Border x:Name="Root" CornerRadius="10" MouseLeftButtonDown="Root_MouseDown">
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#D40E1018" Offset="0" />
+                <GradientStop Color="#C60B0D14" Offset="1" />
+            </LinearGradientBrush>
+        </Border.Background>
+        <Border.Effect>
+            <DropShadowEffect ShadowDepth="0" BlurRadius="14" Color="#000000" Opacity="0.55" />
+        </Border.Effect>
+        <Border x:Name="Hairline" CornerRadius="10" BorderThickness="1" Padding="9">
+            <StackPanel>
+                <!-- Header: drag handle + lock/close while unlocked; a slim
+                     title line stays when locked (it reads as part of the HUD). -->
+                <Grid x:Name="HeaderRow" Margin="1,0,1,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="TitleText" FontFamily="{StaticResource HeadingFont}" FontSize="12"
+                               Foreground="#C8A96E" VerticalAlignment="Center">
+                        <TextBlock.Effect>
+                            <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                        </TextBlock.Effect>
+                    </TextBlock>
+                    <Button x:Name="LockButton" Grid.Column="1" Content="🔒" FontSize="11" Padding="6,1" Margin="6,0,0,0"
+                            Background="Transparent" BorderThickness="0" Foreground="#C8A96E" Cursor="Hand"
+                            ToolTip="Lock: click-through, chrome hidden (unlock from the Overlays page)"
+                            Click="Lock_Click" />
+                    <Button x:Name="CloseButton" Grid.Column="2" Content="✕" FontSize="11" Padding="6,1" Margin="2,0,0,0"
+                            Background="Transparent" BorderThickness="0" Foreground="#8B90AB" Cursor="Hand"
+                            ToolTip="Hide this overlay" Click="Close_Click" />
+                </Grid>
+                <ContentPresenter x:Name="Host" />
+            </StackPanel>
+        </Border>
+    </Border>
+</Window>

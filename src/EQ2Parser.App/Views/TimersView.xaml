@@ -179,20 +179,6 @@
             <StackPanel>
                 <Border Style="{StaticResource Card}" Padding="14">
                     <StackPanel>
-                        <TextBlock Text="In-game overlay" Style="{StaticResource SectionLabel}" />
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                            <ToggleButton Style="{StaticResource PillToggle}" Content="Show overlay"
-                                          IsChecked="{Binding OverlayVisible}" />
-                            <ToggleButton Style="{StaticResource PillToggle}" Content="Lock (click-through)"
-                                          IsChecked="{Binding OverlayLocked}" Margin="8,0,0,0" />
-                        </StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"
-                                   Text="Unlocked: drag the overlay anywhere over the game, then lock it — locked it ignores clicks entirely and hides itself while no timer runs." />
-                    </StackPanel>
-                </Border>
-
-                <Border Style="{StaticResource Card}" Padding="14" Margin="0,12,0,0">
-                    <StackPanel>
                         <TextBlock Text="{Binding EditorTitle}" Style="{StaticResource SectionLabel}" />
 
                         <TextBlock Text="Name (matches the ability / trigger timer name)" Style="{StaticResource MutedText}"

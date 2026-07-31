@@ -1,0 +1,69 @@
+<UserControl x:Class="EQ2Parser.App.Views.MiniParseContent"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <!-- Fight header: title left (Cinzel), metric + duration right. -->
+        <Grid Margin="1,0,1,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="FightTitle" FontFamily="{StaticResource HeadingFont}" FontSize="13"
+                       Foreground="#E8D5A3" TextTrimming="CharacterEllipsis">
+                <TextBlock.Effect>
+                    <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                </TextBlock.Effect>
+            </TextBlock>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="MetricText" FontSize="10" Foreground="#8B90AB" FontFamily="Segoe UI"
+                           VerticalAlignment="Center" Margin="8,1,0,0" />
+                <TextBlock x:Name="DurationText" FontSize="12" Foreground="#C8A96E" FontFamily="Consolas"
+                           FontWeight="Bold" Margin="8,0,0,0" />
+            </StackPanel>
+        </Grid>
+        <Rectangle Height="1" Fill="#3AC8A96E" Margin="0,0,0,4" />
+
+        <ItemsControl x:Name="RowsHost">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Grid Margin="0,1">
+                        <Border Height="20" CornerRadius="4" Background="#3D141724" />
+                        <Border Height="20" CornerRadius="4" Background="{Binding BarBrush}"
+                                Opacity="0.42" RenderTransformOrigin="0,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform ScaleX="{Binding Fraction}" />
+                            </Border.RenderTransform>
+                        </Border>
+                        <Grid Margin="6,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding RankText}" FontSize="10" Foreground="#697091"
+                                       VerticalAlignment="Center" FontFamily="Consolas" />
+                            <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12"
+                                       Foreground="{Binding NameBrush}" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" FontFamily="Segoe UI" FontWeight="SemiBold">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                                </TextBlock.Effect>
+                            </TextBlock>
+                            <TextBlock Grid.Column="2" Text="{Binding ValueText}" FontSize="12" Foreground="#F0F2FA"
+                                       VerticalAlignment="Center" FontFamily="Consolas" FontWeight="Bold">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                                </TextBlock.Effect>
+                            </TextBlock>
+                            <TextBlock Grid.Column="3" Text="{Binding ShareText}" FontSize="10" Foreground="#8B90AB"
+                                       VerticalAlignment="Center" FontFamily="Consolas" Margin="7,1,0,0" />
+                        </Grid>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock x:Name="EmptyHint" Text="The current fight's meter appears here."
+                   FontSize="11" Foreground="#8B90AB" Margin="1,2" FontFamily="Segoe UI" />
+    </StackPanel>
+</UserControl>

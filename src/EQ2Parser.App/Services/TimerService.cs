@@ -141,18 +141,17 @@ public sealed class TimerService
         }
     }
 
-    /// <summary>Every active timer as an immutable bar snapshot, soonest
-    /// expiry first.</summary>
-    public List<TimerBarSnapshot> Snapshot(DateTimeOffset now)
+    /// <summary>Every active timer routed to the given panel (1 or 2) as an
+    /// immutable bar snapshot, soonest expiry first. A timer can be
+    /// sound-only (both panels off) — it still fires its events.</summary>
+    public List<TimerBarSnapshot> Snapshot(DateTimeOffset now, int panel = 1)
     {
         List<TimerBarSnapshot> bars = [];
         lock (_sync)
         {
             foreach (var frame in Service.Frames)
             {
-                // Panel A gates the visible bars (ACT: a timer can be
-                // sound-only, Panel1=false — it still fires its events).
-                if (!frame.Definition.Panel1)
+                if (!(panel == 2 ? frame.Definition.Panel2 : frame.Definition.Panel1))
                     continue;
                 foreach (var timer in frame.Timers)
                 {

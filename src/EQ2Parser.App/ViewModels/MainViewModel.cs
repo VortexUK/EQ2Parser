@@ -17,6 +17,7 @@ public sealed partial class MainViewModel : ObservableObject
     public SourcesViewModel Sources { get; }
     public TriggersViewModel Triggers { get; }
     public TimersViewModel Timers { get; }
+    public OverlaysViewModel Overlays { get; }
     public SettingsViewModel Settings { get; }
 
     public IReadOnlyList<NavItem> NavItems { get; }
@@ -30,7 +31,8 @@ public sealed partial class MainViewModel : ObservableObject
         Main = new MainParseViewModel(manager);
         Sources = new SourcesViewModel(manager);
         Triggers = new TriggersViewModel(manager);
-        Timers = new TimersViewModel(manager, overlay);
+        Timers = new TimersViewModel(manager);
+        Overlays = new OverlaysViewModel(manager, overlay);
         Settings = new SettingsViewModel(manager);
 
         NavItems =
@@ -39,6 +41,7 @@ public sealed partial class MainViewModel : ObservableObject
             new NavItem("Sources", Sources),
             new NavItem("Triggers", Triggers),
             new NavItem("Timers", Timers),
+            new NavItem("Overlays", Overlays),
             new NavItem("Settings", Settings),
         ];
         _selectedItem = NavItems[0];
