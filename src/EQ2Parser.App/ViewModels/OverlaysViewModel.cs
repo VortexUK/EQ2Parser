@@ -14,12 +14,18 @@ public sealed partial class OverlayConfigVm : ObservableObject
     public string Title { get; }
     public string ItemsLabel { get; }
 
+    /// <summary>Timer panels cap their bars with a slider; mini parses are
+    /// grip-resized instead (rows auto-fit the height).</summary>
+    public bool HasMaxItems { get; }
+    public bool IsResizable => !HasMaxItems;
+
     public OverlayConfigVm(OverlayController controller, OverlayKind kind, string title, string itemsLabel)
     {
         _controller = controller;
         _kind = kind;
         Title = title;
         ItemsLabel = itemsLabel;
+        HasMaxItems = !OverlayController.IsResizable(kind);
         SyncFrom(controller.GetSettings(kind));
         controller.SettingsChanged += changed =>
         {
@@ -108,36 +114,23 @@ public sealed partial class OverlayConfigVm : ObservableObject
     }
 }
 
-/// <summary>The Overlays page: the mini parse meter and both timer panels,
-/// each fully configurable with instant visual feedback.</summary>
-public sealed partial class OverlaysViewModel : ObservableObject
+/// <summary>The Overlays page: three mini parse meters (DPS, healing,
+/// tanking — run any combination) and both timer panels, each fully
+/// configurable with instant visual feedback.</summary>
+public sealed class OverlaysViewModel
 {
-    private readonly SourceManager _manager;
-
-    public OverlayConfigVm MiniParse { get; }
-    public OverlayConfigVm TimerA { get; }
-    public OverlayConfigVm TimerB { get; }
-
-    public IReadOnlyList<string> MetricChoices { get; } = ["DPS", "HPS", "Tanking"];
-
-    [ObservableProperty]
-    private int _metricIndex;
+    public IReadOnlyList<OverlayConfigVm> Cards { get; }
 
     public OverlaysViewModel(SourceManager manager, OverlayController overlay)
     {
-        _manager = manager;
-        MiniParse = new OverlayConfigVm(overlay, OverlayKind.MiniParse, "Mini parse", "rows");
-        TimerA = new OverlayConfigVm(overlay, OverlayKind.TimerA, "Timer panel A", "bars");
-        TimerB = new OverlayConfigVm(overlay, OverlayKind.TimerB, "Timer panel B", "bars");
-        _metricIndex = Math.Max(0, MetricChoices.ToList().IndexOf(manager.Settings.MiniParseMetric));
-    }
-
-    partial void OnMetricIndexChanged(int value)
-    {
-        _manager.Settings = _manager.Settings with
-        {
-            MiniParseMetric = MetricChoices[Math.Clamp(value, 0, MetricChoices.Count - 1)],
-        };
-        _manager.Settings.Save();
+        _ = manager;
+        Cards =
+        [
+            new OverlayConfigVm(overlay, OverlayKind.MiniParseDps, "DPS meter", "rows"),
+            new OverlayConfigVm(overlay, OverlayKind.MiniParseHps, "Healing meter", "rows"),
+            new OverlayConfigVm(overlay, OverlayKind.MiniParseTank, "Tanking meter", "rows"),
+            new OverlayConfigVm(overlay, OverlayKind.TimerA, "Timer panel A", "bars"),
+            new OverlayConfigVm(overlay, OverlayKind.TimerB, "Timer panel B", "bars"),
+        ];
     }
 }

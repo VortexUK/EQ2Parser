@@ -19,10 +19,15 @@ public interface IOverlayContent
 /// The shared in-game overlay chrome: frameless glass card, topmost,
 /// never-activating, draggable while unlocked, WS_EX_TRANSPARENT
 /// click-through while locked, with opacity/scale/width applied live from
-/// settings. Hosts a content control (timer bars, mini parse) and ticks it.
+/// settings. Timer panels auto-size to their bars; mini parses are
+/// grip-resizable (minimum 220×140) and their rows fill the space.
 /// </summary>
 public partial class OverlayShellWindow
 {
+    private const double MinOverlayWidth = 220;
+    private const double MinOverlayHeight = 140;
+    private const double DefaultResizableHeight = 260;
+
     private const int GwlExstyle = -20;
     private const int WsExTransparent = 0x20;
     private const int WsExNoActivate = 0x08000000;
@@ -37,6 +42,7 @@ public partial class OverlayShellWindow
     private readonly OverlayController _controller;
     private readonly OverlayKind _kind;
     private readonly IOverlayContent _content;
+    private readonly bool _resizable;
     private readonly DispatcherTimer _tick;
     private bool _locked;
 
@@ -46,9 +52,14 @@ public partial class OverlayShellWindow
         _controller = controller;
         _kind = kind;
         _content = (IOverlayContent)content;
+        _resizable = OverlayController.IsResizable(kind);
         InitializeComponent();
         TitleText.Text = title;
         Host.Content = content;
+
+        SizeToContent = _resizable ? SizeToContent.Manual : SizeToContent.Height;
+        if (_resizable)
+            Height = settings.Height ?? DefaultResizableHeight;
 
         if (settings is { Left: { } left, Top: { } top })
         {
@@ -57,8 +68,8 @@ public partial class OverlayShellWindow
         }
         else
         {
-            Left = SystemParameters.WorkArea.Right - settings.Width - 40 - 320 * (int)kind;
-            Top = SystemParameters.WorkArea.Top + 120;
+            Left = SystemParameters.WorkArea.Right - settings.Width - 40 - 320 * ((int)kind % 3);
+            Top = SystemParameters.WorkArea.Top + 120 + 90 * ((int)kind / 3);
         }
 
         SourceInitialized += (_, _) =>
@@ -89,6 +100,8 @@ public partial class OverlayShellWindow
     public void Apply(OverlayWindowSettings settings)
     {
         Width = settings.Width;
+        if (_resizable)
+            Height = settings.Height ?? DefaultResizableHeight;
         Opacity = settings.Opacity;
         Root.LayoutTransform = settings.Scale is > 0.99 and < 1.01
             ? null
@@ -96,6 +109,7 @@ public partial class OverlayShellWindow
 
         _locked = settings.Locked;
         HeaderRow.Visibility = _locked ? Visibility.Collapsed : Visibility.Visible;
+        ResizeGrip.Visibility = _resizable && !_locked ? Visibility.Visible : Visibility.Collapsed;
         Hairline.BorderBrush = _locked
             ? Brushes.Transparent
             : new SolidColorBrush(Color.FromArgb(0x5A, 0xC8, 0xA9, 0x6E));
@@ -115,6 +129,18 @@ public partial class OverlayShellWindow
         DragMove();
         _controller.SavePosition(_kind, Left, Top);
     }
+
+    private void ResizeGrip_DragDelta(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
+    {
+        // Scale affects visual size; divide the mouse delta back out so the
+        // corner tracks the cursor.
+        var scale = Root.LayoutTransform is ScaleTransform t ? t.ScaleX : 1.0;
+        Width = Math.Clamp(Width + e.HorizontalChange / scale, MinOverlayWidth, 900);
+        Height = Math.Clamp(Height + e.VerticalChange / scale, MinOverlayHeight, 1200);
+    }
+
+    private void ResizeGrip_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e) =>
+        _controller.SaveSize(_kind, Width, Height);
 
     private void Lock_Click(object sender, RoutedEventArgs e) => _controller.SetLocked(_kind, true);
 

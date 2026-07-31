@@ -47,12 +47,18 @@
                         <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding WidthLabel}" Foreground="{StaticResource GoldBrush}"
                                    FontSize="11" VerticalAlignment="Center" TextAlignment="Right" />
 
-                        <TextBlock Grid.Row="3" Text="{Binding ItemsLabel}" Style="{StaticResource MutedText}" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="3" Text="{Binding ItemsLabel}" Style="{StaticResource MutedText}" FontSize="12" VerticalAlignment="Center"
+                                   Visibility="{Binding HasMaxItems, Converter={StaticResource BoolToVis}}" />
                         <Slider Grid.Row="3" Grid.Column="1" Minimum="3" Maximum="25" Value="{Binding MaxItems}"
-                                IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center" Margin="0,4" />
+                                IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center" Margin="0,4"
+                                Visibility="{Binding HasMaxItems, Converter={StaticResource BoolToVis}}" />
                         <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding MaxItemsLabel}" Foreground="{StaticResource GoldBrush}"
-                                   FontSize="11" VerticalAlignment="Center" TextAlignment="Right" />
+                                   FontSize="11" VerticalAlignment="Center" TextAlignment="Right"
+                                   Visibility="{Binding HasMaxItems, Converter={StaticResource BoolToVis}}" />
                     </Grid>
+                    <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"
+                               Text="Drag the corner grip to resize — rows fill the space (fit the whole raid for streaming)."
+                               Visibility="{Binding IsResizable, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -65,21 +71,16 @@
                        HorizontalAlignment="Left" Margin="0,0,0,14"
                        Text="In-game windows that float over EQ2. Show one, drag it into place, then lock it — locked overlays are click-through, never steal focus, and vanish entirely while they have nothing to say. Every change here applies to the live window instantly." />
 
-            <WrapPanel>
-                <ContentControl Content="{Binding MiniParse}" ContentTemplate="{StaticResource OverlayCard}" />
-                <ContentControl Content="{Binding TimerA}" ContentTemplate="{StaticResource OverlayCard}" />
-                <ContentControl Content="{Binding TimerB}" ContentTemplate="{StaticResource OverlayCard}" />
-            </WrapPanel>
-
-            <Border Style="{StaticResource Card}" Padding="14" Width="300" HorizontalAlignment="Left">
-                <StackPanel>
-                    <TextBlock Text="Mini parse metric" Style="{StaticResource SectionLabel}" />
-                    <ComboBox ItemsSource="{Binding MetricChoices}" SelectedIndex="{Binding MetricIndex}"
-                              Margin="0,8,0,0" Width="140" HorizontalAlignment="Left" FontSize="13" />
-                    <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
-                               Text="DPS, healing, or damage taken. Timers route to panel A or B per timer (the panel checkboxes in each timer's editor)." />
-                </StackPanel>
-            </Border>
+            <ItemsControl ItemsSource="{Binding Cards}" ItemTemplate="{StaticResource OverlayCard}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap" MaxWidth="640"
+                       HorizontalAlignment="Left"
+                       Text="Run any combination — all three meters at once if you like. Timers route to panel A or B per timer (the panel checkboxes in each timer's editor)." />
         </StackPanel>
     </ScrollViewer>
 </UserControl>

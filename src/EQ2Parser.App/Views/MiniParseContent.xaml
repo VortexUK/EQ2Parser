@@ -1,7 +1,12 @@
 <UserControl x:Class="EQ2Parser.App.Views.MiniParseContent"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <StackPanel>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <StackPanel>
         <!-- Fight header: title left (Cinzel), metric + duration right. -->
         <Grid Margin="1,0,1,4">
             <Grid.ColumnDefinitions>
@@ -22,8 +27,9 @@
             </StackPanel>
         </Grid>
         <Rectangle Height="1" Fill="#3AC8A96E" Margin="0,0,0,4" />
+        </StackPanel>
 
-        <ItemsControl x:Name="RowsHost">
+        <ItemsControl x:Name="RowsHost" Grid.Row="1">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Grid Margin="0,1">
@@ -43,9 +49,9 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="{Binding RankText}" FontSize="10" Foreground="#697091"
                                        VerticalAlignment="Center" FontFamily="Consolas" />
-                            <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12"
-                                       Foreground="{Binding NameBrush}" VerticalAlignment="Center"
-                                       TextTrimming="CharacterEllipsis" FontFamily="Segoe UI" FontWeight="SemiBold">
+                            <TextBlock Grid.Column="1" FontSize="12" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" FontFamily="Segoe UI">
+                                <Run Text="{Binding Name, Mode=OneWay}" Foreground="{Binding NameBrush}" FontWeight="SemiBold" /><Run Text="{Binding ClassText, Mode=OneWay}" Foreground="#8B90AB" FontSize="10" />
                                 <TextBlock.Effect>
                                     <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
                                 </TextBlock.Effect>
@@ -63,7 +69,7 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <TextBlock x:Name="EmptyHint" Text="The current fight's meter appears here."
-                   FontSize="11" Foreground="#8B90AB" Margin="1,2" FontFamily="Segoe UI" />
-    </StackPanel>
+        <TextBlock x:Name="EmptyHint" Grid.Row="1" Text="The current fight's meter appears here."
+                   FontSize="11" Foreground="#8B90AB" Margin="1,2" FontFamily="Segoe UI" VerticalAlignment="Top" />
+    </Grid>
 </UserControl>

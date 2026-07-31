@@ -20,6 +20,8 @@ public sealed record OverlayWindowSettings
     public double? Left { get; init; }
     public double? Top { get; init; }
     public double Width { get; init; } = 280;
+    /// <summary>Only for resizable overlays (mini parses) — null = default.</summary>
+    public double? Height { get; init; }
     public double Opacity { get; init; } = 0.95;
     public double Scale { get; init; } = 1.0;
     public int MaxItems { get; init; } = 10;
@@ -59,14 +61,14 @@ public sealed record AppSettings
     public double? OverlayLeft { get; init; }
     public double? OverlayTop { get; init; }
 
-    // The three overlay windows. Null = never configured (defaults apply,
-    // seeded from the legacy fields for timer panel A).
+    // The overlay windows. Null = never configured (defaults apply; timer
+    // panel A seeds from the legacy fields, the DPS meter from the old
+    // single mini parse).
     public OverlayWindowSettings? MiniParseOverlay { get; init; }
+    public OverlayWindowSettings? MiniParseHpsOverlay { get; init; }
+    public OverlayWindowSettings? MiniParseTankOverlay { get; init; }
     public OverlayWindowSettings? TimerOverlayA { get; init; }
     public OverlayWindowSettings? TimerOverlayB { get; init; }
-
-    /// <summary>Mini parse metric: DPS, HPS, or Tanking (damage taken).</summary>
-    public string MiniParseMetric { get; init; } = "DPS";
 
     public static string Directory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EQ2Parser");

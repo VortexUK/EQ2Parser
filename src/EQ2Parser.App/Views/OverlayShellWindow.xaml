@@ -1,7 +1,6 @@
 <Window x:Class="EQ2Parser.App.Views.OverlayShellWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        SizeToContent="Height"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ShowActivated="False" ResizeMode="NoResize">
     <!-- Glass card: layered fills + gold hairline; the whole thing fades to
@@ -17,9 +16,12 @@
             <DropShadowEffect ShadowDepth="0" BlurRadius="14" Color="#000000" Opacity="0.55" />
         </Border.Effect>
         <Border x:Name="Hairline" CornerRadius="10" BorderThickness="1" Padding="9">
-            <StackPanel>
-                <!-- Header: drag handle + lock/close while unlocked; a slim
-                     title line stays when locked (it reads as part of the HUD). -->
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <!-- Header: drag handle + lock/close while unlocked. -->
                 <Grid x:Name="HeaderRow" Margin="1,0,1,6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -40,8 +42,22 @@
                             Background="Transparent" BorderThickness="0" Foreground="#8B90AB" Cursor="Hand"
                             ToolTip="Hide this overlay" Click="Close_Click" />
                 </Grid>
-                <ContentPresenter x:Name="Host" />
-            </StackPanel>
+                <ContentPresenter x:Name="Host" Grid.Row="1" ClipToBounds="True" />
+                <!-- Resize grip (resizable overlays, unlocked only). -->
+                <Thumb x:Name="ResizeGrip" Grid.Row="1" Width="16" Height="16"
+                       HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                       Cursor="SizeNWSE" Margin="0,0,-6,-6" DragDelta="ResizeGrip_DragDelta"
+                       DragCompleted="ResizeGrip_DragCompleted" Visibility="Collapsed">
+                    <Thumb.Template>
+                        <ControlTemplate TargetType="Thumb">
+                            <Grid Background="Transparent">
+                                <Path Data="M10,2 L2,10 M10,6 L6,10 M10,10 L10,10" Stroke="#7AC8A96E"
+                                      StrokeThickness="1.4" StrokeEndLineCap="Round" StrokeStartLineCap="Round" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Thumb.Template>
+                </Thumb>
+            </Grid>
         </Border>
     </Border>
 </Window>

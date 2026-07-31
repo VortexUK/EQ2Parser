@@ -17,6 +17,9 @@ public sealed partial class MiniParseRowVm : ObservableObject
     private string _name = "";
 
     [ObservableProperty]
+    private string _classText = "";
+
+    [ObservableProperty]
     private string _valueText = "";
 
     [ObservableProperty]
@@ -34,21 +37,27 @@ public sealed partial class MiniParseRowVm : ObservableObject
 
 public partial class MiniParseContent : IOverlayContent
 {
-    private readonly SourceManager _manager;
+    private const double RowHeight = 22;
+
     private readonly MiniParseSnapshot _snapshot;
+    private readonly string _metric;
     private readonly ObservableCollection<MiniParseRowVm> _rows = [];
 
-    public MiniParseContent(SourceManager manager)
+    public MiniParseContent(SourceManager manager, string metric)
     {
-        _manager = manager;
         _snapshot = new MiniParseSnapshot(manager);
+        _metric = metric;
         InitializeComponent();
         RowsHost.ItemsSource = _rows;
     }
 
     public bool Refresh(OverlayWindowSettings settings)
     {
-        var data = _snapshot.Build(settings.MaxItems, _manager.Settings.MiniParseMetric);
+        // Rows fill whatever height the user resized the window to — drag
+        // it taller and the whole raid fits.
+        var available = RowsHost.ActualHeight;
+        var fit = available > RowHeight ? (int)(available / RowHeight) : 10;
+        var data = _snapshot.Build(Math.Clamp(fit, 1, 30), _metric);
         FightTitle.Text = data.Title;
         DurationText.Text = data.DurationLabel;
         MetricText.Text = data.MetricLabel;
@@ -63,6 +72,7 @@ public partial class MiniParseContent : IOverlayContent
             var vm = _rows[i];
             vm.RankText = row.Rank.ToString();
             vm.Name = row.Name;
+            vm.ClassText = row.ClassName is { Length: > 0 } cls ? $" <{cls}>" : "";
             vm.ValueText = CombatantRow.Compact(row.Value);
             vm.ShareText = $"{row.Fraction:P0}";
             vm.Fraction = Math.Clamp(row.Fraction, 0, 1);
