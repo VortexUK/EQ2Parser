@@ -41,11 +41,23 @@
                         <MenuItem Header="Drill down"
                                   Command="{Binding PlacementTarget.Tag.OpenDetailCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                        <MenuItem Header="Copy row"
+                        <MenuItem Header="Export to clipboard"
                                   Command="{Binding PlacementTarget.Tag.CopyCombatantCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                        <MenuItem Header="Copy ability breakdown"
+                        <MenuItem Header="Export ability breakdown"
                                   Command="{Binding PlacementTarget.Tag.CopyBreakdownCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Header="Death report"
+                                  Command="{Binding PlacementTarget.Tag.DeathReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Header="Avoidance report"
+                                  Command="{Binding PlacementTarget.Tag.AvoidanceReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Header="Special attacks report"
+                                  Command="{Binding PlacementTarget.Tag.SpecialReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Header="Lookup across fights"
+                                  Command="{Binding PlacementTarget.Tag.LookupCombatantCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                     </ContextMenu>
                 </Grid.ContextMenu>
@@ -137,12 +149,24 @@
                         <Setter Property="ContextMenu">
                             <Setter.Value>
                                 <ContextMenu>
-                                    <MenuItem Header="Copy summary"
+                                    <MenuItem Header="Export to clipboard"
                                               Command="{Binding PlacementTarget.Tag.CopyNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                     <MenuItem Header="View log"
                                               Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
                                               Command="{Binding PlacementTarget.Tag.ViewFightLogCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <MenuItem Header="Death report"
+                                              Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                              Command="{Binding PlacementTarget.Tag.DeathReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <MenuItem Header="Avoidance report"
+                                              Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                              Command="{Binding PlacementTarget.Tag.AvoidanceReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <MenuItem Header="Special attacks report"
+                                              Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                              Command="{Binding PlacementTarget.Tag.SpecialReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                     <MenuItem Header="Delete"
                                               Visibility="{Binding PlacementTarget.DataContext.IsDeletable, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
@@ -303,6 +327,9 @@
                     <TextBlock Text="{Binding DetailTitle}" Foreground="{StaticResource GoldBrightBrush}"
                                FontFamily="{StaticResource HeadingFont}" FontSize="16"
                                VerticalAlignment="Center" Margin="14,0,0,0" />
+                    <Button Content="Copy report" Style="{StaticResource GoldButton}" Margin="16,0,0,0"
+                            Command="{Binding CopyReportCommand}"
+                            Visibility="{Binding ReportLevel, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
 
                 <!-- Depth-aware drill chart: bucket activity lines, ability
@@ -533,6 +560,36 @@
                         </ListBox>
                     </Border>
                 </Grid>
+
+                <!-- Report view (death / avoidance / specials / lookup) -->
+                <Border Grid.Row="2" Style="{StaticResource Card}" Padding="10"
+                        Visibility="{Binding ReportLevel, Converter={StaticResource BoolToVis}}">
+                    <ListBox ItemsSource="{Binding ReportRows}" Background="Transparent" BorderThickness="0"
+                             HorizontalContentAlignment="Stretch"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                             VirtualizingPanel.IsVirtualizing="True">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="6,1" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter />
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:LogRow}">
+                                <TextBlock views:SegmentedText.Segments="{Binding Segments}"
+                                           FontFamily="Consolas" FontSize="13" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
 
                 <!-- Raw log view (deepest drill: one swing in context) -->
                 <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8"

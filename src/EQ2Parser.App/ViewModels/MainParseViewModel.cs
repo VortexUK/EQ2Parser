@@ -192,12 +192,19 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [ObservableProperty]
     private bool _logLevel;
 
-    /// <summary>The swing table shows at swing depth unless the log view is open.</summary>
-    public bool SwingTableVisible => SwingLevel && !LogLevel;
+    [ObservableProperty]
+    private bool _reportLevel;
+
+    private string _reportText = "";
+
+    /// <summary>The swing table shows at swing depth unless a log/report view is open.</summary>
+    public bool SwingTableVisible => SwingLevel && !LogLevel && !ReportLevel;
 
     partial void OnSwingLevelChanged(bool value) => OnPropertyChanged(nameof(SwingTableVisible));
 
     partial void OnLogLevelChanged(bool value) => OnPropertyChanged(nameof(SwingTableVisible));
+
+    partial void OnReportLevelChanged(bool value) => OnPropertyChanged(nameof(SwingTableVisible));
 
     public ObservableCollection<AbilityRow> DrillRows { get; } = [];
     public ObservableCollection<SwingRow> SwingRows { get; } = [];
@@ -441,6 +448,265 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         SetClipboard($"[{row.Time}] {row.Ability} {row.Result}{(row.Crit.Length > 0 ? " crit" : "")}{(row.Special.Length > 0 ? $" {row.Special}" : "")} {row.Type} → {row.Other}");
     }
 
+    // ── Reports (death / avoidance / specials / lookup) ─────────────────────
+
+    public ObservableCollection<LogRow> ReportRows { get; } = [];
+
+    private readonly System.Text.StringBuilder _reportBuilder = new();
+    private readonly List<LogRow> _reportLines = [];
+
+    private void ReportLine(params (string Text, System.Windows.Media.Brush Brush)[] parts)
+    {
+        List<LogSegment> segments = [.. parts.Select(t => new LogSegment(t.Text, t.Brush))];
+        _reportLines.Add(new LogRow(segments, IsFocus: false));
+        _reportBuilder.AppendLine(string.Concat(parts.Select(t => t.Text)));
+    }
+
+    private void OpenReport(string title)
+    {
+        ReportRows.Clear();
+        foreach (var line in _reportLines)
+            ReportRows.Add(line);
+        _reportText = _reportBuilder.ToString();
+        _reportLines.Clear();
+        _reportBuilder.Clear();
+        _detailKey = null;
+        _detailBucket = null;
+        _detailAbility = null;
+        DetailTitle = title;
+        SwingLevel = true;
+        LogLevel = false;
+        ReportLevel = true;
+        DrillChartVisible = false;
+        DetailOpen = true;
+    }
+
+    [RelayCommand]
+    private void CopyReport() => SetClipboard(_reportText);
+
+    /// <summary>Combatants of the current selection for a report target:
+    /// a fight node reports every ally, a combatant row just that one.</summary>
+    private List<(string Name, Combatant C)> ReportTargets(object? parameter, out string context)
+    {
+        context = "";
+        List<(string, Combatant)> targets = [];
+        switch (parameter)
+        {
+            case ParseNode { Fight: CorrelatedEncounter fight }:
+            {
+                context = fight.Title;
+                var tags = manager.Classifier.Classify(fight.Primary);
+                foreach (var (key, entry) in fight.MergedCombatants)
+                {
+                    if (!fight.MergedAllyKeys.Contains(key))
+                        continue;
+                    if (tags.TryGetValue(key, out var tag) && tag.Kind is CombatantKind.System or CombatantKind.Bystander)
+                        continue;
+                    targets.Add((entry.Combatant.Name, entry.Combatant));
+                }
+                break;
+            }
+            case CombatantRow row when ResolveFight() is { } fight:
+            {
+                context = row.Name;
+                switch (fight)
+                {
+                    case Encounter e when e.Combatants.TryGetValue(row.Key, out var c):
+                        targets.Add((c.Name, c));
+                        break;
+                    case CorrelatedEncounter m when m.MergedCombatants.TryGetValue(row.Key, out var mc):
+                        targets.Add((mc.Combatant.Name, mc.Combatant));
+                        break;
+                    case AggregateFights a:
+                        foreach (var f in a.Fights)
+                        {
+                            if (f.MergedCombatants.TryGetValue(row.Key, out var mc2))
+                                targets.Add((mc2.Combatant.Name, mc2.Combatant));
+                        }
+                        break;
+                }
+                break;
+            }
+        }
+        return targets;
+    }
+
+    /// <summary>Every ally death with its killing context (last hits + heals).</summary>
+    [RelayCommand]
+    private void DeathReport(object? parameter)
+    {
+        lock (manager.Sync)
+        {
+            var targets = ReportTargets(parameter, out var context);
+            var any = false;
+            foreach (var (targetName, combatant) in targets)
+            {
+                if (combatant.IncomingBuckets.GetValueOrDefault(BucketConfig.AllIncomingRef) is not { } incoming)
+                    continue;
+                foreach (var death in incoming.All.Swings.Where(sw => sw.Damage.IsDeath))
+                {
+                    any = true;
+                    ReportLine(
+                        ($"{death.Time.ToLocalTime():HH:mm:ss}  ", ClassColors.Neutral),
+                        (targetName, ClassColors.OutcomeLoss),
+                        (" — killed by ", ClassColors.TreeText),
+                        (death.Attacker, ClassColors.TreeHeader));
+                    var lead = incoming.All.Swings
+                        .Where(sw => !sw.Damage.IsDeath && sw.Time <= death.Time && sw.Damage.Number != 0)
+                        .OrderBy(sw => sw.Time).ThenBy(sw => sw.TimeSorter)
+                        .TakeLast(6);
+                    foreach (var sw in lead)
+                    {
+                        var isHeal = sw.Category == SwingCategory.Healing;
+                        ReportLine(
+                            ($"    {sw.Time.ToLocalTime():HH:mm:ss}  ", ClassColors.Neutral),
+                            (isHeal ? "heal " : "hit  ", isHeal ? ClassColors.OutcomeWin : ClassColors.OutcomeLoss),
+                            (sw.Damage.Number > 0 ? CombatantRow.Compact(sw.Damage.Number) : sw.Damage.ToString(), ClassColors.SourceClass),
+                            ($"  {sw.Ability}", ClassColors.SourceRaid),
+                            ($"  from {sw.Attacker}", ClassColors.Neutral));
+                    }
+                }
+            }
+            if (!any)
+                ReportLine(("No deaths.", ClassColors.Neutral));
+            OpenReport($"{context} › death report");
+        }
+    }
+
+    /// <summary>Incoming avoidance table: attempts, hit%, and each avoid kind.</summary>
+    [RelayCommand]
+    private void AvoidanceReport(object? parameter)
+    {
+        lock (manager.Sync)
+        {
+            var targets = ReportTargets(parameter, out var context);
+            ReportLine(
+                ("NAME".PadRight(18), ClassColors.TreeHeader),
+                ("ATTACKS   HIT%   MISS  PARRY  RIPOSTE  BLOCK  DODGE  RESIST  AVOIDED", ClassColors.TreeHeader));
+            foreach (var (targetName, combatant) in targets
+                .GroupBy(t => t.Name)
+                .Select(g => (g.Key, g.Select(t => t.C).ToList()))
+                .OrderBy(t => t.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                int attempts = 0, hits = 0, miss = 0, parry = 0, riposte = 0, block = 0, dodge = 0, resist = 0;
+                foreach (var c in combatant)
+                {
+                    if (c.IncomingBuckets.GetValueOrDefault(BucketConfig.IncomingDamage) is not { } bucket)
+                        continue;
+                    foreach (var sw in bucket.All.Swings)
+                    {
+                        attempts++;
+                        switch (sw.Damage.Number)
+                        {
+                            case >= 0: hits++; break;
+                            case Core.Combat.DamageValue.MissNumber: miss++; break;
+                            case Core.Combat.DamageValue.ResistNumber: resist++; break;
+                            case Core.Combat.DamageValue.ParryNumber: parry++; break;
+                            case Core.Combat.DamageValue.RiposteNumber: riposte++; break;
+                            case Core.Combat.DamageValue.BlockNumber: block++; break;
+                            default: dodge++; break;
+                        }
+                    }
+                }
+                if (attempts == 0)
+                    continue;
+                var avoided = attempts - hits;
+                ReportLine(
+                    (targetName.PadRight(18), ClassColors.TreeText),
+                    ($"{attempts,7}  ", ClassColors.TreeText),
+                    ($"{100.0 * hits / attempts,4:F0}%  ", ClassColors.SourceClass),
+                    ($"{miss,5}  {parry,5}  {riposte,7}  {block,5}  {dodge,5}  {resist,6}  ", ClassColors.Neutral),
+                    ($"{100.0 * avoided / attempts,6:F0}%", ClassColors.OutcomeWin));
+            }
+            OpenReport($"{context} › avoidance report");
+        }
+    }
+
+    /// <summary>Outgoing autoattack specials: normal/multi/double/flurry/AoE + crit%.</summary>
+    [RelayCommand]
+    private void SpecialReport(object? parameter)
+    {
+        lock (manager.Sync)
+        {
+            var targets = ReportTargets(parameter, out var context);
+            ReportLine(
+                ("NAME".PadRight(18), ClassColors.TreeHeader),
+                ("SWINGS   NORMAL   MULTI  DOUBLE  FLURRY    AOE   CRIT%", ClassColors.TreeHeader));
+            foreach (var (targetName, combatant) in targets
+                .GroupBy(t => t.Name)
+                .Select(g => (g.Key, g.Select(t => t.C).ToList()))
+                .OrderBy(t => t.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                int swings = 0, normal = 0, multi = 0, dbl = 0, flurry = 0, aoe = 0, crits = 0, hits = 0;
+                foreach (var c in combatant)
+                {
+                    if (c.OutgoingBuckets.GetValueOrDefault(BucketConfig.AutoAttackOut) is not { } bucket)
+                        continue;
+                    foreach (var sw in bucket.All.Swings)
+                    {
+                        if (sw.Ability == Combatant.KillingAbility)
+                            continue;
+                        swings++;
+                        if (sw.Damage.Number >= 0)
+                        {
+                            hits++;
+                            if (sw.Critical)
+                                crits++;
+                        }
+                        switch (sw.Special)
+                        {
+                            case "Multi Attack": multi++; break;
+                            case "Double Attack": dbl++; break;
+                            case "Flurry": flurry++; break;
+                            case "AoE Attack": aoe++; break;
+                            default: normal++; break;
+                        }
+                    }
+                }
+                if (swings == 0)
+                    continue;
+                ReportLine(
+                    (targetName.PadRight(18), ClassColors.TreeText),
+                    ($"{swings,6}  {normal,7}  {multi,6}  {dbl,6}  {flurry,6}  {aoe,5}  ", ClassColors.Neutral),
+                    ($"{(hits > 0 ? 100.0 * crits / hits : 0),5:F0}%", ClassColors.SourceClass));
+            }
+            OpenReport($"{context} › special attacks");
+        }
+    }
+
+    /// <summary>Every fight in history featuring this combatant.</summary>
+    [RelayCommand]
+    private void LookupCombatant(CombatantRow? row)
+    {
+        if (row is null)
+            return;
+        lock (manager.Sync)
+        {
+            var any = false;
+            foreach (var fight in manager.Correlator.History.Reverse())
+            {
+                if (!fight.MergedCombatants.TryGetValue(row.Key, out var entry))
+                    continue;
+                var c = entry.Combatant;
+                if (c.Damage <= 0 && c.Healed <= 0 && c.DamageTaken <= 0)
+                    continue;
+                any = true;
+                var seconds = Math.Max(1, fight.Duration.TotalSeconds);
+                ReportLine(
+                    ($"{fight.StartTime.ToLocalTime():ddd HH:mm}  ", ClassColors.Neutral),
+                    (fight.Title.PadRight(30), OutcomeBrush(fight)),
+                    ($"  {CombatantRow.Compact(c.Damage / seconds).PadLeft(7)} dps", ClassColors.SourceClass),
+                    ($"  {CombatantRow.Compact(c.Damage).PadLeft(7)} dmg", ClassColors.TreeText),
+                    (c.Healed > 0 ? $"  {CombatantRow.Compact(c.Healed / seconds).PadLeft(7)} hps" : "", ClassColors.OutcomeWin),
+                    ($"  {CombatantRow.Compact(c.DamageTaken).PadLeft(7)} taken", ClassColors.Neutral),
+                    (c.Deaths > 0 ? $"  {c.Deaths} deaths" : "", ClassColors.OutcomeLoss));
+            }
+            if (!any)
+                ReportLine(("No other fights found.", ClassColors.Neutral));
+            OpenReport($"{row.Name} › all fights");
+        }
+    }
+
     [RelayCommand]
     private void OpenDetail(CombatantRow? row)
     {
@@ -470,6 +736,16 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [RelayCommand]
     private void CloseDetail()
     {
+        if (ReportLevel)
+        {
+            ReportLevel = false;
+            if (_detailKey is null)
+            {
+                DetailOpen = false;
+                SwingLevel = false;
+            }
+            return;
+        }
         if (LogLevel)
         {
             LogLevel = false;
