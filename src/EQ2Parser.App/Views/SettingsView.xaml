@@ -95,6 +95,13 @@
                     <TextBlock Text="{Binding Status}" Style="{StaticResource MutedText}" FontSize="12"
                                Margin="12,6,0,0" />
                 </StackPanel>
+
+                <TextBlock Text="About" Style="{StaticResource SectionLabel}" Margin="0,20,0,4" />
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding VersionLabel, Mode=OneWay}" Foreground="{StaticResource TextBrush}" FontSize="13" />
+                    <TextBlock Text="{Binding UpdateStatus}" Style="{StaticResource MutedText}" FontSize="12"
+                               Margin="12,1,0,0" />
+                </StackPanel>
             </StackPanel>
         </Border>
     </StackPanel>

@@ -22,6 +22,7 @@ public partial class App : Application
         MainWindow = window;
         window.Show();
         overlay.RestoreFromSettings();
+        _ = _manager.Updates.CheckAndDownloadAsync();
     }
 
     protected override void OnExit(ExitEventArgs e)

@@ -168,9 +168,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 
+    public string VersionLabel => $"EQ2Parser v{_manager.Updates.CurrentVersion}";
+
+    [ObservableProperty]
+    private string _updateStatus = "";
+
     public SettingsViewModel(SourceManager manager)
     {
         _manager = manager;
+        _updateStatus = manager.Updates.Status;
+        manager.Updates.StatusChanged += status =>
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => UpdateStatus = status);
         _idleEndSeconds = manager.Settings.IdleEndSeconds.ToString("0.#");
         _pollMilliseconds = manager.Settings.PollMilliseconds.ToString();
         _historyBossDays = manager.Settings.HistoryBossDays.ToString();

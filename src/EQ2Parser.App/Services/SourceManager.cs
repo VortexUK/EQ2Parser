@@ -21,6 +21,7 @@ public sealed class SourceManager : IDisposable
     public TriggerService Triggers { get; }
     public TimerService SpellTimers { get; }
     public HistoryService History { get; } = new();
+    public UpdateService Updates { get; } = new();
     public AppSettings Settings { get; set; } = AppSettings.Load();
 
     /// <summary>Raised (on a background thread) whenever a correlated fight
