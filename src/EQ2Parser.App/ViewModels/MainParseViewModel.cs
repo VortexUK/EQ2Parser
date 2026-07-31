@@ -769,7 +769,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             }
 
             var avgHit = hitCount > 0 ? (double)landedTotal / hitCount : 0;
-            var avoided = attempts - hitCount - stoneskin - warded;
+            // ACT semantics: stoneskins ARE avoids.
+            var avoided = attempts - hitCount - warded;
             var avoidedEst = avoided * avgHit;
 
             // Headline: the x-of-y truth first.
@@ -777,13 +778,11 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 ($"{attempts} incoming attacks", ClassColors.TreeText),
                 ($"   landed {hitCount}/{attempts} ({100.0 * hitCount / attempts:F1}%)", ClassColors.OutcomeLoss),
                 ($"   warded {warded}/{attempts} ({100.0 * warded / attempts:F1}%)", ClassColors.SourceRaid),
-                ($"   stoneskin {stoneskin}/{attempts} ({100.0 * stoneskin / attempts:F1}%)", ClassColors.TreeHeader),
                 ($"   avoided {avoided}/{attempts} ({100.0 * avoided / attempts:F1}%)", ClassColors.OutcomeWin));
             ReportLine(
                 ($"avg landed hit {CombatantRow.Compact(avgHit)}", ClassColors.Neutral),
                 ($"   est. avoided {CombatantRow.Compact(avoidedEst)} (effective {CombatantRow.Compact(avoidedEst / seconds)} HPS)", ClassColors.OutcomeWin),
-                ($"   warded {CombatantRow.Compact(wardedTotal)} absorbed", ClassColors.SourceRaid),
-                ($"   stoneskin est. {CombatantRow.Compact(stoneskin * avgHit)}", ClassColors.TreeHeader));
+                ($"   warded {CombatantRow.Compact(wardedTotal)} absorbed", ClassColors.SourceRaid));
             ReportLine(("", ClassColors.Neutral));
             ReportLine(
                 ("KIND".PadRight(11), ClassColors.TreeHeader),
@@ -803,7 +802,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
             Row("Landed", "—", hitCount, "—", "—", new SKColor(0xF8, 0x71, 0x71));
             Row("Warded", "—", warded, "—", CombatantRow.Compact(wardedTotal), new SKColor(0x93, 0xD9, 0xFF));
-            Row("Stoneskin", "—", stoneskin, "—", CombatantRow.Compact(stoneskin * avgHit), new SKColor(0xC8, 0xA9, 0x6E));
+            Row("Stoneskin", "—", stoneskin,
+                $"{100.0 * stoneskin / Math.Max(1, avoided):F1}%",
+                CombatantRow.Compact(stoneskin * avgHit), new SKColor(0xC8, 0xA9, 0x6E));
             foreach (var (label, color) in kindPalette)
             {
                 var actors = avoidCounts[label];
@@ -823,20 +824,6 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 ($"{avoided,4} / {attempts,-4}  {100.0 * avoided / attempts,6:F1}%   ", ClassColors.TreeText),
                 ("100%".PadLeft(8), ClassColors.Neutral),
                 (CombatantRow.Compact(avoidedEst).PadLeft(15), ClassColors.OutcomeWin));
-            var withStoneskin = avoided + stoneskin;
-            ReportLine(
-                ("INCL. STONESKIN".PadRight(28), ClassColors.TreeHeader),
-                ($"{withStoneskin,4} / {attempts,-4}  {100.0 * withStoneskin / attempts,6:F1}%   ", ClassColors.TreeText),
-                ("".PadLeft(8), ClassColors.Neutral),
-                (CombatantRow.Compact(avoidedEst + stoneskin * avgHit).PadLeft(15), ClassColors.TreeHeader),
-                ("   (ACT counts stoneskins as avoids)", ClassColors.Neutral));
-            var notLanded = attempts - hitCount;
-            ReportLine(
-                ("NOT LANDED".PadRight(28), ClassColors.SourceRaid),
-                ($"{notLanded,4} / {attempts,-4}  {100.0 * notLanded / attempts,6:F1}%   ", ClassColors.TreeText),
-                ("".PadLeft(8), ClassColors.Neutral),
-                (CombatantRow.Compact(avoidedEst + stoneskin * avgHit + wardedTotal).PadLeft(15), ClassColors.SourceRaid),
-                ("   (avoids + stoneskin + warded)", ClassColors.Neutral));
 
             OpenReport($"{context} › avoidance report");
 
@@ -847,20 +834,21 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             [
                 Ring("Landed", hitCount, new SKColor(0xF8, 0x71, 0x71), attempts, 30),
                 Ring("Warded", warded, new SKColor(0x93, 0xD9, 0xFF), attempts, 30),
-                Ring("Stoneskin", stoneskin, new SKColor(0xC8, 0xA9, 0x6E), attempts, 30),
                 Ring("Avoided", avoided, new SKColor(0x4A, 0xDE, 0x80), attempts, 30),
             ];
             List<ISeries> outer =
             [
                 new PieSeries<double>
                 {
-                    Values = new double[] { hitCount + warded + stoneskin },
+                    Values = new double[] { hitCount + warded },
                     Name = "not avoided",
                     Fill = new SolidColorPaint(new SKColor(0xFF, 0xFF, 0xFF, 0x08)),
                     InnerRadius = 86,
                     ToolTipLabelFormatter = _ => "",
                 },
             ];
+            if (stoneskin > 0)
+                outer.Add(Ring("Stoneskin", stoneskin, new SKColor(0xC8, 0xA9, 0x6E), attempts, 86));
             foreach (var (label, color) in kindPalette)
             {
                 var count = avoidCounts[label].Values.Sum();
