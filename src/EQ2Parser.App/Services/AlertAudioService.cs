@@ -103,6 +103,10 @@ public sealed class AlertAudioService : IDisposable
     public void PlayChime() =>
         _ = PlayBytesAsync(_chime, _cts.Token);
 
+    /// <summary>Release the loaded neural model so its pack can be removed
+    /// from disk (it reloads on the next phrase if still installed).</summary>
+    public void UnloadNeuralModel() => _piper.Unload();
+
     /// <summary>Play an audio file (WAV/MP3). Fire-and-forget.</summary>
     public void PlayFile(string path)
     {

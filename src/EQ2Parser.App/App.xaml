@@ -15,6 +15,7 @@
 
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
             <views:InverseBoolToVisConverter x:Key="InverseBoolToVis" />
+            <views:InverseBoolConverter x:Key="InverseBool" />
 
             <!-- ViewModel → View wiring. -->
             <DataTemplate DataType="{x:Type vm:MainParseViewModel}">

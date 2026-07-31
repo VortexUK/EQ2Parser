@@ -22,6 +22,9 @@ public sealed record PiperVoice(
     string Key, string DisplayName, string Archive, string ModelFile, int SizeMb,
     NeuralVoiceKind Kind = NeuralVoiceKind.PiperVits, int SpeakerId = 0);
 
+/// <summary>A downloadable archive and the voices it carries.</summary>
+public sealed record NeuralPack(string Archive, string DisplayName, int SizeMb, IReadOnlyList<PiperVoice> PackVoices);
+
 /// <summary>
 /// The curated neural voice set and its on-disk lifecycle. Models download
 /// once from the sherpa-onnx release assets (permanent, versioned) into
@@ -46,10 +49,57 @@ public static class PiperVoiceCatalog
         new("kokoro:bf_isabella", "Neural — Isabella (posh British)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 8),
     ];
 
+    /// <summary>Downloadable units: one pack per archive (each Piper voice
+    /// is its own pack; the Kokoro pack carries five voices).</summary>
+    public static IReadOnlyList<NeuralPack> Packs { get; } =
+        [.. Voices
+            .GroupBy(v => v.Archive)
+            .Select(g =>
+            {
+                List<PiperVoice> packVoices = [.. g];
+                var names = string.Join(", ", packVoices.Select(v =>
+                {
+                    var name = v.DisplayName.Replace("Neural — ", "");
+                    var paren = name.IndexOf(" (", StringComparison.Ordinal);
+                    return paren > 0 ? name[..paren] : name;
+                }));
+                return new NeuralPack(g.Key, names, packVoices[0].SizeMb, packVoices);
+            })];
+
     private static string RootDir => Path.Combine(AppSettings.Directory, "voices");
 
     public static PiperVoice? Find(string? voiceId) =>
         voiceId is null ? null : Voices.FirstOrDefault(v => v.Key == voiceId);
+
+    public static NeuralPack? PackFor(PiperVoice voice) =>
+        Packs.FirstOrDefault(p => p.Archive == voice.Archive);
+
+    public static bool IsPackInstalled(NeuralPack pack) => IsInstalled(pack.PackVoices[0]);
+
+    /// <summary>Actual bytes on disk for an installed pack (0 if absent).</summary>
+    public static long InstalledBytes(NeuralPack pack)
+    {
+        var dir = Path.Combine(RootDir, pack.Archive);
+        if (!Directory.Exists(dir))
+            return 0;
+        try
+        {
+            return Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories).Sum(f => new FileInfo(f).Length);
+        }
+        catch (IOException)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>Delete a pack from disk. The caller must unload the engine
+    /// first or the model file is still mapped and the delete fails.</summary>
+    public static void RemovePack(NeuralPack pack)
+    {
+        var dir = Path.Combine(RootDir, pack.Archive);
+        if (Directory.Exists(dir))
+            Directory.Delete(dir, recursive: true);
+    }
 
     public static string ModelDir(PiperVoice voice) =>
         Path.Combine(RootDir, voice.Archive);

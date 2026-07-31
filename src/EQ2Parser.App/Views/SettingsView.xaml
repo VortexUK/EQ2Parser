@@ -56,7 +56,31 @@
                 <TextBlock Text="{Binding VoiceStatus}" Foreground="{StaticResource GoldBrush}" FontSize="12"
                            TextWrapping="Wrap" Margin="0,4,0,0" />
                 <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"
-                           Text="Neural voices download once when first selected (65 MB, or 305 MB for the shared Bella/Nicole/Adam/Emma/Isabella pack), then work fully offline — dramatically better than the built-in Windows voices below them in the list." />
+                           Text="Neural voices sound dramatically better than the built-in Windows voices below them in the list. Each pack downloads once, works fully offline, and can be removed here any time to reclaim the disk space." />
+
+                <TextBlock Text="Voice packs" Style="{StaticResource SectionLabel}" Margin="0,14,0,4" />
+                <ItemsControl ItemsSource="{Binding PackRows}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontSize="13" Foreground="{StaticResource TextBrush}" />
+                                    <TextBlock Text="{Binding Status}" Style="{StaticResource MutedText}" FontSize="11"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="{Binding ActionLabel}" Style="{StaticResource GoldButton}"
+                                        Padding="12,3" VerticalAlignment="Center" Margin="10,0,0,0"
+                                        IsEnabled="{Binding Busy, Converter={StaticResource InverseBool}}"
+                                        Command="{Binding DataContext.PackActionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                     <Button Content="Save" Style="{StaticResource GoldButton}" Command="{Binding SaveCommand}" />

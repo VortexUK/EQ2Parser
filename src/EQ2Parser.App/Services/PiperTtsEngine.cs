@@ -77,12 +77,17 @@ public sealed class PiperTtsEngine : IDisposable
         }
     }
 
-    public void Dispose()
+    /// <summary>Release the loaded model (file handles included) so its
+    /// pack can be deleted from disk. Next synthesis reloads on demand.</summary>
+    public void Unload()
     {
         lock (_gate)
         {
             _tts?.Dispose();
             _tts = null;
+            _loadedArchive = null;
         }
     }
+
+    public void Dispose() => Unload();
 }
