@@ -1,6 +1,7 @@
 using System.IO;
 using EQ2Parser.Core.Engine;
 using EQ2Parser.Core.Logs;
+using EQ2Parser.Core.Triggers;
 
 namespace EQ2Parser.App.Services;
 
@@ -21,19 +22,21 @@ public sealed class LogSource : IDisposable
     public bool ParseFromStart { get; }
     public ParserEngine Engine { get; }
     public LogLineProcessor Processor { get; }
+    public TriggerEngine? TriggerEngine { get; }
 
     /// <summary>Set when the tail loop dies (file unreadable etc.).</summary>
     public Exception? Error { get; private set; }
     public bool Completed => _task.IsCompleted;
 
-    public LogSource(string path, bool parseFromStart, object sync, EngineOptions engineOptions, TimeSpan pollInterval)
+    public LogSource(string path, bool parseFromStart, object sync, EngineOptions engineOptions, TimeSpan pollInterval, TriggerEngine? triggers = null)
     {
         Path = path;
         ParseFromStart = parseFromStart;
         _sync = sync;
         Owner = DeriveOwner(path);
         Engine = new ParserEngine(path, Owner, engineOptions);
-        Processor = new LogLineProcessor(Engine);
+        TriggerEngine = triggers;
+        Processor = new LogLineProcessor(Engine, triggers);
         var reader = new LogTailReader(path, new LogTailOptions
         {
             StartAtEnd = !parseFromStart,

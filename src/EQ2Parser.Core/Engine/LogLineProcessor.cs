@@ -17,6 +17,11 @@ namespace EQ2Parser.Core.Engine;
 /// </summary>
 public sealed class LogLineProcessor
 {
+    /// <summary>Max lag between a line's log time and its arrival before it
+    /// counts as replayed history rather than live play (clock skew between
+    /// the game's stamp and ours stays well under this).</summary>
+    public static readonly TimeSpan TriggerFreshness = TimeSpan.FromSeconds(30);
+
     private readonly TriggerEngine? _triggers;
     private readonly SpellTimerService? _timers;
 
@@ -54,7 +59,12 @@ public sealed class LogLineProcessor
         var anchor = line.ObservedAt ?? line.Timestamp;
         LastLineTime = anchor;
         Engine.OnLineTime(line.Timestamp);
-        _triggers?.Process(line.Message, anchor);
+        // Triggers are live alerts: a line only fires them when it was
+        // written moments before we read it. Replaying an old file
+        // (parse-from-start) must never spam beeps/TTS for history. No
+        // arrival stamp (direct feeds, tests) means live.
+        if (line.ObservedAt is null || line.ObservedAt.Value - line.Timestamp < TriggerFreshness)
+            _triggers?.Process(line.Message, anchor);
 
         var parsed = EnglishGrammar.TryParse(line.Message);
         if (parsed is null)

@@ -15,6 +15,7 @@ public sealed partial class MainViewModel : ObservableObject
     public SourceManager Manager { get; }
     public MainParseViewModel Main { get; }
     public SourcesViewModel Sources { get; }
+    public TriggersViewModel Triggers { get; }
     public SettingsViewModel Settings { get; }
 
     public IReadOnlyList<NavItem> NavItems { get; }
@@ -27,13 +28,14 @@ public sealed partial class MainViewModel : ObservableObject
         Manager = manager;
         Main = new MainParseViewModel(manager);
         Sources = new SourcesViewModel(manager);
+        Triggers = new TriggersViewModel(manager);
         Settings = new SettingsViewModel(manager);
 
         NavItems =
         [
             new NavItem("Main", Main),
             new NavItem("Sources", Sources),
-            new NavItem("Triggers", new PlaceholderViewModel("Triggers", "Trigger management arrives in the next slice — the engine underneath (ACT XML import, TTS, cooldowns) is already built.")),
+            new NavItem("Triggers", Triggers),
             new NavItem("Timers", new PlaceholderViewModel("Timers", "Spell timers arrive in the next slice — the engine underneath is already built.")),
             new NavItem("Settings", Settings),
         ];

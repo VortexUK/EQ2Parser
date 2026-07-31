@@ -17,6 +17,7 @@ public sealed class SourceManager : IDisposable
     public object Sync { get; } = new();
     public EncounterCorrelator Correlator { get; } = new();
     public CombatantClassifier Classifier { get; } = new(new ClassIdentifier(SpellClassMap.LoadEmbedded()));
+    public TriggerService Triggers { get; } = new();
     public AppSettings Settings { get; set; } = AppSettings.Load();
 
     /// <summary>Raised (on a background thread) whenever a correlated fight
@@ -45,7 +46,8 @@ public sealed class SourceManager : IDisposable
         var source = new LogSource(
             path, parseFromStart, Sync,
             new EngineOptions { IdleEndSeconds = Settings.IdleEndSeconds },
-            TimeSpan.FromMilliseconds(Settings.PollMilliseconds));
+            TimeSpan.FromMilliseconds(Settings.PollMilliseconds),
+            Triggers.CreateEngine(LogSource.DeriveOwner(path)));
         lock (Sync)
         {
             Correlator.Attach(source.Engine);
@@ -60,6 +62,8 @@ public sealed class SourceManager : IDisposable
         {
             _sources.Remove(source);
         }
+        if (source.TriggerEngine is { } engine)
+            Triggers.RemoveEngine(engine);
         source.Dispose();
     }
 
@@ -85,5 +89,6 @@ public sealed class SourceManager : IDisposable
     {
         foreach (var source in Sources)
             source.Dispose();
+        Triggers.Dispose();
     }
 }

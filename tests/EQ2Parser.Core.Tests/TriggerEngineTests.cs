@@ -1,3 +1,5 @@
+using EQ2Parser.Core.Engine;
+using EQ2Parser.Core.Logs;
 using EQ2Parser.Core.Triggers;
 
 namespace EQ2Parser.Core.Tests;
@@ -126,5 +128,33 @@ public class TriggerEngineTests
         var (engine, fired) = Engine(new Trigger(@"^(?:the )?dragon roars$") { SoundType = TriggerSound.Beep });
         engine.Process("dragon roars", T0);
         Assert.Single(fired);
+    }
+
+    [Fact]
+    public void Processor_Skips_Triggers_For_Replayed_History()
+    {
+        // Parse-from-start replays hours of old lines in seconds — those
+        // must never reach the trigger engine (no beep/TTS spam), while a
+        // live tail (arrival ≈ log time) and stamp-less feeds always do.
+        var engine = new ParserEngine("log", "Menludiir");
+        var triggers = new TriggerEngine("Menludiir");
+        var fired = new List<TriggerFired>();
+        triggers.Fired += fired.Add;
+        triggers.AddOrUpdate(new Trigger("dragon roars") { SoundType = TriggerSound.Beep });
+        var processor = new LogLineProcessor(engine, triggers);
+
+        Assert.True(LogLine.TryParse($"({T0.ToUnixTimeSeconds()})[s] The dragon roars!", out var line));
+
+        // Replayed: observed long after it was written.
+        processor.Process(line with { ObservedAt = T0 + LogLineProcessor.TriggerFreshness + TimeSpan.FromSeconds(1) });
+        Assert.Empty(fired);
+
+        // Live: observed moments after it was written.
+        processor.Process(line with { ObservedAt = T0.AddMilliseconds(250) });
+        Assert.Single(fired);
+
+        // No arrival stamp (direct feed / tests): treated as live.
+        processor.Process(line);
+        Assert.Equal(2, fired.Count);
     }
 }

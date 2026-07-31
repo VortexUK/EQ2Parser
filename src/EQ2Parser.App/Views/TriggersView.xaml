@@ -1,0 +1,228 @@
+<UserControl x:Class="EQ2Parser.App.Views.TriggersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="400" />
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Text="Triggers" Style="{StaticResource PageTitle}" Grid.ColumnSpan="2" />
+
+        <!-- ============ left: the trigger list ============ -->
+        <Grid Grid.Row="1" Margin="0,0,12,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
+                         VerticalContentAlignment="Center" Padding="8,4" FontSize="13" />
+                <Button Grid.Column="1" Content="Copy all as XML" Style="{StaticResource GoldButton}"
+                        Margin="8,0,0,0" Command="{Binding CopyAllXmlCommand}" />
+            </Grid>
+
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="4">
+                <Grid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Rows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox IsChecked="{Binding Enabled}" VerticalAlignment="Top" Margin="0,2,10,0" />
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding RegexText}" FontFamily="Consolas" FontSize="13"
+                                                           Foreground="{StaticResource GoldBrightBrush}" TextWrapping="Wrap" />
+                                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                    <Border Background="#26C8A96E" CornerRadius="99" Padding="8,1">
+                                                        <TextBlock Text="{Binding Category}" FontSize="10"
+                                                                   Foreground="{StaticResource GoldBrush}" />
+                                                    </Border>
+                                                    <TextBlock Text="zone-locked" FontSize="10" Margin="8,2,0,0"
+                                                               Foreground="{StaticResource WarningBrush}"
+                                                               Visibility="{Binding ZoneRestricted, Converter={StaticResource BoolToVis}}" />
+                                                    <TextBlock Text="{Binding SoundLabel}" FontSize="11" Margin="8,1,0,0"
+                                                               Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding TimerLabel}" FontSize="11" Margin="8,1,0,0"
+                                                               Foreground="{StaticResource SuccessBrush}" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top">
+                                                <Button Content="Edit" Style="{StaticResource GoldButton}" Padding="10,3"
+                                                        Command="{Binding DataContext.EditRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}" />
+                                                <Button Content="⧉" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
+                                                        ToolTip="Copy as ACT share XML"
+                                                        Command="{Binding DataContext.CopyRowXmlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}" />
+                                                <Button Content="✕" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
+                                                        ToolTip="Delete trigger"
+                                                        Command="{Binding DataContext.DeleteRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                Visibility="{Binding HasTriggers, Converter={StaticResource InverseBoolToVis}}">
+                        <TextBlock Text="No triggers yet" FontFamily="{StaticResource HeadingFont}" FontSize="18"
+                                   Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" />
+                        <TextBlock Text="Create one on the right, or paste ACT share XML into the import box — 20 years of community triggers work here unchanged."
+                                   Style="{StaticResource MutedText}" FontSize="12" TextWrapping="Wrap" MaxWidth="340"
+                                   TextAlignment="Center" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ============ right: editor + import + recent fires ============ -->
+        <ScrollViewer Grid.Row="1" Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <Border Style="{StaticResource Card}" Padding="14">
+                    <StackPanel>
+                        <TextBlock Text="{Binding EditorTitle}" Style="{StaticResource SectionLabel}" />
+
+                        <TextBlock Text="Regex (matched against every log line)" Style="{StaticResource MutedText}"
+                                   FontSize="11" Margin="0,10,0,3" />
+                        <TextBox Text="{Binding RegexText, UpdateSourceTrigger=PropertyChanged}"
+                                 FontFamily="Consolas" FontSize="13" Padding="8,5" TextWrapping="Wrap" AcceptsReturn="False" />
+
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Category / zone" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <TextBox Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
+                            </StackPanel>
+                            <CheckBox Grid.Column="1" Content="only in this zone" IsChecked="{Binding RestrictToZone}"
+                                      VerticalAlignment="Bottom" Margin="10,0,0,6" FontSize="12"
+                                      ToolTip="Fire only when the current zone name contains the category text (ACT semantics)" />
+                        </Grid>
+
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Alert" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <ComboBox ItemsSource="{Binding SoundChoices}" SelectedIndex="{Binding SoundChoice}" FontSize="13" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                <TextBlock Text="Cooldown (s)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <TextBox Text="{Binding CooldownSeconds, UpdateSourceTrigger=PropertyChanged}" Width="70" Padding="8,5" FontSize="13" />
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Visibility="{Binding SoundDataVisible, Converter={StaticResource BoolToVis}}" Margin="0,10,0,0">
+                            <TextBlock Text="WAV file path" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                       Visibility="{Binding SoundDataIsWav, Converter={StaticResource BoolToVis}}" />
+                            <TextBlock Text="Text to speak — $1 inserts the first capture group"
+                                       Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                       Visibility="{Binding SoundDataIsTts, Converter={StaticResource BoolToVis}}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding SoundData, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
+                                <Button Grid.Column="1" Content="…" Style="{StaticResource GoldButton}" Margin="6,0,0,0" Padding="10,3"
+                                        ToolTip="Browse for a WAV file" Command="{Binding BrowseWavCommand}"
+                                        Visibility="{Binding SoundDataIsWav, Converter={StaticResource BoolToVis}}" />
+                                <Button Grid.Column="2" Content="▶" Style="{StaticResource GoldButton}" Margin="6,0,0,0" Padding="10,3"
+                                        ToolTip="Test the alert" Command="{Binding TestSoundCommand}" />
+                            </Grid>
+                        </StackPanel>
+
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <CheckBox Content="starts timer" IsChecked="{Binding StartsTimer}" VerticalAlignment="Center" FontSize="12" />
+                            <TextBox Grid.Column="1" Text="{Binding TimerName, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="10,0,0,0" Padding="8,5" FontSize="13"
+                                     IsEnabled="{Binding StartsTimer}" />
+                        </Grid>
+
+                        <TextBlock Text="{Binding EditorError}" Foreground="{StaticResource DangerBrush}" FontSize="12"
+                                   TextWrapping="Wrap" Margin="0,8,0,0" />
+
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                            <Button Content="Save trigger" Style="{StaticResource GoldButton}" Command="{Binding SaveTriggerCommand}" />
+                            <Button Content="Clear" Style="{StaticResource GoldButton}" Margin="8,0,0,0" Command="{Binding NewTriggerCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Padding="14" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Import from ACT" Style="{StaticResource SectionLabel}" />
+                        <TextBlock Text="Paste ACT share XML — one &lt;Trigger … /&gt; per line."
+                                   Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,6" />
+                        <TextBox Text="{Binding ImportText, UpdateSourceTrigger=PropertyChanged}"
+                                 FontFamily="Consolas" FontSize="12" Padding="8,5" AcceptsReturn="True"
+                                 MinHeight="72" MaxHeight="160" VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap" />
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Button Content="Import" Style="{StaticResource GoldButton}" Command="{Binding ImportXmlCommand}" />
+                            <TextBlock Grid.Column="1" Text="{Binding ImportResult}" Style="{StaticResource MutedText}"
+                                       FontSize="12" Margin="10,5,0,0" TextWrapping="Wrap" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Padding="14" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Recent fires" Style="{StaticResource SectionLabel}" />
+                        <ItemsControl ItemsSource="{Binding RecentFires}" Margin="0,8,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Time}" FontFamily="Consolas" FontSize="11"
+                                                   Foreground="{StaticResource GoldDimBrush}" Margin="0,0,8,0" />
+                                        <TextBlock Grid.Column="1" FontSize="11" TextWrapping="Wrap"
+                                                   Foreground="{StaticResource TextBrush}">
+                                            <Run Text="{Binding Category, Mode=OneWay}" Foreground="{StaticResource GoldBrush}" /><Run Text="  " /><Run Text="{Binding Matched, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="Triggers that fire while you play appear here."
+                                   Style="{StaticResource MutedText}" FontSize="11" Margin="0,4,0,0"
+                                   Visibility="{Binding HasRecentFires, Converter={StaticResource InverseBoolToVis}}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
