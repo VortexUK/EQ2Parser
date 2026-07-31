@@ -666,15 +666,20 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 ("Resist", new SKColor(0xE8, 0xBB, 0xFF)),
                 ("Counter", new SKColor(0xFF, 0x9E, 0xC7)),
             ];
+            // Per (kind, actor): avoided counts split by attack category so
+            // estimates use the right average (autos hit far softer than
+            // skills — a blended average roughly doubled the totals vs ACT).
             var avoidCounts = kindPalette.ToDictionary(
                 k => k.Label,
-                _ => new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
+                _ => new Dictionary<string, (int Auto, int Skill)>(StringComparer.OrdinalIgnoreCase),
                 StringComparer.Ordinal);
             var attempts = 0;
             var hitCount = 0;
-            var stoneskin = 0;
             var warded = 0;
-            long landedTotal = 0;
+            var ssAuto = 0;
+            var ssSkill = 0;
+            long landedAutoTotal = 0, landedSkillTotal = 0;
+            int landedAutoCount = 0, landedSkillCount = 0;
             long wardedTotal = 0;
             var enemies = EnemyAttackerKeys(ResolveFight());
 
@@ -684,10 +689,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                     continue;
 
                 // A fully warded hit logs its absorb line(s) IMMEDIATELY
-                // BEFORE the "fails to inflict any damage" line. Pair by log
-                // adjacency (TimeSorter), not by second — a same-second
-                // bucket lets partial absorbs on OTHER hits masquerade as
-                // full wards and steals from the stoneskin count.
+                // BEFORE the "fails to inflict any damage" line — pair by
+                // log adjacency (TimeSorter).
                 List<(int Sorter, long Second, long Amount)> absorbs = [];
                 if (combatant.IncomingBuckets.GetValueOrDefault(BucketConfig.HealedInc) is { } healedInc)
                 {
@@ -703,21 +706,27 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
                 foreach (var sw in bucket.All.Swings)
                 {
-                    // Enemy attacks only — self-procs, ally utility hits and
-                    // death bookkeeping are not avoidance events.
                     if (sw.Ability == Combatant.KillingAbility || !enemies.Contains(sw.Attacker.ToUpperInvariant()))
                         continue;
                     attempts++;
+                    var isAuto = sw.Category == SwingCategory.Melee;
                     switch (sw.Damage.Number)
                     {
                         case > 0:
                             hitCount++;
-                            landedTotal += sw.Damage.Number;
+                            if (isAuto)
+                            {
+                                landedAutoCount++;
+                                landedAutoTotal += sw.Damage.Number;
+                            }
+                            else
+                            {
+                                landedSkillCount++;
+                                landedSkillTotal += sw.Damage.Number;
+                            }
                             break;
                         case 0:
                         {
-                            // Claim every unused absorb printed just before
-                            // this line (a hit can drain several wards).
                             long claimed = 0;
                             var second = sw.Time.ToUnixTimeSeconds();
                             for (var a = 0; a < absorbs.Count; a++)
@@ -735,9 +744,13 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                                 warded++;
                                 wardedTotal += claimed;
                             }
+                            else if (isAuto)
+                            {
+                                ssAuto++;
+                            }
                             else
                             {
-                                stoneskin++;
+                                ssSkill++;
                             }
                             break;
                         }
@@ -754,7 +767,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                             };
                             var actor = ActorLabel(sw.Extra, targetName);
                             avoidCounts[kind].TryGetValue(actor, out var n);
-                            avoidCounts[kind][actor] = n + 1;
+                            avoidCounts[kind][actor] = isAuto ? (n.Auto + 1, n.Skill) : (n.Auto, n.Skill + 1);
                             break;
                         }
                     }
@@ -768,19 +781,25 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 return;
             }
 
-            var avgHit = hitCount > 0 ? (double)landedTotal / hitCount : 0;
-            // ACT semantics: stoneskins ARE avoids.
-            var avoided = attempts - hitCount - warded;
-            var avoidedEst = avoided * avgHit;
+            // ACT-style per-type averages (fall back to the other type's
+            // average when one never landed).
+            var avgAuto = landedAutoCount > 0 ? (double)landedAutoTotal / landedAutoCount
+                : landedSkillCount > 0 ? (double)landedSkillTotal / landedSkillCount : 0;
+            var avgSkill = landedSkillCount > 0 ? (double)landedSkillTotal / landedSkillCount : avgAuto;
+            double Est(int auto, int skill) => auto * avgAuto + skill * avgSkill;
 
-            // Headline: the x-of-y truth first.
+            var stoneskin = ssAuto + ssSkill;
+            var avoided = attempts - hitCount - warded;
+            var avoidedEst = Est(ssAuto, ssSkill)
+                + avoidCounts.Values.Sum(actors => actors.Values.Sum(n => Est(n.Auto, n.Skill)));
+
             ReportLine(
                 ($"{attempts} incoming attacks", ClassColors.TreeText),
                 ($"   landed {hitCount}/{attempts} ({100.0 * hitCount / attempts:F1}%)", ClassColors.OutcomeLoss),
                 ($"   warded {warded}/{attempts} ({100.0 * warded / attempts:F1}%)", ClassColors.SourceRaid),
                 ($"   avoided {avoided}/{attempts} ({100.0 * avoided / attempts:F1}%)", ClassColors.OutcomeWin));
             ReportLine(
-                ($"avg landed hit {CombatantRow.Compact(avgHit)}", ClassColors.Neutral),
+                ($"avg auto {CombatantRow.Compact(avgAuto)} · avg skill {CombatantRow.Compact(avgSkill)}", ClassColors.Neutral),
                 ($"   est. avoided {CombatantRow.Compact(avoidedEst)} (effective {CombatantRow.Compact(avoidedEst / seconds)} HPS)", ClassColors.OutcomeWin),
                 ($"   warded {CombatantRow.Compact(wardedTotal)} absorbed", ClassColors.SourceRaid));
             ReportLine(("", ClassColors.Neutral));
@@ -804,18 +823,19 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             Row("Warded", "—", warded, "—", CombatantRow.Compact(wardedTotal), new SKColor(0x93, 0xD9, 0xFF));
             Row("Stoneskin", "—", stoneskin,
                 $"{100.0 * stoneskin / Math.Max(1, avoided):F1}%",
-                CombatantRow.Compact(stoneskin * avgHit), new SKColor(0xC8, 0xA9, 0x6E));
+                CombatantRow.Compact(Est(ssAuto, ssSkill)), new SKColor(0xC8, 0xA9, 0x6E));
             foreach (var (label, color) in kindPalette)
             {
                 var actors = avoidCounts[label];
                 if (actors.Count == 0)
                     continue;
                 var first = true;
-                foreach (var (actor, count) in actors.OrderByDescending(kv => kv.Value))
+                foreach (var (actor, n) in actors.OrderByDescending(kv => kv.Value.Auto + kv.Value.Skill))
                 {
+                    var count = n.Auto + n.Skill;
                     Row(first ? label : "", actor, count,
                         $"{100.0 * count / Math.Max(1, avoided):F1}%",
-                        CombatantRow.Compact(count * avgHit), color);
+                        CombatantRow.Compact(Est(n.Auto, n.Skill)), color);
                     first = false;
                 }
             }
@@ -827,9 +847,6 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
             OpenReport($"{context} › avoidance report");
 
-            // Two-ring doughnut: inner = landed / stoneskin / avoided at
-            // their true shares; outer = the avoided arc broken into kinds
-            // (a transparent filler keeps the arcs aligned).
             ReportDonutInner =
             [
                 Ring("Landed", hitCount, new SKColor(0xF8, 0x71, 0x71), attempts, 30),
@@ -851,7 +868,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 outer.Add(Ring("Stoneskin", stoneskin, new SKColor(0xC8, 0xA9, 0x6E), attempts, 86));
             foreach (var (label, color) in kindPalette)
             {
-                var count = avoidCounts[label].Values.Sum();
+                var count = avoidCounts[label].Values.Sum(n => n.Auto + n.Skill);
                 if (count > 0)
                     outer.Add(Ring(label, count, color, attempts, 86));
             }
