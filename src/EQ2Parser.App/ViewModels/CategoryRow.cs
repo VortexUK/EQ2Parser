@@ -18,6 +18,10 @@ public sealed partial class CategoryRow(string name, bool expanded) : Observable
     public string Name { get; } = name;
     public string CategoryName => Name;
 
+    /// <summary>Optional parent-group marker (the timer tree stores the
+    /// zone here) — lets composite trees key expansion and drops.</summary>
+    public string? Tag { get; init; }
+
     [ObservableProperty]
     private int _count;
 

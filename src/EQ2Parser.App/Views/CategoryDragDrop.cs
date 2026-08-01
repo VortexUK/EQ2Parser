@@ -11,7 +11,7 @@ namespace EQ2Parser.App.Views;
 /// light up; no-ops show the no-drop cursor), and highlight cleanup. The
 /// owning view forwards its XAML events here and supplies the move action.
 /// </summary>
-public sealed class CategoryDragDrop(Action<ICategoryDropTarget, string> move)
+public sealed class CategoryDragDrop(Action<ICategoryDropTarget, ICategoryDropTarget> move)
 {
     private const string Format = "EQ2Parser.CategoryDrag";
 
@@ -90,8 +90,9 @@ public sealed class CategoryDragDrop(Action<ICategoryDropTarget, string> move)
         ClearHighlight();
         if (Dragged(e) is not { } dragged)
             return;
-        if (EffectiveTarget(Context(sender), dragged) is { } category)
-            move(dragged, category);
+        var context = Context(sender);
+        if (context is not null && EffectiveTarget(context, dragged) is not null)
+            move(dragged, context);
     }
 
     private void ClearHighlight()

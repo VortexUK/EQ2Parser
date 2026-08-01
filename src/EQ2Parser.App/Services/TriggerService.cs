@@ -164,7 +164,8 @@ public sealed class TriggerService
                 engine.AddOrUpdate(updated);
             Save();
         }
-        DefinitionsChanged?.Invoke();
+        // No DefinitionsChanged: enable flips patch rows in place — a full
+        // rebuild would reset the list's scroll on every checkbox click.
     }
 
     private static Trigger CloneWith(Trigger t, bool enabled) => new(t.RegexText, t.Category)

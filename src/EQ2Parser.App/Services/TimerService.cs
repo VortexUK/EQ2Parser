@@ -116,7 +116,8 @@ public sealed class TimerService
             Service.AddOrUpdateDefinition(current with { Enabled = enabled });
             Save();
         }
-        DefinitionsChanged?.Invoke();
+        // No DefinitionsChanged: enable flips patch rows in place — a full
+        // rebuild would reset the list's scroll on every checkbox click.
     }
 
     public int ImportMany(IReadOnlyCollection<TimerDefinition> definitions)

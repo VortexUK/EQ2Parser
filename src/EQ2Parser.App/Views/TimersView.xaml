@@ -53,11 +53,46 @@
                             </Style>
                         </ListBox.ItemContainerStyle>
                         <ListBox.Resources>
-                            <!-- Category header: click to expand/collapse, and
+                            <!-- Zone header: top level, grouping only (not a
+                                 drop target — drops land on mobs). -->
+                            <DataTemplate DataType="{x:Type vm:TimerZoneRow}">
+                                <Border CornerRadius="4" Margin="0,6,0,1" Padding="8,7" Cursor="Hand"
+                                        Background="#2E1C1F2E" BorderBrush="#33C8A96E" BorderThickness="1"
+                                        MouseLeftButtonUp="ZoneHeader_Click">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Width="16" FontSize="11" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource GoldBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="▸" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                            <Setter Property="Text" Value="▾" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="14"
+                                                   FontFamily="{StaticResource HeadingFont}"
+                                                   Foreground="{StaticResource GoldBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center">
+                                            <Run Text="{Binding EnabledCount, Mode=OneWay}" /><Run Text="/" /><Run Text="{Binding Count, Mode=OneWay}" /><Run Text=" on" />
+                                        </TextBlock>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+
+                            <!-- Mob header: click to expand/collapse, and
                                  the drop target when dragging a timer. -->
                             <DataTemplate DataType="{x:Type vm:CategoryRow}">
                                 <Border Background="{StaticResource SurfaceRaisedBrush}" CornerRadius="4"
-                                        Margin="0,3,0,1" Padding="8,6" AllowDrop="True" Cursor="Hand"
+                                        Margin="14,3,0,1" Padding="8,6" AllowDrop="True" Cursor="Hand"
                                         MouseLeftButtonUp="CategoryHeader_Click"
                                         DragOver="DropTarget_DragOver" DragLeave="DropTarget_DragLeave" Drop="DropTarget_Drop">
                                     <Border.Style>
@@ -104,7 +139,7 @@
                             <!-- Timer row: drag by the grip to re-file it. -->
                             <DataTemplate DataType="{x:Type vm:TimerDefRow}">
                                 <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
-                                        Padding="4,8,8,8" Margin="16,0,0,0" AllowDrop="True"
+                                        Padding="4,8,8,8" Margin="30,0,0,0" AllowDrop="True"
                                         DragOver="DropTarget_DragOver" DragLeave="DropTarget_DragLeave" Drop="DropTarget_Drop">
                                     <Border.Style>
                                         <Style TargetType="Border">
@@ -184,6 +219,9 @@
                         <TextBlock Text="Name (matches the ability / trigger timer name)" Style="{StaticResource MutedText}"
                                    FontSize="11" Margin="0,10,0,3" />
                         <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
+
+                        <TextBlock Text="Zone (grouping only)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,10,0,3" />
+                        <TextBox Text="{Binding ZoneText, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
 
                         <Grid Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>

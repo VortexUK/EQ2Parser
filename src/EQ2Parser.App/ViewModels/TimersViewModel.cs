@@ -9,6 +9,22 @@ using Trigger = EQ2Parser.Core.Triggers.Trigger;
 
 namespace EQ2Parser.App.ViewModels;
 
+/// <summary>Top-level zone header in the timer tree — grouping only,
+/// deliberately NOT a drop target (drops land on mobs or their rows).</summary>
+public sealed partial class TimerZoneRow(string name, bool expanded) : ObservableObject
+{
+    public string Name { get; } = name;
+
+    [ObservableProperty]
+    private int _count;
+
+    [ObservableProperty]
+    private int _enabledCount;
+
+    [ObservableProperty]
+    private bool _isExpanded = expanded;
+}
+
 /// <summary>One timer definition in the list. Enabled is live — the
 /// checkbox pushes straight through to the shared timer service.</summary>
 public sealed partial class TimerDefRow : ObservableObject, ICategoryDropTarget
@@ -129,34 +145,65 @@ public sealed partial class TimersViewModel : ObservableObject
     private bool MatchesFilter(TimerDefinition def) =>
         FilterText.Length == 0
         || def.Name.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
-        || def.Category.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
+        || def.Category.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
+        || def.Zone.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
+
+    private static string ZoneKey(TimerDefinition def) =>
+        def.Zone.Length > 0 ? def.Zone : "General";
+
+    private readonly HashSet<string> _collapsedZones = new(StringComparer.OrdinalIgnoreCase);
 
     private void RebuildRows()
     {
         Rows.Clear();
         var filtering = FilterText.Length > 0;
-        foreach (var group in _manager.SpellTimers.Definitions
-                     .GroupBy(d => d.Category, StringComparer.OrdinalIgnoreCase)
+        foreach (var zoneGroup in _manager.SpellTimers.Definitions
+                     .GroupBy(ZoneKey, StringComparer.OrdinalIgnoreCase)
                      .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
         {
-            List<TimerDefinition> members = [.. group
-                .Where(MatchesFilter)
-                .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)];
-            if (members.Count == 0)
+            List<TimerDefinition> zoneMembers = [.. zoneGroup.Where(MatchesFilter)];
+            if (zoneMembers.Count == 0)
                 continue;
-            // A filter opens everything it touches; otherwise remembered state.
-            var expanded = filtering || _expandedCategories.Contains(group.Key);
-            Rows.Add(new CategoryRow(group.Key, expanded)
+            // Zones default OPEN (there are few); mobs default closed.
+            var zoneExpanded = filtering || !_collapsedZones.Contains(zoneGroup.Key);
+            Rows.Add(new TimerZoneRow(zoneGroup.Key, zoneExpanded)
             {
-                Count = members.Count,
-                EnabledCount = members.Count(d => d.Enabled),
+                Count = zoneMembers.Count,
+                EnabledCount = zoneMembers.Count(d => d.Enabled),
             });
-            if (!expanded)
+            if (!zoneExpanded)
                 continue;
-            foreach (var def in members)
-                Rows.Add(new TimerDefRow(this, def));
+            foreach (var mobGroup in zoneMembers
+                         .GroupBy(d => d.Category, StringComparer.OrdinalIgnoreCase)
+                         .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                List<TimerDefinition> members = [.. mobGroup
+                    .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)];
+                var expandKey = $"{zoneGroup.Key}|{mobGroup.Key}";
+                var expanded = filtering || _expandedCategories.Contains(expandKey);
+                Rows.Add(new CategoryRow(mobGroup.Key, expanded)
+                {
+                    Tag = zoneGroup.Key,
+                    Count = members.Count,
+                    EnabledCount = members.Count(d => d.Enabled),
+                });
+                if (!expanded)
+                    continue;
+                foreach (var def in members)
+                    Rows.Add(new TimerDefRow(this, def));
+            }
         }
         HasTimers = _manager.SpellTimers.Definitions.Count > 0;
+    }
+
+    [RelayCommand]
+    private void ToggleZone(TimerZoneRow? row)
+    {
+        if (row is null)
+            return;
+        if (!_collapsedZones.Add(row.Name))
+            _collapsedZones.Remove(row.Name);
+        RebuildRows();
     }
 
     [RelayCommand]
@@ -164,23 +211,34 @@ public sealed partial class TimersViewModel : ObservableObject
     {
         if (row is null)
             return;
-        if (!_expandedCategories.Add(row.Name))
-            _expandedCategories.Remove(row.Name);
+        var key = $"{row.Tag}|{row.Name}";
+        if (!_expandedCategories.Add(key))
+            _expandedCategories.Remove(key);
         RebuildRows();
     }
 
-    /// <summary>Drag-and-drop re-file: the category is half the identity
-    /// key, so this is a keyed replace that persists immediately.</summary>
-    public void MoveTimer(TimerDefRow row, string targetCategory)
+    /// <summary>Drag-and-drop re-file onto a mob header or one of its rows:
+    /// the timer adopts the target's mob (category, half the identity key)
+    /// AND its zone, so it lands exactly where it was dropped.</summary>
+    public void MoveTimer(TimerDefRow row, ICategoryDropTarget target)
     {
-        targetCategory = targetCategory.Trim();
-        if (targetCategory.Length == 0
-            || string.Equals(row.Category, targetCategory, StringComparison.OrdinalIgnoreCase))
+        var targetCategory = target.CategoryName.Trim();
+        var targetZone = target switch
+        {
+            CategoryRow header => header.Tag is "General" or null ? "" : header.Tag,
+            TimerDefRow other => other.Definition.Zone,
+            _ => row.Definition.Zone,
+        };
+        if (targetCategory.Length == 0)
             return;
         var current = _manager.SpellTimers.Definitions.FirstOrDefault(d => d.Key == row.Key) ?? row.Definition;
-        var moved = current with { Category = targetCategory };
+        if (string.Equals(current.Category, targetCategory, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(current.Zone, targetZone, StringComparison.OrdinalIgnoreCase))
+            return;
+        var moved = current with { Category = targetCategory, Zone = targetZone };
         _manager.SpellTimers.AddOrUpdate(moved, replaceKey: current.Key);
-        _expandedCategories.Add(targetCategory);
+        _collapsedZones.Remove(targetZone.Length > 0 ? targetZone : "General");
+        _expandedCategories.Add($"{(targetZone.Length > 0 ? targetZone : "General")}|{targetCategory}");
         if (_editingKey == current.Key)
             _editingKey = moved.Key;
         RebuildRows();
@@ -201,14 +259,16 @@ public sealed partial class TimersViewModel : ObservableObject
     internal void SetRowEnabled(TimerDefRow row, bool enabled)
     {
         _manager.SpellTimers.SetEnabled(row.Key, enabled);
+        var zoneKey = ZoneKey(row.Definition);
         foreach (var item in Rows)
         {
             if (item is CategoryRow header
-                && header.Name.Equals(row.Category, StringComparison.OrdinalIgnoreCase))
-            {
+                && header.Name.Equals(row.Category, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(header.Tag, zoneKey, StringComparison.OrdinalIgnoreCase))
                 header.EnabledCount += enabled ? 1 : -1;
-                break;
-            }
+            else if (item is TimerZoneRow zone
+                && zone.Name.Equals(zoneKey, StringComparison.OrdinalIgnoreCase))
+                zone.EnabledCount += enabled ? 1 : -1;
         }
     }
 
@@ -270,6 +330,9 @@ public sealed partial class TimersViewModel : ObservableObject
     private string _category = "General";
 
     [ObservableProperty]
+    private string _zoneText = "";
+
+    [ObservableProperty]
     private string _durationSeconds = "30";
 
     [ObservableProperty]
@@ -328,6 +391,7 @@ public sealed partial class TimersViewModel : ObservableObject
         EditorTitle = "New timer";
         Name = "";
         Category = "General";
+        ZoneText = "";
         DurationSeconds = "30";
         WarningSeconds = "10";
         RemoveSeconds = "-15";
@@ -356,6 +420,7 @@ public sealed partial class TimersViewModel : ObservableObject
         EditorTitle = "Edit timer";
         Name = d.Name;
         Category = d.Category;
+        ZoneText = d.Zone;
         DurationSeconds = d.DurationSeconds.ToString();
         WarningSeconds = d.WarningSeconds.ToString();
         RemoveSeconds = d.RemoveSeconds.ToString();
@@ -406,6 +471,7 @@ public sealed partial class TimersViewModel : ObservableObject
         {
             Name = name,
             Category = category.Length == 0 ? "General" : category,
+            Zone = ZoneText.Trim(),
             DurationSeconds = duration,
             WarningSeconds = Math.Min(warning, duration),
             RemoveSeconds = remove,
@@ -424,7 +490,9 @@ public sealed partial class TimersViewModel : ObservableObject
         };
         _manager.SpellTimers.AddOrUpdate(definition, _editingKey);
         _editingKey = null;
-        _expandedCategories.Add(definition.Category);
+        var zoneKey = ZoneKey(definition);
+        _collapsedZones.Remove(zoneKey);
+        _expandedCategories.Add($"{zoneKey}|{definition.Category}");
         NewTimer();
         RebuildRows();
     }

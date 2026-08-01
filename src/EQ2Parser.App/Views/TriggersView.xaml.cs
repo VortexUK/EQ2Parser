@@ -12,10 +12,10 @@ public partial class TriggersView
     public TriggersView()
     {
         InitializeComponent();
-        _dragDrop = new CategoryDragDrop((dragged, category) =>
+        _dragDrop = new CategoryDragDrop((dragged, target) =>
         {
             if (DataContext is TriggersViewModel vm && dragged is TriggerRow row)
-                vm.MoveTrigger(row, category);
+                vm.MoveTrigger(row, target.CategoryName);
         });
         DataContextChanged += (_, e) =>
         {

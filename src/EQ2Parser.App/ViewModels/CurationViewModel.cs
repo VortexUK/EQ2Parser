@@ -130,13 +130,12 @@ public sealed partial class CurationViewModel : ObservableObject
         return new TimerDefinition
         {
             Name = mined.Ability,
-            // Filed under the MOB, and category-locked to it: the timer
+            // Filed Zone → Mob, and category-locked to the mob: the timer
             // only starts when this mob casts the ability, so same-named
-            // abilities on other mobs never cross-trigger. Zone rides in
-            // the tooltip for context.
+            // abilities on other mobs never cross-trigger.
             Category = mined.Mob,
+            Zone = mined.Zone,
             RestrictToCategory = true,
-            Tooltip = mined.Zone,
             DurationSeconds = Math.Max(5, duration),
             WarningSeconds = Math.Clamp(duration / 4, 3, 10),
             // ACT's convention: bare "tts" speaks "<name> soon" at warning.

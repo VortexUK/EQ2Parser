@@ -11,10 +11,10 @@ public partial class TimersView
     public TimersView()
     {
         InitializeComponent();
-        _dragDrop = new CategoryDragDrop((dragged, category) =>
+        _dragDrop = new CategoryDragDrop((dragged, target) =>
         {
             if (DataContext is TimersViewModel vm && dragged is TimerDefRow row)
-                vm.MoveTimer(row, category);
+                vm.MoveTimer(row, target);
         });
         DataContextChanged += (_, e) =>
         {
@@ -44,5 +44,12 @@ public partial class TimersView
         if (DataContext is TimersViewModel vm
             && (sender as FrameworkElement)?.DataContext is CategoryRow row)
             vm.ToggleCategoryCommand.Execute(row);
+    }
+
+    private void ZoneHeader_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is TimersViewModel vm
+            && (sender as FrameworkElement)?.DataContext is TimerZoneRow row)
+            vm.ToggleZoneCommand.Execute(row);
     }
 }

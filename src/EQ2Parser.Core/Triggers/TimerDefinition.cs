@@ -9,6 +9,10 @@ public sealed record TimerDefinition
     public required string Name { get; init; }
     public string Category { get; init; } = "General";
 
+    /// <summary>Display grouping only (Zone → Mob → timers in the UI) —
+    /// no engine semantics and not part of the ACT share format.</summary>
+    public string Zone { get; init; } = "";
+
     /// <summary>ACT's Checked flag: a disabled definition never starts a
     /// bar but stays in the list.</summary>
     public bool Enabled { get; init; } = true;
