@@ -25,7 +25,8 @@ if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed' }
 
 Write-Host 'Packing with Velopack…'
 vpk pack --packId EQ2Parser --packVersion $Version --packDir publish `
-    --mainExe EQ2Parser.App.exe --packTitle EQ2Parser --outputDir Releases
+    --mainExe EQ2Parser.App.exe --packTitle EQ2Parser --outputDir Releases `
+    --icon src/EQ2Parser.App/Assets/EQ2Parser.ico
 if ($LASTEXITCODE -ne 0) { throw 'vpk pack failed' }
 
 if ($Publish) {
