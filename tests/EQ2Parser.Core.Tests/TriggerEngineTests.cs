@@ -127,7 +127,7 @@ public class TriggerEngineTests
 
         engine.Process("Bossmob begins casting Doom on Sofja!", T0);
         var timer = Assert.Single(fired).Timer;
-        Assert.Equal(new TimerRequest("Doom", "Bossmob", "Sofja"), timer);
+        Assert.Equal(new TimerRequest("Doom", "Bossmob", "Sofja", "", "General"), timer);
     }
 
     [Fact]

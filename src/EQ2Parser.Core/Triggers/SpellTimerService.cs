@@ -160,6 +160,39 @@ public sealed class SpellTimerService(TimerOptions? options = null)
         }
         if (chosen is null)
             return false;
+        return Start(chosen, attacker, self, victim, time);
+    }
+
+    /// <summary>A trigger's linked-timer request — definitive resolution:
+    /// the definition whose Name matches AND whose Zone + Category (any
+    /// |-alternative) equal the trigger's own filing wins, enabled-only,
+    /// last wins on ties. No exact match falls back to the name-based
+    /// tiered selection, so plain ACT triggers (no Zone, Category
+    /// "General") keep their old behaviour.</summary>
+    public bool NotifyLinked(string timerName, string triggerZone, string triggerCategory, string attacker, string victim, DateTimeOffset time, string currentZone = "")
+    {
+        if ((triggerZone.Length > 0 || triggerCategory.Length > 0)
+            && _byName.TryGetValue(timerName, out var candidates))
+        {
+            TimerDefinition? exact = null;
+            foreach (var def in candidates)
+            {
+                if (!def.Enabled
+                    || !string.Equals(def.Zone, triggerZone, StringComparison.OrdinalIgnoreCase)
+                    || !def.Category.Split('|').Any(c => string.Equals(c.Trim(), triggerCategory, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+                exact = def;
+            }
+            if (exact is not null)
+                return Start(exact, attacker.ToLowerInvariant(), self: true, victim.ToLowerInvariant(), time);
+        }
+        return Notify(attacker, timerName, self: true, victim, time, currentZone);
+    }
+
+    /// <summary>The shared start path once a definition is chosen —
+    /// attacker/victim pre-lowercased.</summary>
+    private bool Start(TimerDefinition chosen, string attacker, bool self, string victim, DateTimeOffset time)
+    {
         if (chosen.RestrictToMe && !self)
             return false;
 

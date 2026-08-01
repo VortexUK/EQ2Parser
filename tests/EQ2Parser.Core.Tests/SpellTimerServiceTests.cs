@@ -338,6 +338,35 @@ public class SpellTimerServiceTests
     }
 
     [Fact]
+    public void Linked_Notify_Resolves_Within_The_Triggers_Zone_And_Mob()
+    {
+        // Two same-named timers; the trigger's own filing decides which
+        // starts — not the name-based last-wins the fallback would pick.
+        var service = new SpellTimerService();
+        service.AddOrUpdateDefinition(new TimerDefinition
+        {
+            Name = "Treyloth Reflect", Category = "Treyloth D'Kulvith",
+            Zone = "Freethinker Hideout", DurationSeconds = 30,
+        });
+        service.AddOrUpdateDefinition(new TimerDefinition
+        {
+            Name = "Treyloth Reflect", Category = "Someone Else",
+            Zone = "Another Zone", DurationSeconds = 99,
+        });
+
+        Assert.True(service.NotifyLinked("Treyloth Reflect", "Freethinker Hideout", "Treyloth D'Kulvith",
+            "Treyloth D'Kulvith", "sofja", T0));
+        var scoped = Assert.Single(service.Frames.SelectMany(f => f.Timers));
+        Assert.Equal(30, scoped.DurationSeconds);
+
+        // No filing on the trigger (plain ACT import) → name-based
+        // fallback, where the last-added definition wins.
+        Assert.True(service.NotifyLinked("Treyloth Reflect", "", "", "x", "othervictim", T0.AddSeconds(60)));
+        var fallback = service.Frames.SelectMany(f => f.Timers).Single(t => t.DurationSeconds != 30);
+        Assert.Equal(99, fallback.DurationSeconds);
+    }
+
+    [Fact]
     public void Multi_Name_Category_Matches_Any_Alternative()
     {
         // Split mobs: one restricted timer whose Category lists every name

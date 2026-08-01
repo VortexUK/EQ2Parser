@@ -36,7 +36,7 @@ public sealed class LogLineProcessor
             _triggers.Fired += fired =>
             {
                 if (fired.Timer is { } t)
-                    _timers.Notify(t.Attacker, t.TimerName, self: true, t.Victim, LastLineTime, Engine.CurrentZone);
+                    _timers.NotifyLinked(t.TimerName, t.Zone, t.Category, t.Attacker, t.Victim, LastLineTime, Engine.CurrentZone);
             };
         }
     }

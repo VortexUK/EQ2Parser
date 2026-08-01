@@ -88,9 +88,15 @@ public sealed partial class TriggersViewModel : ObservableObject
         manager.Triggers.DefinitionsChanged += () =>
             Application.Current?.Dispatcher.BeginInvoke(RebuildRows);
         // Timer edits too: the rows show linked-timer state ("no such
-        // timer!"), which changes when a timer is created or deleted.
+        // timer!") and the editor's definitive timer list both change
+        // when a timer is created or deleted.
         manager.SpellTimers.DefinitionsChanged += () =>
-            Application.Current?.Dispatcher.BeginInvoke(RebuildRows);
+            Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                RebuildRows();
+                RebuildTimerChoices();
+            });
+        RebuildTimerChoices();
     }
 
     internal bool HasTimerNamed(string name) =>
@@ -327,8 +333,41 @@ public sealed partial class TriggersViewModel : ObservableObject
     [ObservableProperty]
     private bool _startsTimer;
 
+    // string?, not string: rebuilding the bound ComboBox's items pushes
+    // null through the TwoWay SelectedItem binding.
     [ObservableProperty]
-    private string _timerName = "";
+    private string? _timerName = "";
+
+    /// <summary>The definitive linked-timer list: only timers filed under
+    /// this trigger's Zone + Category (any |-alternative) are offered —
+    /// the same scope the runtime resolves the link against.</summary>
+    public ObservableCollection<string> TimerNameChoices { get; } = [];
+
+    partial void OnZoneTextChanged(string value) => RebuildTimerChoices();
+
+    partial void OnCategoryChanged(string value) => RebuildTimerChoices();
+
+    private void RebuildTimerChoices()
+    {
+        var current = TimerName ?? "";
+        var zone = ZoneText.Trim();
+        var category = Category.Trim();
+        List<string> names = [.. _manager.SpellTimers.Definitions
+            .Where(d => string.Equals(d.Zone, zone, StringComparison.OrdinalIgnoreCase)
+                && d.Category.Split('|').Any(c => string.Equals(c.Trim(), category, StringComparison.OrdinalIgnoreCase)))
+            .Select(d => d.Name)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)];
+        TimerNameChoices.Clear();
+        TimerNameChoices.Add("");
+        foreach (var name in names)
+            TimerNameChoices.Add(name);
+        // The stored link survives even when it's out of scope (imported
+        // ACT triggers, renamed mobs) — shown so it can be re-picked.
+        if (current.Length > 0 && !TimerNameChoices.Any(c => string.Equals(c, current, StringComparison.OrdinalIgnoreCase)))
+            TimerNameChoices.Add(current);
+        TimerName = current;
+    }
 
     [ObservableProperty]
     private string _editorError = "";
@@ -361,6 +400,7 @@ public sealed partial class TriggersViewModel : ObservableObject
         CooldownSeconds = "1";
         StartsTimer = false;
         TimerName = "";
+        RebuildTimerChoices();
         EditorError = "";
     }
 
@@ -381,6 +421,7 @@ public sealed partial class TriggersViewModel : ObservableObject
         CooldownSeconds = t.AudioCooldown.TotalSeconds.ToString("0.#");
         StartsTimer = t.StartsTimer;
         TimerName = t.TimerName;
+        RebuildTimerChoices();
         EditorError = "";
     }
 
@@ -401,6 +442,7 @@ public sealed partial class TriggersViewModel : ObservableObject
             EditorError = "Cooldown must be a number of seconds.";
             return;
         }
+        var timerName = (TimerName ?? "").Trim();
         Trigger trigger;
         try
         {
@@ -410,8 +452,8 @@ public sealed partial class TriggersViewModel : ObservableObject
                 RestrictToCategoryZone = RestrictToZone,
                 SoundType = (TriggerSound)Math.Clamp(SoundChoice, 0, 3),
                 SoundData = SoundData.Trim(),
-                StartsTimer = StartsTimer && TimerName.Trim().Length > 0,
-                TimerName = TimerName.Trim(),
+                StartsTimer = StartsTimer && timerName.Length > 0,
+                TimerName = timerName,
                 AudioCooldown = TimeSpan.FromSeconds(Math.Clamp(cooldown, 0, 3600)),
             };
         }

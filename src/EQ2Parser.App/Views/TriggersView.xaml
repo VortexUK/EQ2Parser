@@ -302,10 +302,10 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <CheckBox Content="starts timer" IsChecked="{Binding StartsTimer}" VerticalAlignment="Center" FontSize="12"
-                                      ToolTip="On a match, also start the spell timer with this name — timers can run off emotes, not just casts.&#10;No timer with this name yet? Saving creates a 30s default on the Timers page for you to tune." />
-                            <TextBox Grid.Column="1" Text="{Binding TimerName, UpdateSourceTrigger=PropertyChanged}"
-                                     Margin="10,0,0,0" Padding="8,5" FontSize="13"
-                                     IsEnabled="{Binding StartsTimer}" />
+                                      ToolTip="On a match, also start the linked spell timer — timers can run off emotes, not just casts.&#10;The list is definitive: it offers the timers filed under this trigger's Zone + Category, and the link resolves to exactly that one. Make the timer first (Timers page or the curator) if it's not listed." />
+                            <ComboBox Grid.Column="1" ItemsSource="{Binding TimerNameChoices}" SelectedItem="{Binding TimerName}"
+                                      Margin="10,0,0,0" FontSize="13"
+                                      IsEnabled="{Binding StartsTimer}" />
                         </Grid>
 
                         <TextBlock Text="{Binding EditorError}" Foreground="{StaticResource DangerBrush}" FontSize="12"

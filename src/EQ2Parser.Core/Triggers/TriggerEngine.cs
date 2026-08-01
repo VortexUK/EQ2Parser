@@ -2,8 +2,10 @@ using System.Text.RegularExpressions;
 
 namespace EQ2Parser.Core.Triggers;
 
-/// <summary>A timer the matched trigger wants started.</summary>
-public sealed record TimerRequest(string TimerName, string Attacker, string Victim);
+/// <summary>A timer the matched trigger wants started. Zone/Category are
+/// the trigger's own filing — the definitive scope for resolving WHICH
+/// same-named timer definition starts (see SpellTimerService.NotifyLinked).</summary>
+public sealed record TimerRequest(string TimerName, string Attacker, string Victim, string Zone = "", string Category = "");
 
 /// <summary>Everything a matched trigger wants done. The engine decides;
 /// the app layer performs (audio, TTS, timer bars).</summary>
@@ -113,7 +115,7 @@ public sealed class TriggerEngine(string ownerName)
             {
                 var attacker = match.Groups["attacker"] is { Success: true } a ? a.Value : "None";
                 var victim = match.Groups["victim"] is { Success: true } v ? v.Value : "None";
-                timer = new TimerRequest(trigger.TimerName, attacker, victim);
+                timer = new TimerRequest(trigger.TimerName, attacker, victim, trigger.Zone, trigger.Category);
             }
 
             Fired?.Invoke(new TriggerFired(
