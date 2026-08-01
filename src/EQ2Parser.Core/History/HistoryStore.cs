@@ -75,6 +75,16 @@ public sealed class HistoryStore : IDisposable
 
     public void Dispose() => _conn.Dispose();
 
+    /// <summary>Online snapshot to <paramref name="destinationPath"/> via
+    /// SQLite's backup API — consistent even mid-write/WAL, unlike a file
+    /// copy. Overwrites the destination.</summary>
+    public void BackupTo(string destinationPath)
+    {
+        using var destination = new SqliteConnection($"Data Source={destinationPath}");
+        destination.Open();
+        _conn.BackupDatabase(destination);
+    }
+
     private void CreateSchema()
     {
         Execute($"""

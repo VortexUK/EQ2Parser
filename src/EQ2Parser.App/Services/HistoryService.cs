@@ -230,7 +230,35 @@ public sealed class HistoryService : IDisposable
         }
         lock (_gate)
         {
+            BackupOnClose();
             _store.Dispose();
+        }
+    }
+
+    /// <summary>Clean-shutdown snapshot: backups\history.db.bak (newest
+    /// close) with the previous close rotated to .bak2 — insurance against
+    /// both the one-keystroke Remove-Item and creeping corruption. In a
+    /// SUBFOLDER deliberately: the classic wipe command is the glob
+    /// "history.db*", which must not take the backups with it.
+    /// Best-effort; a failed backup never blocks shutdown.</summary>
+    private void BackupOnClose()
+    {
+        try
+        {
+            var backupDir = Path.Combine(AppSettings.Directory, "backups");
+            Directory.CreateDirectory(backupDir);
+            var bak = Path.Combine(backupDir, "history.db.bak");
+            var bak2 = Path.Combine(backupDir, "history.db.bak2");
+            if (File.Exists(bak))
+            {
+                File.Delete(bak2);
+                File.Move(bak, bak2);
+            }
+            _store.BackupTo(bak);
+        }
+        catch (Exception)
+        {
+            // The live db is untouched either way.
         }
     }
 }
