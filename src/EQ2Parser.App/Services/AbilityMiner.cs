@@ -54,6 +54,9 @@ public static class AbilityMiner
                     continue;
                 if (swing.Ability == Combatant.KillingAbility || swing.Ability.Length == 0)
                     continue;
+                // Auto-attacks are never timer material — pure noise here.
+                if (swing.Ability == Core.Grammar.EnglishGrammar.AutoAttackAbility)
+                    continue;
                 var key = (swing.Attacker, swing.Ability);
                 if (!byAbility.TryGetValue(key, out var list))
                     byAbility[key] = list = [];
@@ -123,7 +126,7 @@ public static class AbilityMiner
 
         return [.. mobs
             .Select(kv => new MinedMob(zone, kv.Key,
-                [.. kv.Value.OrderByDescending(a => a.TotalDamage)]))
+                [.. kv.Value.OrderByDescending(a => a.TotalDamage).Take(10)]))
             .OrderBy(m => m.Mob, StringComparer.OrdinalIgnoreCase)];
     }
 }
