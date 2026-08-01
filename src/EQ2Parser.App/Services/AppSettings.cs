@@ -73,6 +73,7 @@ public sealed record AppSettings
     public OverlayWindowSettings? MiniParseTankOverlay { get; init; }
     public OverlayWindowSettings? TimerOverlayA { get; init; }
     public OverlayWindowSettings? TimerOverlayB { get; init; }
+    public OverlayWindowSettings? NotificationsOverlay { get; init; }
 
     public static string Directory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EQ2Parser");

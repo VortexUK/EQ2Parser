@@ -9,6 +9,7 @@ public enum OverlayKind
     MiniParseTank = 2,
     TimerA = 3,
     TimerB = 4,
+    Notifications = 5,
 }
 
 /// <summary>
@@ -35,6 +36,7 @@ public sealed class OverlayController(SourceManager manager)
         OverlayKind.MiniParseHps => manager.Settings.MiniParseHpsOverlay ?? new OverlayWindowSettings(),
         OverlayKind.MiniParseTank => manager.Settings.MiniParseTankOverlay ?? new OverlayWindowSettings(),
         OverlayKind.TimerB => manager.Settings.TimerOverlayB ?? new OverlayWindowSettings(),
+        OverlayKind.Notifications => manager.Settings.NotificationsOverlay ?? new OverlayWindowSettings(),
         // Panel A inherits the legacy single-overlay fields on first run.
         _ => manager.Settings.TimerOverlayA ?? new OverlayWindowSettings
         {
@@ -55,6 +57,7 @@ public sealed class OverlayController(SourceManager manager)
             OverlayKind.MiniParseHps => manager.Settings with { MiniParseHpsOverlay = updated },
             OverlayKind.MiniParseTank => manager.Settings with { MiniParseTankOverlay = updated },
             OverlayKind.TimerB => manager.Settings with { TimerOverlayB = updated },
+            OverlayKind.Notifications => manager.Settings with { NotificationsOverlay = updated },
             _ => manager.Settings with { TimerOverlayA = updated },
         };
         manager.Settings.Save();
@@ -74,6 +77,7 @@ public sealed class OverlayController(SourceManager manager)
                 OverlayKind.MiniParseHps => new MiniParseContent(manager, "HPS"),
                 OverlayKind.MiniParseTank => new MiniParseContent(manager, "Tanking"),
                 OverlayKind.TimerB => new TimerPanelContent(manager, panel: 2),
+                OverlayKind.Notifications => new NotificationsContent(manager),
                 _ => new TimerPanelContent(manager, panel: 1),
             };
             var title = kind switch
@@ -82,6 +86,7 @@ public sealed class OverlayController(SourceManager manager)
                 OverlayKind.MiniParseHps => "HEALING — drag, then lock",
                 OverlayKind.MiniParseTank => "TANKING — drag, then lock",
                 OverlayKind.TimerB => "TIMERS B — drag, then lock",
+                OverlayKind.Notifications => "ALERTS — drag, then lock",
                 _ => "TIMERS — drag, then lock",
             };
             var window = new OverlayShellWindow(this, kind, title, content, settings);

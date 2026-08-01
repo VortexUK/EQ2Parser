@@ -131,6 +131,7 @@ public sealed class OverlaysViewModel
             new OverlayConfigVm(overlay, OverlayKind.MiniParseTank, "Tanking meter", "rows"),
             new OverlayConfigVm(overlay, OverlayKind.TimerA, "Timer panel A", "bars"),
             new OverlayConfigVm(overlay, OverlayKind.TimerB, "Timer panel B", "bars"),
+            new OverlayConfigVm(overlay, OverlayKind.Notifications, "Notifications", "toasts"),
         ];
     }
 }
