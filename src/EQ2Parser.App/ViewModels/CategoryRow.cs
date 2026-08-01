@@ -11,11 +11,19 @@ public interface ICategoryDropTarget
     bool IsDropTarget { get; set; }
 }
 
+/// <summary>Master section divider in the trigger/timer trees — the
+/// user's Custom set vs the read-only synced Lexicon set.</summary>
+public sealed record SectionRow(string Title, string Subtitle = "");
+
 /// <summary>Top-level zone header in the trigger/timer trees — grouping
 /// only, deliberately NOT a drop target (drops land on mobs or their rows).</summary>
 public sealed partial class ZoneRow(string name, bool expanded) : ObservableObject
 {
     public string Name { get; } = name;
+
+    /// <summary>Collapse-state key — distinct from Name when the same zone
+    /// exists in both the Custom and Lexicon sections.</summary>
+    public string Key { get; init; } = name;
 
     [ObservableProperty]
     private int _count;

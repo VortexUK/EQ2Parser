@@ -28,6 +28,10 @@ public sealed partial class TimerDefRow : ObservableObject, ICategoryDropTarget
     public string CategoryName => Definition.Category;
     public string Key => Definition.Key;
 
+    /// <summary>Synced from EQ2Lexicon — read-only (no edit/delete/drag);
+    /// the enable checkbox persists as a local override.</summary>
+    public bool IsLexicon => Definition.Source.Length > 0;
+
     [ObservableProperty]
     private bool _enabled;
 
@@ -196,23 +200,47 @@ public sealed partial class TimersViewModel : ObservableObject
     private static string ZoneKey(TimerDefinition def) =>
         def.Zone.Length > 0 ? def.Zone : "General";
 
+    /// <summary>Collapse/expand + header-count key: lexicon rows live in
+    /// their own section, so the same zone name never shares state with a
+    /// custom zone of the same name.</summary>
+    private static string TagFor(TimerDefinition def) =>
+        def.Source.Length > 0 ? $"lex|{ZoneKey(def)}" : ZoneKey(def);
+
     private readonly HashSet<string> _collapsedZones = new(StringComparer.OrdinalIgnoreCase);
 
     private void RebuildRows()
     {
         Rows.Clear();
         var filtering = FilterText.Length > 0;
-        foreach (var zoneGroup in _manager.SpellTimers.Definitions
+        var all = _manager.SpellTimers.Definitions;
+        List<TimerDefinition> custom = [.. all.Where(d => d.Source.Length == 0)];
+        List<TimerDefinition> lexicon = [.. all.Where(d => d.Source.Length > 0)];
+        if (lexicon.Count > 0)
+            Rows.Add(new SectionRow("Custom", "yours — edit, drag, delete"));
+        BuildSection(custom, filtering, keyPrefix: "");
+        if (lexicon.Count > 0)
+        {
+            Rows.Add(new SectionRow("Lexicon", $"curated on {_manager.Lexicon.BaseUrl.Replace("https://", "")} — enable/disable here, edit there"));
+            BuildSection(lexicon, filtering, keyPrefix: "lex|");
+        }
+        HasTimers = all.Count > 0;
+    }
+
+    private void BuildSection(List<TimerDefinition> defs, bool filtering, string keyPrefix)
+    {
+        foreach (var zoneGroup in defs
                      .GroupBy(ZoneKey, StringComparer.OrdinalIgnoreCase)
                      .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
         {
             List<TimerDefinition> zoneMembers = [.. zoneGroup.Where(MatchesFilter)];
             if (zoneMembers.Count == 0)
                 continue;
+            var zoneKey = keyPrefix + zoneGroup.Key;
             // Zones default OPEN (there are few); mobs default closed.
-            var zoneExpanded = filtering || !_collapsedZones.Contains(zoneGroup.Key);
+            var zoneExpanded = filtering || !_collapsedZones.Contains(zoneKey);
             Rows.Add(new ZoneRow(zoneGroup.Key, zoneExpanded)
             {
+                Key = zoneKey,
                 Count = zoneMembers.Count,
                 EnabledCount = zoneMembers.Count(d => d.Enabled),
             });
@@ -224,11 +252,11 @@ public sealed partial class TimersViewModel : ObservableObject
             {
                 List<TimerDefinition> members = [.. mobGroup
                     .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)];
-                var expandKey = $"{zoneGroup.Key}|{mobGroup.Key}";
+                var expandKey = $"{zoneKey}|{mobGroup.Key}";
                 var expanded = filtering || _expandedCategories.Contains(expandKey);
                 Rows.Add(new CategoryRow(mobGroup.Key, expanded)
                 {
-                    Tag = zoneGroup.Key,
+                    Tag = zoneKey,
                     Count = members.Count,
                     EnabledCount = members.Count(d => d.Enabled),
                 });
@@ -238,7 +266,6 @@ public sealed partial class TimersViewModel : ObservableObject
                     Rows.Add(new TimerDefRow(this, def));
             }
         }
-        HasTimers = _manager.SpellTimers.Definitions.Count > 0;
     }
 
     [RelayCommand]
@@ -246,8 +273,8 @@ public sealed partial class TimersViewModel : ObservableObject
     {
         if (row is null)
             return;
-        if (!_collapsedZones.Add(row.Name))
-            _collapsedZones.Remove(row.Name);
+        if (!_collapsedZones.Add(row.Key))
+            _collapsedZones.Remove(row.Key);
         RebuildRows();
     }
 
@@ -267,6 +294,12 @@ public sealed partial class TimersViewModel : ObservableObject
     /// AND its zone, so it lands exactly where it was dropped.</summary>
     public void MoveTimer(TimerDefRow row, ICategoryDropTarget target)
     {
+        // Lexicon rows are curator-owned: never a drag source, never a
+        // landing zone (fork-to-Custom is the way to adopt one).
+        if (row.IsLexicon
+            || target is TimerDefRow { IsLexicon: true }
+            || (target is CategoryRow c && c.Tag?.StartsWith("lex|", StringComparison.Ordinal) == true))
+            return;
         var targetCategory = target.CategoryName.Trim();
         var targetZone = target switch
         {
@@ -304,15 +337,15 @@ public sealed partial class TimersViewModel : ObservableObject
     internal void SetRowEnabled(TimerDefRow row, bool enabled)
     {
         _manager.SpellTimers.SetEnabled(row.Key, enabled);
-        var zoneKey = ZoneKey(row.Definition);
+        var tag = TagFor(row.Definition);
         foreach (var item in Rows)
         {
             if (item is CategoryRow header
                 && header.Name.Equals(row.Category, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(header.Tag, zoneKey, StringComparison.OrdinalIgnoreCase))
+                && string.Equals(header.Tag, tag, StringComparison.OrdinalIgnoreCase))
                 header.EnabledCount += enabled ? 1 : -1;
             else if (item is ZoneRow zone
-                && zone.Name.Equals(zoneKey, StringComparison.OrdinalIgnoreCase))
+                && zone.Key.Equals(tag, StringComparison.OrdinalIgnoreCase))
                 zone.EnabledCount += enabled ? 1 : -1;
         }
     }
@@ -320,7 +353,7 @@ public sealed partial class TimersViewModel : ObservableObject
     [RelayCommand]
     private void DeleteRow(TimerDefRow? row)
     {
-        if (row is null)
+        if (row is null || row.IsLexicon)
             return;
         _manager.SpellTimers.Remove(row.Key);
         if (_editingKey == row.Key)
@@ -522,7 +555,7 @@ public sealed partial class TimersViewModel : ObservableObject
     [RelayCommand]
     private void EditRow(TimerDefRow? row)
     {
-        if (row is null)
+        if (row is null || row.IsLexicon)
             return;
         var d = row.Definition;
         _editingKey = d.Key;

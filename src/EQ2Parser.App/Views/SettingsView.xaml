@@ -98,6 +98,17 @@
                                Margin="12,6,0,0" />
                 </StackPanel>
 
+                <TextBlock Text="Lexicon sync" Style="{StaticResource SectionLabel}" Margin="0,20,0,4" />
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Sync now" Style="{StaticResource GoldButton}" Padding="12,3"
+                            Command="{Binding LexiconSyncNowCommand}"
+                            ToolTip="{Binding LexiconUrlLabel}" />
+                    <TextBlock Text="{Binding LexiconStatus}" Style="{StaticResource MutedText}" FontSize="12"
+                               VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" MaxWidth="420" />
+                </StackPanel>
+                <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"
+                           Text="Curated triggers and timers from EQ2Lexicon appear as a read-only Lexicon section on the Triggers and Timers pages. Syncs automatically at startup; enable/disable choices stick across syncs." />
+
                 <TextBlock Text="About" Style="{StaticResource SectionLabel}" Margin="0,20,0,4" />
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{Binding VersionLabel, Mode=OneWay}" Foreground="{StaticResource TextBrush}" FontSize="13" />

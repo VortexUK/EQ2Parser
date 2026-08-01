@@ -74,6 +74,11 @@ public sealed class Trigger
     /// <summary>Minimum gap between audio alerts from this trigger.
     /// ACT hardcodes 1 s; ours is per-trigger configurable.</summary>
     public TimeSpan AudioCooldown { get; init; } = TimeSpan.FromSeconds(1);
+
+    /// <summary>Where the trigger came from: "" = the user's own
+    /// (persisted, editable), "lexicon" = synced from EQ2Lexicon
+    /// (read-only, never persisted, replaced wholesale on re-sync).</summary>
+    public string Source { get; init; } = "";
 }
 
 /// <summary>

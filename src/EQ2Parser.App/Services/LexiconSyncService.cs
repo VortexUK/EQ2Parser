@@ -1,0 +1,274 @@
+using System.IO;
+using System.Net.Http;
+using System.Text.Json;
+using EQ2Parser.Core.Triggers;
+
+namespace EQ2Parser.App.Services;
+
+/// <summary>
+/// Pulls the curated trigger/timer library from EQ2Lexicon
+/// (GET /api/act/pack) and feeds it into the trigger + timer services as
+/// read-only "lexicon"-sourced definitions.
+///
+/// Sync shape: the cached pack (%LocalAppData%\EQ2Parser\lexicon_pack.json)
+/// applies instantly at startup, then a background fetch replaces it when
+/// the server's version stamp differs. The user's own enable/disable flips
+/// on lexicon rows persist as overrides (lexicon_overrides.json) and
+/// re-apply across syncs; everything else about a lexicon row is
+/// curator-owned and replaced wholesale.
+/// </summary>
+public sealed class LexiconSyncService
+{
+    private const string SourceTag = "lexicon";
+
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
+
+    private static readonly JsonSerializerOptions PackJson = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    };
+
+    private readonly TriggerService _triggers;
+    private readonly TimerService _timers;
+    private readonly object _gate = new();
+    private readonly HashSet<string> _disabledTriggers = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _disabledTimers = new(StringComparer.OrdinalIgnoreCase);
+    private string _appliedVersion = "";
+
+    public string BaseUrl { get; }
+
+    public string Status { get; private set; } = "Not synced yet.";
+
+    /// <summary>Raised (on whatever thread) whenever Status changes.</summary>
+    public event Action? StatusChanged;
+
+    public LexiconSyncService(TriggerService triggers, TimerService timers, string baseUrl)
+    {
+        _triggers = triggers;
+        _timers = timers;
+        BaseUrl = baseUrl.TrimEnd('/');
+        LoadOverrides();
+        triggers.LexiconEnabledChanged += (key, enabled) => SetOverride(_disabledTriggers, key, enabled);
+        timers.LexiconEnabledChanged += (key, enabled) => SetOverride(_disabledTimers, key, enabled);
+    }
+
+    // ---- pack DTOs (snake_case JSON from the FastAPI models) ----
+
+    private sealed record PackTrigger(
+        string Regex,
+        string SoundData,
+        int SoundType,
+        bool CategoryRestrict,
+        string? Category,
+        bool Timer,
+        string? TimerName,
+        bool Active,
+        double CooldownSeconds);
+
+    private sealed record PackTimer(
+        string Name,
+        int TimerDurationS,
+        int WarningValue,
+        int RemoveValue,
+        bool OnlyMasterTicks,
+        bool Restrict,
+        bool Absolute,
+        string StartWav,
+        string WarningWav,
+        bool RadialDisplay,
+        bool Modable,
+        string Tooltip,
+        int FillColor,
+        bool Panel1,
+        bool Panel2,
+        string? Category,
+        bool RestrictCategory,
+        string DamageType,
+        string ControlEffect);
+
+    private sealed record PackEncounter(string Mob, int Position, List<PackTrigger> Triggers, List<PackTimer> SpellTimers);
+
+    private sealed record PackZone(string Zone, string Expansion, List<PackEncounter> Encounters);
+
+    private sealed record PackRoot(string Version, List<PackZone> Zones);
+
+    // ---- sync ----
+
+    /// <summary>Startup: apply the cached pack immediately (offline-safe),
+    /// then fetch in the background. Never throws.</summary>
+    public async Task StartupAsync()
+    {
+        try
+        {
+            if (File.Exists(PackPath))
+                Apply(JsonSerializer.Deserialize<PackRoot>(File.ReadAllText(PackPath), PackJson), cached: true);
+        }
+        catch (Exception)
+        {
+            // A corrupt cache never blocks startup — the fetch replaces it.
+        }
+        await SyncAsync();
+    }
+
+    /// <summary>Fetch the pack and apply it if the version moved. Safe to
+    /// call any time (the Settings "Sync now" button). Never throws.</summary>
+    public async Task SyncAsync()
+    {
+        try
+        {
+            SetStatus("Syncing…");
+            var json = await Http.GetStringAsync($"{BaseUrl}/api/act/pack").ConfigureAwait(false);
+            var pack = JsonSerializer.Deserialize<PackRoot>(json, PackJson);
+            if (pack is null)
+            {
+                SetStatus("Sync failed: empty response.");
+                return;
+            }
+            if (pack.Version == _appliedVersion)
+            {
+                SetStatus($"{Status.Replace("(cached)", "").TrimEnd()} — up to date.".TrimStart('—', ' '));
+                Apply(pack, cached: false); // refresh status text with counts
+                return;
+            }
+            Directory.CreateDirectory(AppSettings.Directory);
+            File.WriteAllText(PackPath, json);
+            Apply(pack, cached: false);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Sync failed: {ex.Message} — using the cached pack.");
+        }
+    }
+
+    private void Apply(PackRoot? pack, bool cached)
+    {
+        if (pack is null)
+            return;
+        List<Trigger> triggers = [];
+        List<TimerDefinition> timers = [];
+        foreach (var zone in pack.Zones)
+        {
+            foreach (var encounter in zone.Encounters)
+            {
+                foreach (var t in encounter.Triggers)
+                {
+                    try
+                    {
+                        triggers.Add(new Trigger(t.Regex, t.Category ?? encounter.Mob, zone.Zone)
+                        {
+                            Enabled = t.Active,
+                            SoundType = Enum.IsDefined((TriggerSound)t.SoundType) ? (TriggerSound)t.SoundType : TriggerSound.None,
+                            SoundData = t.SoundData,
+                            RestrictToCategoryZone = t.CategoryRestrict,
+                            StartsTimer = t.Timer && !string.IsNullOrEmpty(t.TimerName),
+                            TimerName = t.TimerName ?? "",
+                            AudioCooldown = TimeSpan.FromSeconds(Math.Clamp(t.CooldownSeconds, 0, 3600)),
+                            Source = SourceTag,
+                        });
+                    }
+                    catch (ArgumentException)
+                    {
+                        // A curated regex that doesn't compile is skipped, not fatal.
+                    }
+                }
+                foreach (var t in encounter.SpellTimers)
+                {
+                    timers.Add(new TimerDefinition
+                    {
+                        Name = t.Name,
+                        Category = t.Category ?? encounter.Mob,
+                        Zone = zone.Zone,
+                        // Curators don't manage ACT's "checked" — lexicon
+                        // timers arrive enabled; the user's overrides rule.
+                        Enabled = true,
+                        DurationSeconds = t.TimerDurationS,
+                        WarningSeconds = t.WarningValue,
+                        RemoveSeconds = t.RemoveValue,
+                        OnlyMasterTicks = t.OnlyMasterTicks,
+                        RestrictToMe = t.Restrict,
+                        AbsoluteTiming = t.Absolute,
+                        StartSoundData = t.StartWav,
+                        WarningSoundData = t.WarningWav,
+                        RadialDisplay = t.RadialDisplay,
+                        Modable = t.Modable,
+                        Tooltip = t.Tooltip,
+                        FillColorArgb = t.FillColor,
+                        Panel1 = t.Panel1,
+                        Panel2 = t.Panel2,
+                        RestrictToCategory = t.RestrictCategory,
+                        DamageType = t.DamageType,
+                        ControlEffect = t.ControlEffect,
+                        Source = SourceTag,
+                    });
+                }
+            }
+        }
+
+        lock (_gate)
+        {
+            _timers.ApplyLexicon(timers, _disabledTimers.ToHashSet(StringComparer.OrdinalIgnoreCase));
+            _triggers.ApplyLexicon(triggers, _disabledTriggers.ToHashSet(StringComparer.OrdinalIgnoreCase));
+            _appliedVersion = pack.Version;
+        }
+        SetStatus($"{triggers.Count} triggers · {timers.Count} timers from {pack.Zones.Count} zones"
+            + (cached ? " (cached — checking for updates…)" : $" · synced (v{pack.Version})"));
+    }
+
+    private void SetStatus(string status)
+    {
+        Status = status;
+        StatusChanged?.Invoke();
+    }
+
+    // ---- disabled-key overrides ----
+
+    private void SetOverride(HashSet<string> set, string key, bool enabled)
+    {
+        lock (_gate)
+        {
+            if (enabled)
+                set.Remove(key);
+            else
+                set.Add(key);
+            SaveOverrides();
+        }
+    }
+
+    private sealed record Overrides(List<string> DisabledTriggers, List<string> DisabledTimers);
+
+    private static string PackPath => Path.Combine(AppSettings.Directory, "lexicon_pack.json");
+
+    private static string OverridesPath => Path.Combine(AppSettings.Directory, "lexicon_overrides.json");
+
+    private void LoadOverrides()
+    {
+        try
+        {
+            if (!File.Exists(OverridesPath))
+                return;
+            var overrides = JsonSerializer.Deserialize<Overrides>(File.ReadAllText(OverridesPath));
+            foreach (var key in overrides?.DisabledTriggers ?? [])
+                _disabledTriggers.Add(key);
+            foreach (var key in overrides?.DisabledTimers ?? [])
+                _disabledTimers.Add(key);
+        }
+        catch (Exception)
+        {
+            // Corrupt overrides degrade to everything-enabled.
+        }
+    }
+
+    private void SaveOverrides()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppSettings.Directory);
+            File.WriteAllText(OverridesPath, JsonSerializer.Serialize(
+                new Overrides([.. _disabledTriggers], [.. _disabledTimers])));
+        }
+        catch (Exception)
+        {
+            // Best-effort — a failed save loses overrides on next sync only.
+        }
+    }
+}

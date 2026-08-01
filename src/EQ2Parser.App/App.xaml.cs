@@ -34,6 +34,7 @@ public partial class App : Application
         window.Show();
         overlay.RestoreFromSettings();
         _ = _manager.Updates.CheckAndDownloadAsync();
+        _ = _manager.Lexicon.StartupAsync();
     }
 
     protected override void OnExit(ExitEventArgs e)

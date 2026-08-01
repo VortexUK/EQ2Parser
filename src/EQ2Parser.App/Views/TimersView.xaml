@@ -53,6 +53,15 @@
                             </Style>
                         </ListBox.ItemContainerStyle>
                         <ListBox.Resources>
+                            <!-- Master section divider: Custom vs Lexicon. -->
+                            <DataTemplate DataType="{x:Type vm:SectionRow}">
+                                <StackPanel Margin="2,12,0,2">
+                                    <TextBlock Text="{Binding Title}" FontFamily="{StaticResource HeadingFont}" FontSize="16"
+                                               Foreground="{StaticResource GoldBrightBrush}" />
+                                    <TextBlock Text="{Binding Subtitle}" Style="{StaticResource MutedText}" FontSize="10.5" />
+                                </StackPanel>
+                            </DataTemplate>
+
                             <!-- Zone header: top level, grouping only (not a
                                  drop target — drops land on mobs). -->
                             <DataTemplate DataType="{x:Type vm:ZoneRow}">
@@ -162,6 +171,7 @@
                                         <TextBlock Text="⠿" FontSize="13" Foreground="{StaticResource TextMutedBrush}"
                                                    VerticalAlignment="Center" Margin="0,0,8,0" Cursor="SizeAll"
                                                    ToolTip="Drag to another category" Background="Transparent"
+                                                   Visibility="{Binding IsLexicon, Converter={StaticResource InverseBoolToVis}}"
                                                    PreviewMouseLeftButtonDown="DragGrip_MouseDown"
                                                    PreviewMouseMove="DragGrip_MouseMove"
                                                    PreviewMouseLeftButtonUp="DragGrip_MouseUp" />
@@ -181,6 +191,7 @@
                                                     Command="{Binding DataContext.TestRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}" />
                                             <Button Content="Edit" Style="{StaticResource GoldButton}" Padding="10,3" Margin="6,0,0,0"
+                                                    Visibility="{Binding IsLexicon, Converter={StaticResource InverseBoolToVis}}"
                                                     Command="{Binding DataContext.EditRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}" />
                                             <Button Content="⧉" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
@@ -189,6 +200,7 @@
                                                     CommandParameter="{Binding}" />
                                             <Button Content="✕" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
                                                     ToolTip="Delete timer"
+                                                    Visibility="{Binding IsLexicon, Converter={StaticResource InverseBoolToVis}}"
                                                     Command="{Binding DataContext.DeleteRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}" />
                                         </StackPanel>

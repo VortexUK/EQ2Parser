@@ -196,6 +196,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         _updateStatus = manager.Updates.Status;
         manager.Updates.StatusChanged += status =>
             System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => UpdateStatus = status);
+        _lexiconStatus = manager.Lexicon.Status;
+        manager.Lexicon.StatusChanged += () =>
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => LexiconStatus = manager.Lexicon.Status);
         _idleEndSeconds = manager.Settings.IdleEndSeconds.ToString("0.#");
         _pollMilliseconds = manager.Settings.PollMilliseconds.ToString();
         _historyBossDays = manager.Settings.HistoryBossDays.ToString();
@@ -213,6 +216,14 @@ public sealed partial class SettingsViewModel : ObservableObject
             ?? Voices.FirstOrDefault(v => v.DisplayName.Contains("Natural", StringComparison.OrdinalIgnoreCase))
             ?? Voices.FirstOrDefault(v => PiperVoiceCatalog.Find(v.Id) is null);
     }
+
+    [ObservableProperty]
+    private string _lexiconStatus = "";
+
+    public string LexiconUrlLabel => _manager.Lexicon.BaseUrl;
+
+    [RelayCommand]
+    private void LexiconSyncNow() => _ = _manager.Lexicon.SyncAsync();
 
     [RelayCommand]
     private void TestVoice() =>

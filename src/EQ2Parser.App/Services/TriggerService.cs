@@ -151,22 +151,61 @@ public sealed class TriggerService
         return removed;
     }
 
+    /// <summary>Raised when a LEXICON trigger's enable flips — the sync
+    /// service persists these as overrides (lexicon rows never enter
+    /// triggers.json).</summary>
+    public event Action<string, bool>? LexiconEnabledChanged;
+
     public void SetEnabled(string key, bool enabled)
     {
-        Trigger? updated = null;
+        var lexicon = false;
         lock (_gate)
         {
             var index = _definitions.FindIndex(t => t.Key == key);
             if (index < 0 || _definitions[index].Enabled == enabled)
                 return;
-            updated = CloneWith(_definitions[index], enabled);
+            var updated = CloneWith(_definitions[index], enabled);
             _definitions[index] = updated;
             foreach (var engine in _engines)
                 engine.AddOrUpdate(updated);
-            Save();
+            lexicon = updated.Source.Length > 0;
+            if (!lexicon)
+                Save();
         }
+        if (lexicon)
+            LexiconEnabledChanged?.Invoke(key, enabled);
         // No DefinitionsChanged: enable flips patch rows in place — a full
         // rebuild would reset the list's scroll on every checkbox click.
+    }
+
+    /// <summary>Replace the synced Lexicon set wholesale: old lexicon
+    /// triggers out of the list and every engine, the new pack's in —
+    /// except where the user's OWN trigger has the same identity (their
+    /// copy/fork wins). Disabled overrides re-apply.</summary>
+    public void ApplyLexicon(IReadOnlyCollection<Trigger> triggers, IReadOnlySet<string> disabledKeys)
+    {
+        lock (_gate)
+        {
+            foreach (var old in _definitions.Where(t => t.Source.Length > 0).ToList())
+            {
+                _definitions.Remove(old);
+                foreach (var engine in _engines)
+                    engine.Remove(old.Key);
+            }
+            var customKeys = _definitions.Select(t => t.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var trigger in triggers)
+            {
+                if (customKeys.Contains(trigger.Key))
+                    continue;
+                var effective = disabledKeys.Contains(trigger.Key) && trigger.Enabled
+                    ? CloneWith(trigger, enabled: false)
+                    : trigger;
+                _definitions.Add(effective);
+                foreach (var engine in _engines)
+                    engine.AddOrUpdate(effective);
+            }
+        }
+        DefinitionsChanged?.Invoke();
     }
 
     private static Trigger CloneWith(Trigger t, bool enabled) => new(t.RegexText, t.Category, t.Zone)
@@ -178,6 +217,7 @@ public sealed class TriggerService
         StartsTimer = t.StartsTimer,
         TimerName = t.TimerName,
         AudioCooldown = t.AudioCooldown,
+        Source = t.Source,
     };
 
     private void HandleFired(TriggerFired fired)
@@ -239,7 +279,9 @@ public sealed class TriggerService
         try
         {
             Directory.CreateDirectory(AppSettings.Directory);
-            List<TriggerSetting> settings = [.. _definitions.Select(t => new TriggerSetting(
+            // The user's own triggers only — the Lexicon set is a synced
+            // mirror, re-materialised from the pack cache on startup.
+            List<TriggerSetting> settings = [.. _definitions.Where(t => t.Source.Length == 0).Select(t => new TriggerSetting(
                 t.RegexText, t.Category, t.Enabled, t.RestrictToCategoryZone,
                 (int)t.SoundType, t.SoundData, t.StartsTimer, t.TimerName,
                 t.AudioCooldown.TotalSeconds, t.Zone))];

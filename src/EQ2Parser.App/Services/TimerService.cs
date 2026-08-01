@@ -108,18 +108,50 @@ public sealed class TimerService
             DefinitionsChanged?.Invoke();
     }
 
+    /// <summary>Raised when a LEXICON definition's enable flips — the sync
+    /// service persists these as overrides (lexicon rows never enter
+    /// timers.json).</summary>
+    public event Action<string, bool>? LexiconEnabledChanged;
+
     public void SetEnabled(string key, bool enabled)
     {
+        bool lexicon;
         lock (_sync)
         {
             var current = Service.Definitions.FirstOrDefault(d => d.Key == key);
             if (current is null || current.Enabled == enabled)
                 return;
             Service.AddOrUpdateDefinition(current with { Enabled = enabled });
-            Save();
+            lexicon = current.Source.Length > 0;
+            if (!lexicon)
+                Save();
         }
+        if (lexicon)
+            LexiconEnabledChanged?.Invoke(key, enabled);
         // No DefinitionsChanged: enable flips patch rows in place — a full
         // rebuild would reset the list's scroll on every checkbox click.
+    }
+
+    /// <summary>Replace the synced Lexicon set wholesale: every old
+    /// lexicon-sourced definition goes, the new pack's come in — except
+    /// where the user has their OWN definition with the same identity
+    /// (their copy/fork wins). Disabled overrides re-apply.</summary>
+    public void ApplyLexicon(IReadOnlyCollection<TimerDefinition> definitions, IReadOnlySet<string> disabledKeys)
+    {
+        lock (_sync)
+        {
+            foreach (var key in Service.Definitions.Where(d => d.Source.Length > 0).Select(d => d.Key).ToList())
+                Service.RemoveDefinition(key);
+            var customKeys = Service.Definitions.Select(d => d.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var definition in definitions)
+            {
+                if (customKeys.Contains(definition.Key))
+                    continue;
+                Service.AddOrUpdateDefinition(
+                    definition with { Enabled = definition.Enabled && !disabledKeys.Contains(definition.Key) });
+            }
+        }
+        DefinitionsChanged?.Invoke();
     }
 
     public int ImportMany(IReadOnlyCollection<TimerDefinition> definitions)
@@ -215,7 +247,10 @@ public sealed class TimerService
         try
         {
             Directory.CreateDirectory(AppSettings.Directory);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(Service.Definitions.ToList(), JsonOptions));
+            // The user's own definitions only — the Lexicon set is a synced
+            // mirror, re-materialised from the pack cache on startup.
+            File.WriteAllText(FilePath, JsonSerializer.Serialize(
+                Service.Definitions.Where(d => d.Source.Length == 0).ToList(), JsonOptions));
         }
         catch (Exception)
         {

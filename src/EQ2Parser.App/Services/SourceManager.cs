@@ -20,6 +20,7 @@ public sealed class SourceManager : IDisposable
     public AlertAudioService Audio { get; }
     public TriggerService Triggers { get; }
     public TimerService SpellTimers { get; }
+    public LexiconSyncService Lexicon { get; }
     public HistoryService History { get; } = new();
     public UpdateService Updates { get; } = new();
     public AppSettings Settings { get; set; } = AppSettings.Load();
@@ -38,6 +39,7 @@ public sealed class SourceManager : IDisposable
         };
         Triggers = new TriggerService(Audio);
         SpellTimers = new TimerService(Audio, Sync);
+        Lexicon = new LexiconSyncService(Triggers, SpellTimers, Settings.LexiconBaseUrl);
         Correlator.Created += _ => HistoryChanged?.Invoke();
         Correlator.Merged += _ => HistoryChanged?.Invoke();
     }

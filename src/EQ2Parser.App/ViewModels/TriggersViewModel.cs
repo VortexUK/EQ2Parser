@@ -29,6 +29,10 @@ public sealed partial class TriggerRow : ObservableObject, ICategoryDropTarget
     public string Zone => Trigger.Zone;
     public bool ZoneRestricted => Trigger.RestrictToCategoryZone;
 
+    /// <summary>Synced from EQ2Lexicon — read-only (no edit/delete/drag);
+    /// the enable checkbox persists as a local override.</summary>
+    public bool IsLexicon => Trigger.Source.Length > 0;
+
     public string SoundLabel => Trigger.SoundType switch
     {
         TriggerSound.Beep => "Beep",
@@ -147,21 +151,45 @@ public sealed partial class TriggersViewModel : ObservableObject
     private static string ZoneKey(Trigger trigger) =>
         trigger.Zone.Length > 0 ? trigger.Zone : "General";
 
+    /// <summary>Collapse/expand + header-count key: lexicon rows live in
+    /// their own section, so the same zone name never shares state with a
+    /// custom zone of the same name.</summary>
+    private static string TagFor(Trigger trigger) =>
+        trigger.Source.Length > 0 ? $"lex|{ZoneKey(trigger)}" : ZoneKey(trigger);
+
     private void RebuildRows()
     {
         Rows.Clear();
         var filtering = FilterText.Length > 0;
-        foreach (var zoneGroup in _manager.Triggers.Definitions
+        var all = _manager.Triggers.Definitions;
+        List<Trigger> custom = [.. all.Where(t => t.Source.Length == 0)];
+        List<Trigger> lexicon = [.. all.Where(t => t.Source.Length > 0)];
+        if (lexicon.Count > 0)
+            Rows.Add(new SectionRow("Custom", "yours — edit, drag, delete"));
+        BuildSection(custom, filtering, keyPrefix: "");
+        if (lexicon.Count > 0)
+        {
+            Rows.Add(new SectionRow("Lexicon", $"curated on {_manager.Lexicon.BaseUrl.Replace("https://", "")} — enable/disable here, edit there"));
+            BuildSection(lexicon, filtering, keyPrefix: "lex|");
+        }
+        HasTriggers = all.Count > 0;
+    }
+
+    private void BuildSection(List<Trigger> defs, bool filtering, string keyPrefix)
+    {
+        foreach (var zoneGroup in defs
                      .GroupBy(ZoneKey, StringComparer.OrdinalIgnoreCase)
                      .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
         {
             List<Trigger> zoneMembers = [.. zoneGroup.Where(MatchesFilter)];
             if (zoneMembers.Count == 0)
                 continue;
+            var zoneKey = keyPrefix + zoneGroup.Key;
             // Zones default OPEN (there are few); categories default closed.
-            var zoneExpanded = filtering || !_collapsedZones.Contains(zoneGroup.Key);
+            var zoneExpanded = filtering || !_collapsedZones.Contains(zoneKey);
             Rows.Add(new ZoneRow(zoneGroup.Key, zoneExpanded)
             {
+                Key = zoneKey,
                 Count = zoneMembers.Count,
                 EnabledCount = zoneMembers.Count(t => t.Enabled),
             });
@@ -173,12 +201,12 @@ public sealed partial class TriggersViewModel : ObservableObject
             {
                 List<Trigger> members = [.. group
                     .OrderBy(t => t.RegexText, StringComparer.OrdinalIgnoreCase)];
-                var expandKey = $"{zoneGroup.Key}|{group.Key}";
+                var expandKey = $"{zoneKey}|{group.Key}";
                 // A filter opens everything it touches; otherwise remembered state.
                 var expanded = filtering || _expandedCategories.Contains(expandKey);
                 Rows.Add(new CategoryRow(group.Key, expanded)
                 {
-                    Tag = zoneGroup.Key,
+                    Tag = zoneKey,
                     Count = members.Count,
                     EnabledCount = members.Count(t => t.Enabled),
                 });
@@ -188,7 +216,6 @@ public sealed partial class TriggersViewModel : ObservableObject
                     Rows.Add(new TriggerRow(this, trigger));
             }
         }
-        HasTriggers = _manager.Triggers.Definitions.Count > 0;
     }
 
     [RelayCommand]
@@ -196,8 +223,8 @@ public sealed partial class TriggersViewModel : ObservableObject
     {
         if (row is null)
             return;
-        if (!_collapsedZones.Add(row.Name))
-            _collapsedZones.Remove(row.Name);
+        if (!_collapsedZones.Add(row.Key))
+            _collapsedZones.Remove(row.Key);
         RebuildRows();
     }
 
@@ -217,6 +244,12 @@ public sealed partial class TriggersViewModel : ObservableObject
     /// so it lands exactly where it was dropped.</summary>
     public void MoveTrigger(TriggerRow row, ICategoryDropTarget target)
     {
+        // Lexicon rows are curator-owned: never a drag source, never a
+        // landing zone.
+        if (row.IsLexicon
+            || target is TriggerRow { IsLexicon: true }
+            || (target is CategoryRow c && c.Tag?.StartsWith("lex|", StringComparison.Ordinal) == true))
+            return;
         var targetCategory = target.CategoryName.Trim();
         var targetZone = target switch
         {
@@ -263,15 +296,15 @@ public sealed partial class TriggersViewModel : ObservableObject
     internal void SetRowEnabled(TriggerRow row, bool enabled)
     {
         _manager.Triggers.SetEnabled(row.Key, enabled);
-        var zoneKey = ZoneKey(row.Trigger);
+        var tag = TagFor(row.Trigger);
         foreach (var item in Rows)
         {
             if (item is CategoryRow header
                 && header.Name.Equals(row.Category, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(header.Tag, zoneKey, StringComparison.OrdinalIgnoreCase))
+                && string.Equals(header.Tag, tag, StringComparison.OrdinalIgnoreCase))
                 header.EnabledCount += enabled ? 1 : -1;
             else if (item is ZoneRow zone
-                && zone.Name.Equals(zoneKey, StringComparison.OrdinalIgnoreCase))
+                && zone.Key.Equals(tag, StringComparison.OrdinalIgnoreCase))
                 zone.EnabledCount += enabled ? 1 : -1;
         }
     }
@@ -279,7 +312,7 @@ public sealed partial class TriggersViewModel : ObservableObject
     [RelayCommand]
     private void DeleteRow(TriggerRow? row)
     {
-        if (row is null)
+        if (row is null || row.IsLexicon)
             return;
         _manager.Triggers.Remove(row.Key);
         if (_editingKey == row.Key)
@@ -407,7 +440,7 @@ public sealed partial class TriggersViewModel : ObservableObject
     [RelayCommand]
     private void EditRow(TriggerRow? row)
     {
-        if (row is null)
+        if (row is null || row.IsLexicon)
             return;
         var t = row.Trigger;
         _editingKey = t.Key;

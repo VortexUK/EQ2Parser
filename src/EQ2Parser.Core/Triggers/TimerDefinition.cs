@@ -42,6 +42,11 @@ public sealed record TimerDefinition
     /// windows surface it so a bar says WHAT is about to land.</summary>
     public string ControlEffect { get; init; } = "";
 
+    /// <summary>Where the definition came from: "" = the user's own
+    /// (persisted, editable), "lexicon" = synced from EQ2Lexicon
+    /// (read-only, never persisted, replaced wholesale on re-sync).</summary>
+    public string Source { get; init; } = "";
+
     /// <summary>ACT's Checked flag: a disabled definition never starts a
     /// bar but stays in the list.</summary>
     public bool Enabled { get; init; } = true;

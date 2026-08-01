@@ -69,6 +69,10 @@ public sealed record AppSettings
     /// Null = never dragged, use the XAML default.</summary>
     public double? TreeColumnWidth { get; init; }
 
+    /// <summary>Where the Lexicon trigger/timer pack syncs from. Point at a
+    /// local dev server to test curation before it ships.</summary>
+    public string LexiconBaseUrl { get; init; } = "https://varsoon.eq2lexicon.com";
+
     // The overlay windows. Null = never configured (defaults apply; timer
     // panel A seeds from the legacy fields, the DPS meter from the old
     // single mini parse).
