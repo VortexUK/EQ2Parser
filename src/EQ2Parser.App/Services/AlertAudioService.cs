@@ -207,6 +207,11 @@ public sealed class AlertAudioService : IDisposable
     {
         if (applyVolume)
             provider = new VolumeSampleProvider(provider) { Volume = (float)Math.Clamp(Volume, 0, 1) };
+        // Half a second of silence up front: power-saving audio sinks (HDMI,
+        // optical) take up to ~1 s to wake after silence and eat the start
+        // of whatever wakes them — a timer warning after 30 s of quiet lost
+        // its first words. The device wakes on the pad instead.
+        provider = new OffsetSampleProvider(provider) { DelayBy = TimeSpan.FromMilliseconds(500) };
         using var output = new WaveOutEvent();
         var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         output.PlaybackStopped += (_, _) => done.TrySetResult();
