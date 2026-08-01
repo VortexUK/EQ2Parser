@@ -3,20 +3,78 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="EQ2Parser" Height="760" Width="1280"
         WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
         Background="{StaticResource BgBrush}"
         FontFamily="{StaticResource BodyFont}">
+    <!-- Custom chrome: the top bar IS the caption (CaptionHeight) — native
+         drag, double-click maximize, and Win11 snap all keep working; the
+         thin glass bottom edge keeps the OS drop shadow. -->
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="48" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0,0,0,1" />
+    </WindowChrome.WindowChrome>
+    <Window.Resources>
+        <Style x:Key="CaptionButton" TargetType="Button">
+            <!-- Inside the caption area, buttons must opt back into hit
+                 testing or every click would be a drag. -->
+            <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="#C9CEDD" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#22FFFFFF" />
+                    <Setter Property="Foreground" Value="#F0F2FA" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="CaptionCloseButton" TargetType="Button" BasedOn="{StaticResource CaptionButton}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E81123" />
+                    <Setter Property="Foreground" Value="#FFFFFF" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
     <Grid>
+        <Grid.Style>
+            <!-- A borderless window maximizes past the screen edges by the
+                 (invisible) resize border — pad the content back in. -->
+            <Style TargetType="Grid">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                        <Setter Property="Margin" Value="7" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Grid.Style>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- ACT-style top bar: title + tab strip -->
-        <Border Background="#0B0D13" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+        <!-- ACT-style top bar: title + tab strip + window controls; doubles
+             as the drag caption. -->
+        <Border Background="#0B0D13" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                MinHeight="48">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="EQ2PARSER" FontFamily="{StaticResource HeadingFont}"
                            Foreground="{StaticResource GoldBrush}" FontSize="17"
@@ -24,6 +82,7 @@
                 <ListBox Grid.Column="1" ItemsSource="{Binding NavItems}"
                          SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
                          Background="Transparent" BorderThickness="0"
+                         WindowChrome.IsHitTestVisibleInChrome="True"
                          ItemContainerStyle="{StaticResource TopTabStyle}"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          ScrollViewer.VerticalScrollBarVisibility="Disabled">
@@ -38,6 +97,14 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Style="{StaticResource CaptionButton}" Content="&#xE921;" Click="Minimize_Click"
+                            ToolTip="Minimise" />
+                    <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}" Content="&#xE922;"
+                            Click="Maximize_Click" ToolTip="Maximise" />
+                    <Button Style="{StaticResource CaptionCloseButton}" Content="&#xE8BB;" Click="Close_Click"
+                            ToolTip="Close" />
+                </StackPanel>
             </Grid>
         </Border>
 

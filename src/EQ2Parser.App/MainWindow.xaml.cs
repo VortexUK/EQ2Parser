@@ -22,5 +22,23 @@ public partial class MainWindow : Window
         _tick.Tick += (_, _) => viewModel.Tick();
         _tick.Start();
         Closed += (_, _) => _tick.Stop();
+        StateChanged += (_, _) =>
+        {
+            // Invisible literals: Segoe MDL2  (restore) /  (maximize).
+            MaximizeButton.Content = WindowState == WindowState.Maximized ? "" : "";
+            MaximizeButton.ToolTip = WindowState == WindowState.Maximized ? "Restore" : "Maximise";
+        };
     }
+
+    private void Minimize_Click(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
+
+    private void Maximize_Click(object sender, RoutedEventArgs e)
+    {
+        if (WindowState == WindowState.Maximized)
+            SystemCommands.RestoreWindow(this);
+        else
+            SystemCommands.MaximizeWindow(this);
+    }
+
+    private void Close_Click(object sender, RoutedEventArgs e) => SystemCommands.CloseWindow(this);
 }
