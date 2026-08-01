@@ -30,6 +30,12 @@ public sealed class MiniParseSnapshot(SourceManager manager)
 
     public MiniParseData Build(int maxRows, string metric)
     {
+        // A bulk import replays every fight as "current" — classifying and
+        // row-building each one through the meters slowed imports to a
+        // crawl. Pause until the reader catches up (locked overlays show
+        // nothing; unlocked ones show the label).
+        if (manager.ImportBusy)
+            return new MiniParseData("Importing history…", "", metric, 0, []);
         lock (manager.Sync)
         {
             string title;

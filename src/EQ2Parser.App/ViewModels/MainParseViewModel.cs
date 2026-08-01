@@ -1746,9 +1746,21 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         RefreshGrid();
     }
 
+    private DateTimeOffset _lastBusyRefresh;
+
     /// <summary>Shell tick (~100ms on the UI thread).</summary>
     public void Refresh()
     {
+        // During a bulk import every tick would rebuild a churning tree and
+        // re-classify a churning "current" fight, starving the pump of the
+        // sync lock — throttle the whole page to ~0.5Hz until caught up.
+        if (manager.ImportBusy)
+        {
+            var now = DateTimeOffset.Now;
+            if (now - _lastBusyRefresh < TimeSpan.FromSeconds(2))
+                return;
+            _lastBusyRefresh = now;
+        }
         RebuildTreeIfChanged();
         RefreshGrid();
     }

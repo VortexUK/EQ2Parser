@@ -33,6 +33,25 @@ public sealed class LogSource : IDisposable
     /// persisted so the next session resumes where this one left off.</summary>
     public long LastPosition => _reader.ConsumedPosition;
 
+    /// <summary>Bytes between the consumed position and the file's current
+    /// end — large while a parse-from-start import chews backlog, ~zero at
+    /// live tail. UI surfaces read this to throttle themselves during
+    /// imports so the pump keeps the lock.</summary>
+    public long PendingBytes
+    {
+        get
+        {
+            try
+            {
+                return Math.Max(0, new FileInfo(Path).Length - _reader.ConsumedPosition);
+            }
+            catch (IOException)
+            {
+                return 0;
+            }
+        }
+    }
+
     /// <summary>Set when the tail loop dies (file unreadable etc.).</summary>
     public Exception? Error { get; private set; }
     public bool Completed => _task.IsCompleted;

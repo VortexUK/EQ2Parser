@@ -72,6 +72,23 @@ public sealed class SourceManager : IDisposable
         }
     }
 
+    /// <summary>True while any source is chewing a big backlog (wipe +
+    /// re-import, first parse-from-start). The meters pause and the tree
+    /// throttles while this holds — replaying history through the live UI
+    /// was slowing imports to a crawl.</summary>
+    public bool ImportBusy
+    {
+        get
+        {
+            foreach (var source in Sources)
+            {
+                if (source.PendingBytes > 1_000_000)
+                    return true;
+            }
+            return false;
+        }
+    }
+
     public LogSource Add(string path, bool parseFromStart, long? startOffset = null, bool autoDiscovered = false)
     {
         var source = new LogSource(
