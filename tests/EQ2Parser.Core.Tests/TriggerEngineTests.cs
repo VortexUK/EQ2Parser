@@ -247,6 +247,20 @@ public class TriggerEngineTests
             Grammar.EnglishGrammar.TryParse("Claw looks terrified!")).Ability);
         Assert.Equal("gloomy", Assert.IsType<Grammar.SwingEvent>(
             Grammar.EnglishGrammar.TryParse("Slaverjaw is consumed by gloom!")).Ability);
+
+        // Silences carry a NAMED source — the only status line that does.
+        var silence = Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("Virustotal silences An animated sentinel's actions."));
+        Assert.Equal("silenced", silence.Ability);
+        Assert.Equal("Virustotal", silence.Attacker);
+        Assert.Equal("An animated sentinel", silence.Victim);
+        Assert.Equal("applied", silence.DamageType);
+
+        // The named-effect release family.
+        var darkness = Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("Sofja is no longer affected by the darkness."));
+        Assert.Equal("the darkness", darkness.Ability);
+        Assert.Equal("released", darkness.DamageType);
     }
 
     [Fact]

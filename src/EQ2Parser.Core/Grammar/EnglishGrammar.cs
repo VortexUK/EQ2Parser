@@ -151,8 +151,19 @@ public static partial class EnglishGrammar
     [GeneratedRegex(@"^(?<victim>.+?) is consumed by gloom!$")]
     private static partial Regex StatusGloom();
 
+    // Virustotal silences An animated sentinel's actions.  (named source —
+    // the only status line that credits an attacker; symmetric, so a mob
+    // silencing a player logs the same way.)
+    [GeneratedRegex(@"^(?<attacker>.+?) silences (?<victim>.+?)'s actions\.$")]
+    private static partial Regex StatusSilences();
+
     [GeneratedRegex(@"^(?<victim>.+?) is no longer (?<effect>[a-z]+)\.$")]
     private static partial Regex StatusReleased();
+
+    // Second release family for named effects:
+    // Sofja is no longer affected by the darkness.
+    [GeneratedRegex(@"^(?<victim>.+?) is no longer affected by (?<effect>.+?)\.$")]
+    private static partial Regex StatusAffectedReleased();
 
     // ── Deaths ──────────────────────────────────────────────────────────────
     // You have killed a glacial tunneler.
@@ -246,9 +257,16 @@ public static partial class EnglishGrammar
             if ((m = StatusGloom().Match(message)).Success)
                 return Status(m.Groups["victim"].Value, "gloomy", applied: true);
         }
-        if (message.Contains(" is no longer ", StringComparison.Ordinal)
-            && (m = StatusReleased().Match(message)).Success)
-            return Status(m.Groups["victim"].Value, m.Groups["effect"].Value, applied: false);
+        if (message.Contains(" is no longer ", StringComparison.Ordinal))
+        {
+            if ((m = StatusReleased().Match(message)).Success)
+                return Status(m.Groups["victim"].Value, m.Groups["effect"].Value, applied: false);
+            if ((m = StatusAffectedReleased().Match(message)).Success)
+                return Status(m.Groups["victim"].Value, m.Groups["effect"].Value, applied: false);
+        }
+        if (message.Contains(" silences ", StringComparison.Ordinal)
+            && (m = StatusSilences().Match(message)).Success)
+            return Status(m.Groups["victim"].Value, "silenced", applied: true, m.Groups["attacker"].Value);
         if ((m = YouKilled().Match(message)).Success)
             return new DeathEvent(You, m.Groups["victim"].Value);
         if ((m = AlasDied().Match(message)).Success)
@@ -336,11 +354,11 @@ public static partial class EnglishGrammar
         Victim: m.Groups["victim"].Value,
         DamageType: m.Groups["direction"].Value == "reduces" ? "threat-reduce" : "threat");
 
-    private static SwingEvent Status(string victim, string effect, bool applied) => new(
+    private static SwingEvent Status(string victim, string effect, bool applied, string attacker = "Unknown") => new(
         SwingCategory.StatusEffect,
         Critical: false,
         Special: "None",
-        Attacker: "Unknown", // the line never names a source
+        Attacker: attacker, // only the silence line names a source
         Ability: effect,
         Damage: DamageValue.NoDamage,
         Victim: victim,
