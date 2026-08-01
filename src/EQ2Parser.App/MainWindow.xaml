@@ -79,8 +79,12 @@
                 <TextBlock Text="EQ2PARSER" FontFamily="{StaticResource HeadingFont}"
                            Foreground="{StaticResource GoldBrush}" FontSize="17"
                            VerticalAlignment="Center" Margin="20,0,24,0" />
+                <!-- Left-hugging, NOT stretched: the ListBox is hit-test
+                     visible inside the caption, so any width it covers
+                     stops being draggable — it must end where the tabs end. -->
                 <ListBox Grid.Column="1" ItemsSource="{Binding NavItems}"
                          SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                         HorizontalAlignment="Left" VerticalAlignment="Center"
                          Background="Transparent" BorderThickness="0"
                          WindowChrome.IsHitTestVisibleInChrome="True"
                          ItemContainerStyle="{StaticResource TopTabStyle}"
