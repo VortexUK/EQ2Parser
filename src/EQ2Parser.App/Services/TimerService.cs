@@ -13,7 +13,9 @@ public sealed record TimerBarSnapshot(
     int DurationSeconds,
     int WarningSeconds,
     int FillColorArgb,
-    bool Radial);
+    bool Radial,
+    string DamageType = "",
+    string ControlEffect = "");
 
 /// <summary>
 /// The app-side owner of spell timers: ONE shared Core SpellTimerService
@@ -177,7 +179,9 @@ public sealed class TimerService
                         timer.DurationSeconds,
                         frame.Definition.WarningSeconds,
                         frame.Definition.FillColorArgb,
-                        frame.Definition.RadialDisplay));
+                        frame.Definition.RadialDisplay,
+                        frame.Definition.DamageType,
+                        frame.Definition.ControlEffect));
                 }
             }
         }

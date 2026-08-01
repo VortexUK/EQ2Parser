@@ -74,7 +74,7 @@ public sealed partial class TimerDefRow : ObservableObject, ICategoryDropTarget
     }
 }
 
-/// <summary>One live bar in the preview panel.</summary>
+/// <summary>One live bar in the preview panel / overlay.</summary>
 public sealed partial class TimerBarRow : ObservableObject
 {
     [ObservableProperty]
@@ -91,6 +91,31 @@ public sealed partial class TimerBarRow : ObservableObject
 
     [ObservableProperty]
     private bool _isWarning;
+
+    // ---- flame styling (overlay bars) ----
+
+    /// <summary>Rebuild guard: brushes only regenerate when the colour or
+    /// tags change, not on every 100ms tick.</summary>
+    internal string StyleKey = "";
+
+    /// <summary>Fill gradient — dark base to school-coloured flame front.</summary>
+    [ObservableProperty]
+    private Brush _fillBrush = Brushes.SteelBlue;
+
+    /// <summary>Glow colour behind the bar: the dominant damage school,
+    /// or the bar's own colour when untagged.</summary>
+    [ObservableProperty]
+    private Color _glowColor = Colors.SteelBlue;
+
+    /// <summary>Readable (lightened) school colour for the info chip.</summary>
+    [ObservableProperty]
+    private Brush _schoolBrush = Brushes.Gainsboro;
+
+    [ObservableProperty]
+    private string _damageText = "";
+
+    [ObservableProperty]
+    private string _controlText = "";
 }
 
 /// <summary>
@@ -600,9 +625,22 @@ public sealed partial class TimersViewModel : ObservableObject
             : $"{bar.SecondsLeft:0}";
         row.Fraction = Math.Clamp(bar.SecondsLeft / Math.Max(1, bar.DurationSeconds), 0, 1);
         row.IsWarning = bar.SecondsLeft <= bar.WarningSeconds;
+        var styleKey = $"{bar.FillColorArgb}|{bar.DamageType}|{bar.ControlEffect}";
+        if (row.StyleKey == styleKey)
+            return;
+        row.StyleKey = styleKey;
         var argb = unchecked((uint)bar.FillColorArgb);
-        var brush = new SolidColorBrush(Color.FromArgb(0xFF, (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb));
+        var fill = Color.FromArgb(0xFF, (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb);
+        var brush = new SolidColorBrush(fill);
         brush.Freeze();
         row.BarBrush = brush;
+        var glow = SchoolPalette.For(bar.DamageType, fill);
+        row.GlowColor = glow;
+        row.FillBrush = SchoolPalette.FlameFill(fill, glow);
+        var schoolBrush = new SolidColorBrush(SchoolPalette.Blend(glow, Colors.White, 0.4));
+        schoolBrush.Freeze();
+        row.SchoolBrush = schoolBrush;
+        row.DamageText = bar.DamageType;
+        row.ControlText = bar.ControlEffect.Length > 0 ? bar.ControlEffect.ToUpperInvariant() : "";
     }
 }
