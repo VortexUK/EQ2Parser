@@ -336,11 +336,13 @@ public sealed partial class TimersViewModel : ObservableObject
     [ObservableProperty]
     private string _zoneText = "";
 
+    // string?, not string: clearing a ComboBox's bound items pushes null
+    // back through the TwoWay SelectedItem binding into these.
     [ObservableProperty]
-    private string _damageTypeText = "";
+    private string? _damageTypeText = "";
 
     [ObservableProperty]
-    private string _controlEffectText = "";
+    private string? _controlEffectText = "";
 
     /// <summary>Editor dropdown choices — the Core closed vocabularies plus
     /// blank, plus the row's current value when it's off-list (a mined
@@ -348,10 +350,16 @@ public sealed partial class TimersViewModel : ObservableObject
     public ObservableCollection<string> DamageTypeChoices { get; } = [];
     public ObservableCollection<string> ControlEffectChoices { get; } = [];
 
-    private void RefreshTagChoices()
+    /// <summary>Rebuild the choice lists FIRST, then assign the values:
+    /// clearing a list the ComboBox is showing nulls the bound text via
+    /// the selection binding, so values assigned before the rebuild get
+    /// silently wiped (the second-edit crash).</summary>
+    private void SetTagFields(string damageType, string controlEffect)
     {
-        RebuildChoices(DamageTypeChoices, Vocabulary.DamageSchools, DamageTypeText);
-        RebuildChoices(ControlEffectChoices, Vocabulary.ControlEffects, ControlEffectText);
+        RebuildChoices(DamageTypeChoices, Vocabulary.DamageSchools, damageType);
+        RebuildChoices(ControlEffectChoices, Vocabulary.ControlEffects, controlEffect);
+        DamageTypeText = damageType;
+        ControlEffectText = controlEffect;
     }
 
     private static void RebuildChoices(ObservableCollection<string> target, IReadOnlyList<string> canonical, string current)
@@ -424,9 +432,7 @@ public sealed partial class TimersViewModel : ObservableObject
         Name = "";
         Category = "General";
         ZoneText = "";
-        DamageTypeText = "";
-        ControlEffectText = "";
-        RefreshTagChoices();
+        SetTagFields("", "");
         DurationSeconds = "30";
         WarningSeconds = "10";
         RemoveSeconds = "-15";
@@ -456,9 +462,7 @@ public sealed partial class TimersViewModel : ObservableObject
         Name = d.Name;
         Category = d.Category;
         ZoneText = d.Zone;
-        DamageTypeText = d.DamageType;
-        ControlEffectText = d.ControlEffect;
-        RefreshTagChoices();
+        SetTagFields(d.DamageType, d.ControlEffect);
         DurationSeconds = d.DurationSeconds.ToString();
         WarningSeconds = d.WarningSeconds.ToString();
         RemoveSeconds = d.RemoveSeconds.ToString();
@@ -510,8 +514,8 @@ public sealed partial class TimersViewModel : ObservableObject
             Name = name,
             Category = category.Length == 0 ? "General" : category,
             Zone = ZoneText.Trim(),
-            DamageType = DamageTypeText.Trim(),
-            ControlEffect = ControlEffectText.Trim(),
+            DamageType = (DamageTypeText ?? "").Trim(),
+            ControlEffect = (ControlEffectText ?? "").Trim(),
             DurationSeconds = duration,
             WarningSeconds = Math.Min(warning, duration),
             RemoveSeconds = remove,
