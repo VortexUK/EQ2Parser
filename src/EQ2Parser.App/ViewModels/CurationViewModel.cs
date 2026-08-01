@@ -47,15 +47,9 @@ public sealed partial class CurationAbilityRow(MinedAbility mined) : ObservableO
             var targets = Mined.AvgTargets >= 1.8 ? $" · AOE ×{Mined.AvgTargets:0.#}" : "";
             var dot = Mined.TicksPerCast >= 1.8 ? $" · reapplies ×{Mined.TicksPerCast:0.#}" : "";
             // Correlated control kind, with measured duration when the
-            // release lines paired: "· stuns ~4s". The log says "silenced"
-            // but tooltips say Stifle — speak the curator's language.
-            var kindWord = Mined.EffectKind switch
-            {
-                "silenced" => "stifles",
-                { } k => k,
-                null => null,
-            };
-            var effect = kindWord is { } kind2
+            // release lines paired: "· stun ~4s". Tooltip vocabulary, not
+            // the log's raw word.
+            var effect = CurationViewModel.ControlWord(Mined.EffectKind) is { } kind2
                 ? Mined.EffectDurationSeconds is { } dur
                     ? $" · {kind2} ~{dur:0.#}s"
                     : $" · {kind2}"
@@ -66,7 +60,9 @@ public sealed partial class CurationAbilityRow(MinedAbility mined) : ObservableO
             if (Mined.IsDetriment)
                 return $"detriment / control{effect}{targets}{dot}{inferred}";
             var perCast = Mined.Casts > 0 ? Mined.TotalDamage / Mined.Casts : 0;
-            var kind = Mined.IsMelee ? "melee" : "spell";
+            var kind = Mined.DamageTypes is { Length: > 0 } types
+                ? types
+                : Mined.IsMelee ? "melee" : "spell";
             return $"{CombatantRow.Compact(perCast)}/cast · {kind}{effect}{targets}{dot}{inferred}";
         }
     }
@@ -170,6 +166,19 @@ public sealed partial class CurationViewModel : ObservableObject
             && string.Equals(d.Category, mined.Mob, StringComparison.OrdinalIgnoreCase)
             && string.Equals(d.Zone, mined.Zone, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>Log word → tooltip vocabulary, for the stored tag.</summary>
+    internal static string? ControlWord(string? effectKind) => effectKind switch
+    {
+        null => null,
+        "silenced" => "stifle",
+        "stunned" => "stun",
+        "mesmerized" => "mez",
+        "terrified" or "feared" or "afraid" => "fear",
+        "frozen" or "frozen in place" => "root",
+        "dazed" => "daze",
+        { } other => other,
+    };
+
     private TimerDefinition BuildDefinition(MinedAbility mined)
     {
         // Base (swipe-adjusted) duration: the live engine re-applies the
@@ -186,6 +195,8 @@ public sealed partial class CurationViewModel : ObservableObject
             // never match. Zone-qualified identity still keeps twins apart.
             Category = mined.Mob,
             Zone = mined.Zone,
+            DamageType = mined.DamageTypes,
+            ControlEffect = ControlWord(mined.EffectKind) ?? "",
             RestrictToCategory = !mined.SourceInferred,
             DurationSeconds = Math.Max(5, duration),
             WarningSeconds = Math.Clamp(duration / 4, 3, 10),

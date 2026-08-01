@@ -13,6 +13,16 @@ public sealed record TimerDefinition
     /// no engine semantics and not part of the ACT share format.</summary>
     public string Zone { get; init; } = "";
 
+    /// <summary>What the ability deals, as logged ("heat", "poison,
+    /// disease"). Display metadata for bar colouring/labels — no engine
+    /// semantics, not in the ACT share format.</summary>
+    public string DamageType { get; init; } = "";
+
+    /// <summary>The control effect it applies, in tooltip vocabulary
+    /// ("stifle", "stun", "mesmerized"). Display metadata — the timer
+    /// windows surface it so a bar says WHAT is about to land.</summary>
+    public string ControlEffect { get; init; } = "";
+
     /// <summary>ACT's Checked flag: a disabled definition never starts a
     /// bar but stays in the list.</summary>
     public bool Enabled { get; init; } = true;

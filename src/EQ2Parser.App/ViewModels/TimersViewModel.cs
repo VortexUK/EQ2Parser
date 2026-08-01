@@ -60,6 +60,10 @@ public sealed partial class TimerDefRow : ObservableObject, ICategoryDropTarget
             List<string> parts = [$"{Definition.DurationSeconds}s"];
             if (Definition.WarningSeconds > 0)
                 parts.Add($"warn {Definition.WarningSeconds}s");
+            if (Definition.ControlEffect is { Length: > 0 } cc)
+                parts.Add(cc.ToUpperInvariant());
+            if (Definition.DamageType is { Length: > 0 } dt)
+                parts.Add(dt);
             if (Definition.RestrictToMe)
                 parts.Add("only mine");
             if (Definition.AbsoluteTiming)
@@ -333,6 +337,12 @@ public sealed partial class TimersViewModel : ObservableObject
     private string _zoneText = "";
 
     [ObservableProperty]
+    private string _damageTypeText = "";
+
+    [ObservableProperty]
+    private string _controlEffectText = "";
+
+    [ObservableProperty]
     private string _durationSeconds = "30";
 
     [ObservableProperty]
@@ -392,6 +402,8 @@ public sealed partial class TimersViewModel : ObservableObject
         Name = "";
         Category = "General";
         ZoneText = "";
+        DamageTypeText = "";
+        ControlEffectText = "";
         DurationSeconds = "30";
         WarningSeconds = "10";
         RemoveSeconds = "-15";
@@ -421,6 +433,8 @@ public sealed partial class TimersViewModel : ObservableObject
         Name = d.Name;
         Category = d.Category;
         ZoneText = d.Zone;
+        DamageTypeText = d.DamageType;
+        ControlEffectText = d.ControlEffect;
         DurationSeconds = d.DurationSeconds.ToString();
         WarningSeconds = d.WarningSeconds.ToString();
         RemoveSeconds = d.RemoveSeconds.ToString();
@@ -472,6 +486,8 @@ public sealed partial class TimersViewModel : ObservableObject
             Name = name,
             Category = category.Length == 0 ? "General" : category,
             Zone = ZoneText.Trim(),
+            DamageType = DamageTypeText.Trim(),
+            ControlEffect = ControlEffectText.Trim(),
             DurationSeconds = duration,
             WarningSeconds = Math.Min(warning, duration),
             RemoveSeconds = remove,

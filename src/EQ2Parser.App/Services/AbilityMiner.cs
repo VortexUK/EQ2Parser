@@ -27,7 +27,8 @@ public sealed record MinedAbility(
     bool IsDetriment,
     string? EffectKind,
     double? EffectDurationSeconds,
-    bool SourceInferred);
+    bool SourceInferred,
+    string DamageTypes);
 
 /// <summary>A mob and its mined abilities.</summary>
 public sealed record MinedMob(string Zone, string Mob, IReadOnlyList<MinedAbility> Abilities);
@@ -66,6 +67,9 @@ public static class AbilityMiner
         // (mob, ability) → effect kind → (attributions, matched durations)
         Dictionary<(string Mob, string Ability), Dictionary<string, (int Count, List<double> Durations)>> effects =
             new();
+        // (mob, ability) → damage type → hits (abilities can carry two, e.g.
+        // poison + disease — all meaningful shares are reported)
+        Dictionary<(string Mob, string Ability), Dictionary<string, int>> damageTypes = new();
 
         foreach (var (summary, swings, enemies) in history.EnumerateArchivedFights(zone))
         {
@@ -182,6 +186,13 @@ public static class AbilityMiner
                     damage += Math.Max(0, hit.Damage.Number);
                     if (hit.Category != SwingCategory.Melee)
                         melee = false;
+                    if (hit.Damage.Number > 0 && hit.DamageType is { Length: > 0 } dt
+                        && dt != "none" && dt != "avoided")
+                    {
+                        if (!damageTypes.TryGetValue((mob, ability), out var types))
+                            damageTypes[(mob, ability)] = types = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                        types[dt] = types.GetValueOrDefault(dt) + 1;
+                    }
 
                     // A status apply on this victim right after this hit →
                     // the hit carried the control effect.
@@ -281,6 +292,18 @@ public static class AbilityMiner
                 }
             }
 
+            // Every damage type carrying a meaningful share (≥10% of typed
+            // hits), biggest first: "poison, disease".
+            var typeLabel = "";
+            if (damageTypes.TryGetValue((mob, ability), out var typeCounts) && typeCounts.Count > 0)
+            {
+                var typedHits = typeCounts.Values.Sum();
+                typeLabel = string.Join(", ", typeCounts
+                    .Where(kv => (double)kv.Value / typedHits >= 0.10)
+                    .OrderByDescending(kv => kv.Value)
+                    .Select(kv => kv.Key));
+            }
+
             var mined = new MinedAbility(
                 zone, mob, ability,
                 s.Casts, s.FightIds.Count,
@@ -297,7 +320,8 @@ public static class AbilityMiner
                 s.Hits > 0 && (double)s.ZeroHits / s.Hits >= 0.9,
                 effectKind,
                 effectDuration,
-                s.Hits > 0 && (double)s.InferredHits / s.Hits >= 0.5);
+                s.Hits > 0 && (double)s.InferredHits / s.Hits >= 0.5,
+                typeLabel);
             if (!mobs.TryGetValue(mob, out var list))
                 mobs[mob] = list = [];
             list.Add(mined);
