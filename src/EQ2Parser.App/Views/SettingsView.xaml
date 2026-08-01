@@ -4,10 +4,12 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel>
             <TextBlock Text="Settings" Style="{StaticResource PageTitle}" />
-            <!-- One card per concern, wrapping side by side — the old single
-                 thin column outgrew the window with nowhere to scroll. -->
+            <!-- Two explicit COLUMNS of stacked cards (not a flat wrap: wrap
+                 rows all take the tallest card's height, leaving dead air).
+                 The columns themselves wrap under each other when narrow. -->
             <WrapPanel>
-                <Border Style="{StaticResource Card}" Width="430" Margin="0,0,12,12" VerticalAlignment="Top">
+                <StackPanel Width="430" Margin="0,0,12,0">
+                <Border Style="{StaticResource Card}" Margin="0,0,0,12" VerticalAlignment="Top">
                     <StackPanel>
                         <TextBlock Text="Parsing" Style="{StaticResource SectionLabel}" />
                         <Grid>
@@ -42,7 +44,35 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource Card}" Width="430" Margin="0,0,12,12" VerticalAlignment="Top">
+                <Border Style="{StaticResource Card}" Margin="0,0,0,12" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="Lexicon sync" Style="{StaticResource SectionLabel}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <Button Content="Sync now" Style="{StaticResource GoldButton}" Padding="12,3"
+                                    Command="{Binding LexiconSyncNowCommand}"
+                                    ToolTip="{Binding LexiconUrlLabel}" />
+                            <TextBlock Text="{Binding LexiconStatus}" Style="{StaticResource MutedText}" FontSize="12"
+                                       VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" MaxWidth="280" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Text="Curated triggers and timers from EQ2Lexicon appear as a read-only Lexicon section on the Triggers and Timers pages. Syncs automatically at startup; enable/disable choices stick across syncs." />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Margin="0,0,0,12" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="About" Style="{StaticResource SectionLabel}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <TextBlock Text="{Binding VersionLabel, Mode=OneWay}" Foreground="{StaticResource TextBrush}" FontSize="13" />
+                            <TextBlock Text="{Binding UpdateStatus}" Style="{StaticResource MutedText}" FontSize="12"
+                                       Margin="12,1,0,0" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                </StackPanel>
+
+                <StackPanel Width="430" Margin="0,0,12,0">
+                <Border Style="{StaticResource Card}" Margin="0,0,0,12" VerticalAlignment="Top">
                     <StackPanel>
                         <TextBlock Text="Alerts" Style="{StaticResource SectionLabel}" />
                         <Grid>
@@ -107,32 +137,7 @@
                                    Text="Neural voices sound dramatically better than the built-in Windows voices below them in the list. Each pack downloads once, works fully offline, and can be removed here any time to reclaim the disk space." />
                     </StackPanel>
                 </Border>
-
-                <Border Style="{StaticResource Card}" Width="430" Margin="0,0,12,12" VerticalAlignment="Top">
-                    <StackPanel>
-                        <TextBlock Text="Lexicon sync" Style="{StaticResource SectionLabel}" />
-                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                            <Button Content="Sync now" Style="{StaticResource GoldButton}" Padding="12,3"
-                                    Command="{Binding LexiconSyncNowCommand}"
-                                    ToolTip="{Binding LexiconUrlLabel}" />
-                            <TextBlock Text="{Binding LexiconStatus}" Style="{StaticResource MutedText}" FontSize="12"
-                                       VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" MaxWidth="280" />
-                        </StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
-                                   Text="Curated triggers and timers from EQ2Lexicon appear as a read-only Lexicon section on the Triggers and Timers pages. Syncs automatically at startup; enable/disable choices stick across syncs." />
-                    </StackPanel>
-                </Border>
-
-                <Border Style="{StaticResource Card}" Width="430" Margin="0,0,12,12" VerticalAlignment="Top">
-                    <StackPanel>
-                        <TextBlock Text="About" Style="{StaticResource SectionLabel}" />
-                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                            <TextBlock Text="{Binding VersionLabel, Mode=OneWay}" Foreground="{StaticResource TextBrush}" FontSize="13" />
-                            <TextBlock Text="{Binding UpdateStatus}" Style="{StaticResource MutedText}" FontSize="12"
-                                       Margin="12,1,0,0" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+                </StackPanel>
             </WrapPanel>
         </StackPanel>
     </ScrollViewer>
