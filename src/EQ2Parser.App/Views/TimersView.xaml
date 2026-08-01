@@ -225,17 +225,30 @@
                                    ToolTip="Files the timer under this zone in the tree — and breaks ties: when the same mob + ability has a timer in two zones (Mayong in MMIS vs Castle Mistmoore), the zone you're standing in wins.&#10;Leave blank for timers that apply anywhere." />
                         <TextBox Text="{Binding ZoneText, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
 
-                        <Grid Margin="0,10,0,0">
+                        <TextBlock Text="Damage type (toggle all that apply — first picked leads)" Style="{StaticResource MutedText}"
+                                   FontSize="11" Margin="0,10,0,3"
+                                   ToolTip="The schools the ability deals — shown on the timer bar so you know what's incoming (ward the right thing). The first school you toggle is the dominant one and drives the flame colour.&#10;Tag only: it never affects when the timer starts. The curator fills it from measured hits." />
+                        <ItemsControl ItemsSource="{Binding DamageSchoolChips}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <ToggleButton Content="{Binding Name}" IsChecked="{Binding IsSelected}"
+                                                  Style="{StaticResource PillToggle}" FontSize="10.5" Padding="8,2"
+                                                  Margin="0,0,4,4" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,5,0">
-                                <TextBlock Text="Damage type" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="The school the ability deals — shown on the timer bar so you know what's incoming (ward the right thing).&#10;Tag only: it never affects when the timer starts. The curator fills it from measured hits." />
-                                <ComboBox ItemsSource="{Binding DamageTypeChoices}" SelectedItem="{Binding DamageTypeText}" FontSize="12" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Margin="5,0,0,0">
                                 <TextBlock Text="Control effect" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
                                            ToolTip="The control it applies (stun, stifle, mez…) — shown on the timer bar so you know WHAT lands at zero and can pre-cure or joust.&#10;Tag only: it never affects when the timer starts." />
                                 <ComboBox ItemsSource="{Binding ControlEffectChoices}" SelectedItem="{Binding ControlEffectText}" FontSize="12" />

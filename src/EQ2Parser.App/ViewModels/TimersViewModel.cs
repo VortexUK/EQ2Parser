@@ -74,6 +74,31 @@ public sealed partial class TimerDefRow : ObservableObject, ICategoryDropTarget
     }
 }
 
+/// <summary>One damage-school toggle chip in the timer editor.</summary>
+public sealed partial class SchoolChip(string name, Action<SchoolChip> toggled) : ObservableObject
+{
+    public string Name { get; } = name;
+
+    [ObservableProperty]
+    private bool _isSelected;
+
+    private bool _syncing;
+
+    partial void OnIsSelectedChanged(bool value)
+    {
+        if (!_syncing)
+            toggled(this);
+    }
+
+    /// <summary>Programmatic sync (editor open) — no toggle callback.</summary>
+    public void Set(bool selected)
+    {
+        _syncing = true;
+        IsSelected = selected;
+        _syncing = false;
+    }
+}
+
 /// <summary>One live bar in the preview panel / overlay.</summary>
 public sealed partial class TimerBarRow : ObservableObject
 {
@@ -143,6 +168,8 @@ public sealed partial class TimersViewModel : ObservableObject
     public TimersViewModel(SourceManager manager)
     {
         _manager = manager;
+        foreach (var school in Vocabulary.DamageSchools)
+            DamageSchoolChips.Add(new SchoolChip(school, OnChipToggled));
         RebuildRows();
         // Definitions change from other windows too (Curation, future
         // Lexicon sync) — stay current.
@@ -358,21 +385,48 @@ public sealed partial class TimersViewModel : ObservableObject
     [ObservableProperty]
     private string? _controlEffectText = "";
 
-    /// <summary>Editor dropdown choices — the Core closed vocabularies plus
-    /// blank, plus the row's current value when it's off-list (a mined
-    /// two-school combo like "poison, disease" must survive an edit).</summary>
-    public ObservableCollection<string> DamageTypeChoices { get; } = [];
+    /// <summary>Control-effect dropdown choices — the Core closed
+    /// vocabulary plus blank, plus the row's current value when off-list.</summary>
     public ObservableCollection<string> ControlEffectChoices { get; } = [];
 
-    /// <summary>Rebuild the choice lists FIRST, then assign the values:
+    /// <summary>Damage type is MULTI-select: one toggle chip per school.
+    /// Toggle order is dominance order — the first-picked school leads the
+    /// stored combo and drives the flame colour.</summary>
+    public ObservableCollection<SchoolChip> DamageSchoolChips { get; } = [];
+
+    private readonly List<string> _damageOrder = [];
+
+    private void OnChipToggled(SchoolChip chip)
+    {
+        if (chip.IsSelected)
+        {
+            if (!_damageOrder.Contains(chip.Name))
+                _damageOrder.Add(chip.Name);
+        }
+        else
+        {
+            _damageOrder.Remove(chip.Name);
+        }
+        DamageTypeText = string.Join(", ", _damageOrder);
+    }
+
+    /// <summary>Rebuild the choice list FIRST, then assign the value:
     /// clearing a list the ComboBox is showing nulls the bound text via
     /// the selection binding, so values assigned before the rebuild get
     /// silently wiped (the second-edit crash).</summary>
     private void SetTagFields(string damageType, string controlEffect)
     {
-        RebuildChoices(DamageTypeChoices, Vocabulary.DamageSchools, damageType);
+        _damageOrder.Clear();
+        foreach (var token in damageType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var canonical = Vocabulary.DamageSchools.FirstOrDefault(s => s.Equals(token, StringComparison.OrdinalIgnoreCase));
+            if (canonical is not null && !_damageOrder.Contains(canonical))
+                _damageOrder.Add(canonical);
+        }
+        foreach (var chip in DamageSchoolChips)
+            chip.Set(_damageOrder.Contains(chip.Name));
+        DamageTypeText = string.Join(", ", _damageOrder);
         RebuildChoices(ControlEffectChoices, Vocabulary.ControlEffects, controlEffect);
-        DamageTypeText = damageType;
         ControlEffectText = controlEffect;
     }
 
