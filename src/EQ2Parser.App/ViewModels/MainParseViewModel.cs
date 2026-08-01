@@ -66,6 +66,9 @@ public sealed partial class AbilityRow : ObservableObject
     private string _critPct = "";
 
     [ObservableProperty]
+    private string _freq = "";
+
+    [ObservableProperty]
     private string _avg = "";
 
     [ObservableProperty]
@@ -2304,7 +2307,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     // ── Drill-down snapshot ─────────────────────────────────────────────────
 
     private sealed record AbilityData(
-        string Name, string Source, string Types, int Swings, int Hits, int Crits, long Max, long Total, double Dps);
+        string Name, string Source, string Types, int Swings, int Hits, int Crits, long Max, long Total, double Dps,
+        double? FreqSeconds = null);
 
     private sealed record DetailData(
         string Title, string NameHeader, bool SortTable, bool Bars, bool IsSwingLevel,
@@ -2318,6 +2322,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         public long Max;
         public long Total;
         public readonly SortedSet<string> Types = new(StringComparer.OrdinalIgnoreCase);
+        private readonly List<double> _times = [];
 
         public void AddSwing(Core.Combat.Swing swing)
         {
@@ -2331,6 +2336,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 Total += Math.Max(0, swing.Damage.Number);
             }
             AddType(swing.DamageType);
+            _times.Add(swing.Time.ToUnixTimeMilliseconds() / 1000.0);
         }
 
         public void AddType(string type)
@@ -2339,8 +2345,34 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 Types.Add(type);
         }
 
+        /// <summary>Mean seconds between USES: swing times cluster into
+        /// volleys (an AoE's 24 hits are one use), then successive
+        /// volley-start gaps average — cross-fight gaps (>5 min, aggregate
+        /// views) are excluded. Null below two uses.</summary>
+        private double? Frequency()
+        {
+            if (_times.Count < 2)
+                return null;
+            _times.Sort();
+            List<double> gaps = [];
+            var volleyStart = _times[0];
+            var last = _times[0];
+            foreach (var t in _times)
+            {
+                if (t - last > 2)
+                {
+                    var gap = t - volleyStart;
+                    if (gap <= 300)
+                        gaps.Add(gap);
+                    volleyStart = t;
+                }
+                last = t;
+            }
+            return gaps.Count > 0 ? gaps.Average() : null;
+        }
+
         public AbilityData ToData(string label, string source, double seconds) =>
-            new(label, source, string.Join(", ", Types), Swings, Hits, Crits, Max, Total, Total / seconds);
+            new(label, source, string.Join(", ", Types), Swings, Hits, Crits, Max, Total, Total / seconds, Frequency());
     }
 
     /// <summary>Special-based grouping for the Auto-Attack bucket:
@@ -2671,6 +2703,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 row.Percent = "";
                 row.Types = "";
                 row.Dps = "";
+                row.Freq = "";
                 row.BarFraction = 0;
                 continue;
             }
@@ -2688,6 +2721,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             row.Casts = data.Swings.ToString("N0");
             row.Hits = data.Hits.ToString("N0");
             row.CritPct = data.Hits > 0 ? $"{100.0 * data.Crits / data.Hits:F0}%" : "";
+            row.Freq = data.FreqSeconds is { } f
+                ? f >= 60 ? $"{(int)(f / 60)}:{(int)f % 60:00}" : $"{f:0.#}s"
+                : "";
             row.Avg = data.Hits > 0 ? CombatantRow.Compact((double)data.Total / data.Hits) : "";
             row.Max = data.Max > 0 ? CombatantRow.Compact(data.Max) : "";
             row.Total = CombatantRow.Compact(data.Total);

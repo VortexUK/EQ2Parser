@@ -378,6 +378,7 @@
                             <ColumnDefinition Width="110" />
                             <ColumnDefinition Width="52" />
                             <ColumnDefinition Width="56" />
+                            <ColumnDefinition Width="54" />
                             <ColumnDefinition Width="50" />
                             <ColumnDefinition Width="50" />
                             <ColumnDefinition Width="66" />
@@ -390,11 +391,13 @@
                         <TextBlock Grid.Column="3" Text="TYPE" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" Margin="12,0,0,0" />
                         <TextBlock Grid.Column="4" Text="SOURCE" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" />
                         <TextBlock Grid.Column="5" Text="SWINGS" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right" />
-                        <TextBlock Grid.Column="6" Text="HITS" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right" />
-                        <TextBlock Grid.Column="7" Text="CRIT%" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right" />
-                        <TextBlock Grid.Column="8" Text="AVG" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right" />
-                        <TextBlock Grid.Column="9" Text="MAX" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right" />
-                        <TextBlock Grid.Column="10" Text="%" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right" />
+                        <TextBlock Grid.Column="6" Text="FREQ" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
+                                   ToolTip="Mean time between uses (multi-hit volleys count once)" />
+                        <TextBlock Grid.Column="7" Text="HITS" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right" />
+                        <TextBlock Grid.Column="8" Text="CRIT%" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right" />
+                        <TextBlock Grid.Column="9" Text="AVG" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right" />
+                        <TextBlock Grid.Column="10" Text="MAX" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right" />
+                        <TextBlock Grid.Column="11" Text="%" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right" />
                     </Grid>
                     <Border Grid.Row="1" Style="{StaticResource Card}" Padding="6">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -437,6 +440,7 @@
                                                     <ColumnDefinition Width="110" />
                                                     <ColumnDefinition Width="52" />
                                                     <ColumnDefinition Width="56" />
+                                                    <ColumnDefinition Width="54" />
                                                     <ColumnDefinition Width="50" />
                                                     <ColumnDefinition Width="50" />
                                                     <ColumnDefinition Width="66" />
@@ -457,15 +461,17 @@
                                                            FontFamily="{StaticResource BodyFont}" FontSize="11.5" />
                                                 <TextBlock Grid.Column="5" Text="{Binding Casts}" Foreground="{StaticResource TextMutedBrush}"
                                                            FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right" />
-                                                <TextBlock Grid.Column="6" Text="{Binding Hits}" Foreground="{StaticResource TextMutedBrush}"
+                                                <TextBlock Grid.Column="6" Text="{Binding Freq}" Foreground="{StaticResource TextMutedBrush}"
                                                            FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right" />
-                                                <TextBlock Grid.Column="7" Text="{Binding CritPct}" Foreground="{StaticResource TextMutedBrush}"
+                                                <TextBlock Grid.Column="7" Text="{Binding Hits}" Foreground="{StaticResource TextMutedBrush}"
                                                            FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right" />
-                                                <TextBlock Grid.Column="8" Text="{Binding Avg}" Foreground="{StaticResource TextBrush}"
+                                                <TextBlock Grid.Column="8" Text="{Binding CritPct}" Foreground="{StaticResource TextMutedBrush}"
+                                                           FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right" />
+                                                <TextBlock Grid.Column="9" Text="{Binding Avg}" Foreground="{StaticResource TextBrush}"
                                                            FontFamily="{StaticResource BodyFont}" FontSize="12.5" TextAlignment="Right" />
-                                                <TextBlock Grid.Column="9" Text="{Binding Max}" Foreground="{StaticResource TextBrush}"
+                                                <TextBlock Grid.Column="10" Text="{Binding Max}" Foreground="{StaticResource TextBrush}"
                                                            FontFamily="{StaticResource BodyFont}" FontSize="12.5" TextAlignment="Right" />
-                                                <TextBlock Grid.Column="10" Text="{Binding Percent}" Foreground="{StaticResource TextMutedBrush}"
+                                                <TextBlock Grid.Column="11" Text="{Binding Percent}" Foreground="{StaticResource TextMutedBrush}"
                                                            FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right" />
                                             </Grid>
                                         </Grid>
