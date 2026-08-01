@@ -2535,10 +2535,20 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                             .ToString().ToLowerInvariant()
                         : "",
                 seconds))];
+            // Headline row: the whole bucket at a glance (your DPS), the
+            // breakdown beneath. Clicking it drills into every swing —
+            // Bucket.AllAbility is literally the "All" aggregate.
+            if (table.Count > 1)
+            {
+                table.Insert(0, new AbilityData(
+                    Bucket.AllAbility, "all", "",
+                    table.Sum(t => t.Swings), table.Sum(t => t.Hits), table.Sum(t => t.Crits),
+                    table.Max(t => t.Max), table.Sum(t => t.Total), table.Sum(t => t.Total) / seconds));
+            }
             DrillChart? abilityChart = null;
             if (ShouldBuildDrillChart(chartVersion))
             {
-                var ranked = table.Where(t => t.Total > 0).OrderByDescending(t => t.Total).ToList();
+                var ranked = table.Where(t => t.Source != "all" && t.Total > 0).OrderByDescending(t => t.Total).ToList();
                 List<(string, double)> slices = [.. ranked.Take(11).Select(t => (t.Name, (double)t.Total))];
                 var rest = ranked.Skip(11).Sum(t => t.Total);
                 if (rest > 0)
@@ -2619,8 +2629,17 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     private static void ApplyAbilityRows(ObservableCollection<AbilityRow> rows, List<AbilityData> snapshot, bool sort, bool bars)
     {
         if (sort)
-            snapshot.Sort((a, b) => b.Total.CompareTo(a.Total));
-        var real = snapshot.Where(r => r.Swings >= 0).ToList();
+        {
+            // The synthetic All headline stays pinned above the sort.
+            snapshot.Sort((a, b) => (a.Source == "all", b.Source == "all") switch
+            {
+                (true, false) => -1,
+                (false, true) => 1,
+                _ => b.Total.CompareTo(a.Total),
+            });
+        }
+        // Percent/top exclude the All headline or every share would halve.
+        var real = snapshot.Where(r => r.Swings >= 0 && r.Source != "all").ToList();
         var top = real.Count > 0 ? Math.Max(1, real.Max(r => r.Total)) : 1;
         var total = Math.Max(1, real.Sum(r => r.Total));
         for (var i = 0; i < snapshot.Count; i++)
@@ -2658,7 +2677,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             row.IsGroupLabel = false;
             row.Types = data.Types;
             row.Dps = data.Total > 0 ? CombatantRow.Compact(data.Dps) : "";
-            row.Source = data.Source == "system" ? "" : data.Source;
+            row.Source = data.Source is "system" or "all" ? "" : data.Source;
             row.SourceBrush = data.Source switch
             {
                 "class" => ClassColors.SourceClass,
@@ -2673,7 +2692,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             row.Max = data.Max > 0 ? CombatantRow.Compact(data.Max) : "";
             row.Total = CombatantRow.Compact(data.Total);
             row.Percent = $"{100.0 * data.Total / total:F0}%";
-            row.BarFraction = bars ? (double)data.Total / top : 0;
+            // The All headline gets a full-width bar; abilities scale to
+            // the biggest ability as before.
+            row.BarFraction = bars ? (data.Source == "all" ? 1 : (double)data.Total / top) : 0;
         }
         while (rows.Count > snapshot.Count)
             rows.RemoveAt(rows.Count - 1);
