@@ -217,10 +217,12 @@
                         <TextBlock Text="{Binding EditorTitle}" Style="{StaticResource SectionLabel}" />
 
                         <TextBlock Text="Name (matches the ability / trigger timer name)" Style="{StaticResource MutedText}"
-                                   FontSize="11" Margin="0,10,0,3" />
+                                   FontSize="11" Margin="0,10,0,3"
+                                   ToolTip="The ability name exactly as the log spells it — any cast of it (re)starts the countdown.&#10;A trigger with 'starts timer' set to this name starts it too, e.g. off a boss emote." />
                         <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
 
-                        <TextBlock Text="Zone (grouping only)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,10,0,3" />
+                        <TextBlock Text="Zone (grouping only)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,10,0,3"
+                                   ToolTip="Files the timer under this zone in the tree — and breaks ties: when the same mob + ability has a timer in two zones (Mayong in MMIS vs Castle Mistmoore), the zone you're standing in wins.&#10;Leave blank for timers that apply anywhere." />
                         <TextBox Text="{Binding ZoneText, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
 
                         <Grid Margin="0,10,0,0">
@@ -230,12 +232,12 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,5,0">
                                 <TextBlock Text="Damage type" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="The school it deals (tag only; the timer windows will surface it)" />
+                                           ToolTip="The school the ability deals — shown on the timer bar so you know what's incoming (ward the right thing).&#10;Tag only: it never affects when the timer starts. The curator fills it from measured hits." />
                                 <ComboBox ItemsSource="{Binding DamageTypeChoices}" SelectedItem="{Binding DamageTypeText}" FontSize="12" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="5,0,0,0">
                                 <TextBlock Text="Control effect" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="Surfaced on the bar so you know WHAT lands" />
+                                           ToolTip="The control it applies (stun, stifle, mez…) — shown on the timer bar so you know WHAT lands at zero and can pre-cure or joust.&#10;Tag only: it never affects when the timer starts." />
                                 <ComboBox ItemsSource="{Binding ControlEffectChoices}" SelectedItem="{Binding ControlEffectText}" FontSize="12" />
                             </StackPanel>
                         </Grid>
@@ -249,23 +251,25 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,10,0">
                                 <TextBlock Text="Category (mob — “a|b” for split mobs)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="The mob name the restriction matches. A mob that splits into renamed copies can share one timer: separate the names with | — e.g. the earth rumbler|bisected rumbler|trisected rumbler" />
+                                           ToolTip="The mob this timer belongs to — used for tree grouping, and as the gate when 'category lock' is ticked (names must match the log exactly, articles included: 'a bisected rumbler').&#10;A mob that splits into renamed copies shares one timer via |-separated names: the earth rumbler|bisected rumbler|trisected rumbler" />
                                 <TextBox Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
                             </StackPanel>
                             <!-- TextWrapping="Wrap" on the narrow numeric boxes: the Fluent
                                  theme's clear (×) button appears on focus and covers the whole
                                  value at this width; Wrap is the template's collapse trigger. -->
                             <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                                <TextBlock Text="Length" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <TextBlock Text="Length" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="Seconds from one cast to the next — the countdown length.&#10;Use the curator's 'base' figure when swipe mods were in play: the live timer re-stretches itself whenever the mob actually gets swiped." />
                                 <TextBox Text="{Binding DurationSeconds, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Padding="8,5" FontSize="13" />
                             </StackPanel>
                             <StackPanel Grid.Column="2" Margin="0,0,8,0">
-                                <TextBlock Text="Warn" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <TextBlock Text="Warn" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="Seconds remaining when the bar goes urgent and the warning sound plays.&#10;Pick your reaction time: 10s to pre-ward, 3s for a joust call." />
                                 <TextBox Text="{Binding WarningSeconds, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Padding="8,5" FontSize="13" />
                             </StackPanel>
                             <StackPanel Grid.Column="3">
                                 <TextBlock Text="Remove at" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="Seconds remaining when the bar disappears — negative keeps it counting past zero" />
+                                           ToolTip="Seconds remaining when the bar disappears. Negative keeps it counting PAST zero: -15 shows it overdue for 15s.&#10;Useful because bosses hold casts — the ability is still coming even though the countdown ran out." />
                                 <TextBox Text="{Binding RemoveSeconds, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Padding="8,5" FontSize="13" />
                             </StackPanel>
                         </Grid>
@@ -276,23 +280,24 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="Bar colour" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <TextBlock Text="Bar colour" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="The bar / dial fill colour in the timer overlay.&#10;Worth a convention: red for raid-wide AoEs, purple for control, green for personal recasts." />
                                 <ComboBox ItemsSource="{Binding ColorChoices}" SelectedIndex="{Binding ColorChoice}"
                                           Width="110" FontSize="13" />
                             </StackPanel>
                             <WrapPanel Grid.Column="1" Margin="12,14,0,0">
                                 <CheckBox Content="only mine" IsChecked="{Binding RestrictToMe}" FontSize="12" Margin="0,0,10,4"
-                                          ToolTip="Restrict to the white list (you): only your casts start it" />
+                                          ToolTip="Only starts when YOU cast the ability — everyone else's casts are ignored.&#10;E.g. track your own Harm Touch recast without the other shadowknight's casts restarting your bar. Leave off for boss timers." />
                                 <CheckBox Content="one at a time" IsChecked="{Binding AbsoluteTiming}" FontSize="12" Margin="0,0,10,4"
-                                          ToolTip="Ignore timer restarts while time is left" />
+                                          ToolTip="While the bar is running, new casts are ignored — it always runs to zero before it can start again.&#10;Use when re-casts mid-window shouldn't reset the prediction (a scripted cycle, or an effect logged once per person it hits)." />
                                 <CheckBox Content="category lock" IsChecked="{Binding RestrictToCategory}" FontSize="12" Margin="0,0,10,4"
-                                          ToolTip="Only start when the attacker, victim, or zone matches the category" />
+                                          ToolTip="Only start when the Category matches the caster, the victim, or the current zone.&#10;This keeps a boss timer that boss's own — another mob casting a same-named ability won't start it. Untick to fire for any caster." />
                                 <CheckBox Content="restart only" IsChecked="{Binding OnlyMasterTicks}" FontSize="12" Margin="0,0,10,4"
-                                          ToolTip="Do not use DoT ticks: every hit restarts the timer instead of adding sub-bars" />
+                                          ToolTip="No per-target sub-bars — every matching hit just restarts the one bar.&#10;Tick for boss recast timers where all that matters is 'when is the next one'; untick to track a DoT landing on several people separately." />
                                 <CheckBox Content="allow timer mods" IsChecked="{Binding Modable}" FontSize="12" Margin="0,0,10,4"
-                                          ToolTip="Recast mods on the caster scale this timer's duration when it starts (final = base × (1 + mods))" />
+                                          ToolTip="Recast debuffs stretch the countdown: with Traumatic Swipe on the mob, a 30s timer starts at 45s (base × 1.5), and rescales if the swiper dies.&#10;Tick for boss recasts (store the un-swiped base as Length); untick for fixed-length effects like a stifle duration." />
                                 <CheckBox Content="radial" IsChecked="{Binding RadialDisplay}" FontSize="12" Margin="0,0,10,4"
-                                          ToolTip="Show as a radial dial (when the timer window supports it)" />
+                                          ToolTip="Show as a round dial in the dial row at the top of the timer overlay, instead of a bar in the list.&#10;Best kept to the two or three timers you glance at constantly — the main AoE recast, not every DoT." />
                             </WrapPanel>
                         </Grid>
 
@@ -303,12 +308,13 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" Margin="0,0,12,4">
                                 <CheckBox Content="panel A" IsChecked="{Binding Panel1}" FontSize="12"
-                                          ToolTip="Show in timer panel A (the overlay). Panel B arrives with the mini timer window." />
+                                          ToolTip="Show this timer in the Timers A overlay.&#10;Run both overlays to split, say, boss timers (A) from your personal recasts (B)." />
                                 <CheckBox Content="panel B" IsChecked="{Binding Panel2}" FontSize="12" Margin="10,0,0,0"
-                                          ToolTip="Reserved for the second timer panel — imported state is kept" />
+                                          ToolTip="Show this timer in the Timers B overlay — the second, independently placed timer window (enable it on the Overlays page)." />
                             </StackPanel>
                             <StackPanel Grid.Column="1">
-                                <TextBlock Text="Tooltip / note" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <TextBlock Text="Tooltip / note" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="Free note shown when hovering the timer's row in the list — strat reminders, cast order, where the number came from." />
                                 <TextBox Text="{Binding Tooltip, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="12" />
                             </StackPanel>
                         </Grid>
@@ -319,11 +325,13 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,5,0">
-                                <TextBlock Text="Start sound (text or WAV path)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <TextBlock Text="Start sound (text or WAV path)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="Played when the timer starts (the ability just landed). Text is spoken aloud; a .wav path is played; just 'tts' speaks the timer's name; empty = silent." />
                                 <TextBox Text="{Binding StartSound, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="12" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="5,0,0,0">
-                                <TextBlock Text="Warning sound" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <TextBlock Text="Warning sound" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="Played at the warn mark, before the ability comes back. Same rules: text spoken, .wav played, just 'tts' says '&lt;name&gt; soon', empty = silent." />
                                 <TextBox Text="{Binding WarningSound, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="12" />
                             </StackPanel>
                         </Grid>

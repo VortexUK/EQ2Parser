@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using EQ2Parser.App.Services;
 using EQ2Parser.App.ViewModels;
 using LiveChartsCore.SkiaSharpView;
@@ -12,6 +13,10 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        // The editors explain every option in its tooltip; WPF's default
+        // ~5s auto-dismiss cuts them off mid-read.
+        ToolTipService.ShowDurationProperty.OverrideMetadata(
+            typeof(DependencyObject), new FrameworkPropertyMetadata(60_000));
         LiveChartsCore.LiveCharts.Configure(config => config.AddDarkTheme());
         _manager = new SourceManager();
         _manager.RestoreHistory();

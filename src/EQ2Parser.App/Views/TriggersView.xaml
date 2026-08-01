@@ -186,7 +186,8 @@
                         <TextBlock Text="{Binding EditorTitle}" Style="{StaticResource SectionLabel}" />
 
                         <TextBlock Text="Regex (matched against every log line)" Style="{StaticResource MutedText}"
-                                   FontSize="11" Margin="0,10,0,3" />
+                                   FontSize="11" Margin="0,10,0,3"
+                                   ToolTip="Checked against every combat-log line as it arrives; a match fires the alert.&#10;Plain text works fine (no regex characters needed). Capture groups carry into the spoken text: (\w+) in the pattern, $1 in the speech." />
                         <TextBox Text="{Binding RegexText, UpdateSourceTrigger=PropertyChanged}"
                                  FontFamily="Consolas" FontSize="13" Padding="8,5" TextWrapping="Wrap" AcceptsReturn="False" />
 
@@ -196,12 +197,13 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="Category / zone" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <TextBlock Text="Category / zone" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="Groups the trigger in the tree; with 'only in this zone' ticked it also becomes the zone gate." />
                                 <TextBox Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
                             </StackPanel>
                             <CheckBox Grid.Column="1" Content="only in this zone" IsChecked="{Binding RestrictToZone}"
                                       VerticalAlignment="Bottom" Margin="10,0,0,6" FontSize="12"
-                                      ToolTip="Fire only when the current zone name contains the category text (ACT semantics)" />
+                                      ToolTip="Fire only while the current zone's name contains the category text (ACT semantics).&#10;E.g. category 'Emerald Halls' keeps a Wuoshi call quiet everywhere else — so a same-worded emote on trash in another zone can't trip it." />
                         </Grid>
 
                         <Grid Margin="0,10,0,0">
@@ -210,11 +212,13 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="Alert" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <TextBlock Text="Alert" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="What you hear on a match: a beep, spoken text (TTS), or a WAV file. 'None' still fires the timer below — useful for silent bookkeeping triggers." />
                                 <ComboBox ItemsSource="{Binding SoundChoices}" SelectedIndex="{Binding SoundChoice}" FontSize="13" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                <TextBlock Text="Cooldown (s)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <TextBlock Text="Cooldown (s)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="Seconds after a fire before this trigger may fire again — stops an AoE that logs once per raider from repeating the call 24 times.&#10;0 = every match fires." />
                                 <!-- Wrap collapses the Fluent clear (×) button, which covers
                                      the whole value in a box this narrow. -->
                                 <TextBox Text="{Binding CooldownSeconds, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Width="70" Padding="8,5" FontSize="13" />
@@ -247,7 +251,8 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <CheckBox Content="starts timer" IsChecked="{Binding StartsTimer}" VerticalAlignment="Center" FontSize="12" />
+                            <CheckBox Content="starts timer" IsChecked="{Binding StartsTimer}" VerticalAlignment="Center" FontSize="12"
+                                      ToolTip="On a match, also start the spell timer with this name (its Name on the Timers page must match exactly).&#10;E.g. match the boss's warm-up emote and start the 'Inferno' countdown — timers can run off emotes, not just casts." />
                             <TextBox Grid.Column="1" Text="{Binding TimerName, UpdateSourceTrigger=PropertyChanged}"
                                      Margin="10,0,0,0" Padding="8,5" FontSize="13"
                                      IsEnabled="{Binding StartsTimer}" />
