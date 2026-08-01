@@ -271,22 +271,36 @@
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding Title}" Foreground="{Binding TitleBrush}"
-                                   TextTrimming="CharacterEllipsis">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Margin" Value="12,0,0,0" />
-                                    <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
-                                    <Setter Property="FontSize" Value="12" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsHeader}" Value="True">
-                                            <Setter Property="Margin" Value="0,5,0,0" />
-                                            <Setter Property="FontFamily" Value="{StaticResource BodySemiBoldFont}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <!-- Collapse lives on the arrow alone; the header
+                                 body selects the zone's encounter summary. -->
+                            <Button Content="{Binding Arrow}" Style="{StaticResource HeaderButton}"
+                                    FontSize="12" Width="18" Margin="0,4,0,0" VerticalAlignment="Top"
+                                    HorizontalContentAlignment="Left"
+                                    Visibility="{Binding IsHeader, Converter={StaticResource BoolToVis}}"
+                                    Command="{Binding DataContext.ToggleZoneCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="{Binding TitleBrush}"
+                                       TextTrimming="CharacterEllipsis">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Margin" Value="12,0,0,0" />
+                                        <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
+                                        <Setter Property="FontSize" Value="12" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsHeader}" Value="True">
+                                                <Setter Property="Margin" Value="0,5,0,0" />
+                                                <Setter Property="FontFamily" Value="{StaticResource BodySemiBoldFont}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
@@ -480,6 +494,89 @@
                     </Expander>
                 </StackPanel>
             </ScrollViewer>
+
+            <!-- Zone summary: one row per encounter (zone header selected).
+                 Covers the combatant headers + tables; click a row to open
+                 that fight. -->
+            <Grid Grid.Row="1" Grid.RowSpan="2" Background="{StaticResource BgBrush}"
+                  Visibility="{Binding ZoneSummaryOpen, Converter={StaticResource BoolToVis}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid Margin="8,0,26,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="76" />
+                        <ColumnDefinition Width="62" />
+                        <ColumnDefinition Width="90" />
+                        <ColumnDefinition Width="90" />
+                        <ColumnDefinition Width="56" />
+                        <ColumnDefinition Width="60" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="ENCOUNTER" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" Padding="2,4" />
+                    <TextBlock Grid.Column="1" Text="START" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
+                    <TextBlock Grid.Column="2" Text="TIME" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
+                    <TextBlock Grid.Column="3" Text="DAMAGE" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
+                    <TextBlock Grid.Column="4" Text="ENCDPS" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
+                    <TextBlock Grid.Column="5" Text="KILLS" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
+                    <TextBlock Grid.Column="6" Text="DEATHS" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
+                </Grid>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <Border Style="{StaticResource Card}" Padding="6">
+                        <ItemsControl ItemsSource="{Binding ZoneSummaryRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,1" Cursor="Hand" Background="Transparent">
+                                        <Grid.InputBindings>
+                                            <MouseBinding MouseAction="LeftClick"
+                                                          Command="{Binding DataContext.OpenZoneFightCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          CommandParameter="{Binding}" />
+                                        </Grid.InputBindings>
+                                        <Border x:Name="SummaryBarHost" CornerRadius="3" Background="#0D1C1F2E" MinHeight="24">
+                                            <Border HorizontalAlignment="Left" CornerRadius="3"
+                                                    Background="{StaticResource MeterBarBrush}">
+                                                <Border.Width>
+                                                    <MultiBinding Converter="{StaticResource BarWidth}">
+                                                        <Binding Path="BarFraction" />
+                                                        <Binding ElementName="SummaryBarHost" Path="ActualWidth" />
+                                                    </MultiBinding>
+                                                </Border.Width>
+                                            </Border>
+                                        </Border>
+                                        <Grid Margin="8,0" VerticalAlignment="Center">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="76" />
+                                                <ColumnDefinition Width="62" />
+                                                <ColumnDefinition Width="90" />
+                                                <ColumnDefinition Width="90" />
+                                                <ColumnDefinition Width="56" />
+                                                <ColumnDefinition Width="60" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Title}" Foreground="{Binding TitleBrush}"
+                                                       FontFamily="{StaticResource BodySemiBoldFont}" FontSize="13"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Start}" Foreground="{StaticResource TextMutedBrush}"
+                                                       FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right" />
+                                            <TextBlock Grid.Column="2" Text="{Binding Duration}" Foreground="{StaticResource TextMutedBrush}"
+                                                       FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right" />
+                                            <TextBlock Grid.Column="3" Text="{Binding Damage}" Foreground="{StaticResource TextBrush}"
+                                                       FontFamily="{StaticResource BodyFont}" FontSize="12.5" TextAlignment="Right" />
+                                            <TextBlock Grid.Column="4" Text="{Binding Dps}" Foreground="{StaticResource GoldBrightBrush}"
+                                                       FontFamily="{StaticResource BodySemiBoldFont}" FontSize="13" TextAlignment="Right" />
+                                            <TextBlock Grid.Column="5" Text="{Binding Kills}" Foreground="{StaticResource TextMutedBrush}"
+                                                       FontFamily="{StaticResource BodyFont}" FontSize="12.5" TextAlignment="Right" />
+                                            <TextBlock Grid.Column="6" Text="{Binding Deaths}" Foreground="{StaticResource DangerBrush}"
+                                                       FontFamily="{StaticResource BodyFont}" FontSize="12.5" TextAlignment="Right" />
+                                        </Grid>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                </ScrollViewer>
+            </Grid>
 
             <!-- Drill-down overlay (covers everything below the breadcrumb) -->
             <Grid Grid.Row="1" Grid.RowSpan="2" Background="{StaticResource BgBrush}"

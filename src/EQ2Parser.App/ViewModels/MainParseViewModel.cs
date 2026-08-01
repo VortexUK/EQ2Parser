@@ -25,6 +25,10 @@ public sealed class ParseNode
     /// <summary>Win green / Partial amber / Loss red; gold for headers.</summary>
     public System.Windows.Media.Brush TitleBrush { get; init; } = ClassColors.TreeText;
 
+    /// <summary>Collapse-state glyph ("▸"/"▾"), headers only — its own
+    /// clickable element so the header body is free to select the zone.</summary>
+    public string Arrow { get; init; } = "";
+
     // Context-menu discriminators: each node kind only offers what applies.
     public bool IsFight { get; init; }
     public bool IsDeletable { get; init; }
@@ -34,6 +38,17 @@ public sealed class ParseNode
 
 /// <summary>A zone rollup selection: combined stats over several fights.</summary>
 public sealed record AggregateFights(string Zone, string Label, IReadOnlyList<CorrelatedEncounter> Fights);
+
+/// <summary>A zone-header selection: the encounter-list summary view. The
+/// group is re-resolved from history each refresh (so a live zone gains new
+/// fights); Snapshot is the click-time fallback if the group re-shapes.</summary>
+public sealed record ZoneFights(string Zone, string GroupKey, IReadOnlyList<CorrelatedEncounter> Snapshot);
+
+/// <summary>One encounter row of the zone-summary table.</summary>
+public sealed record ZoneFightRow(
+    CorrelatedEncounter Fight, string Title, System.Windows.Media.Brush TitleBrush,
+    string Start, string Duration, string Damage, string Dps,
+    string Kills, string Deaths, double BarFraction);
 
 /// <summary>Tree-node sentinel: "follow the live fight" selection.</summary>
 public sealed class LiveFollow
@@ -124,6 +139,28 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     public ObservableCollection<CombatantRow> AllyRows { get; } = [];
     public ObservableCollection<CombatantRow> PetRows { get; } = [];
     public ObservableCollection<CombatantRow> EnemyRows { get; } = [];
+
+    // ── Zone summary (encounter list for a selected zone header) ────────────
+
+    public BulkObservableCollection<ZoneFightRow> ZoneSummaryRows { get; } = [];
+
+    [ObservableProperty]
+    private bool _zoneSummaryOpen;
+
+    /// <summary>Rows only rebuild when the group's identity or fight count
+    /// changes — walking every fight's combatants at 10 Hz would not fly.</summary>
+    private (string GroupKey, int Count, CorrelatedEncounter? Last) _zoneSummarySig;
+
+    /// <summary>Summary row click: jump to that fight's combatant grid.</summary>
+    [RelayCommand]
+    private void OpenZoneFight(ZoneFightRow? row)
+    {
+        if (row is null)
+            return;
+        _pinnedFight = row.Fight;
+        FollowLive = false;
+        RefreshGrid();
+    }
 
     [ObservableProperty]
     private string _petHeader = "Pets (0)";
@@ -1647,18 +1684,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     partial void OnSelectedNodeChanged(ParseNode? value)
     {
-        if (value is null)
-            return;
-        if (value is { IsHeader: true, GroupKey: { } groupKey })
-        {
-            // Header click toggles the zone's collapse state.
-            if (!_collapsedZones.Remove(groupKey))
-                _collapsedZones.Add(groupKey);
-            RebuildTree();
-            SelectedNode = null;
-            return;
-        }
-        if (value.Fight is null)
+        if (value?.Fight is null)
             return;
         if (value.Fight is LiveFollow)
         {
@@ -1670,9 +1696,25 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         {
             _pinnedFight = value.Fight;
             FollowLive = false;
+            // Zone summary: a fight-scoped drill or report makes no sense
+            // zone-wide — close whatever overlays the grid.
+            if (value.Fight is ZoneFights)
+                CloseOverlay();
         }
         FollowSelectionInOverlay();
         RefreshGrid();
+    }
+
+    /// <summary>Arrow click on a zone header: collapse/expand only — the
+    /// header body selects the zone summary instead.</summary>
+    [RelayCommand]
+    private void ToggleZone(ParseNode? node)
+    {
+        if (node?.GroupKey is not { } groupKey)
+            return;
+        if (!_collapsedZones.Remove(groupKey))
+            _collapsedZones.Add(groupKey);
+        RebuildTree();
     }
 
     /// <summary>Keep any open report/log view coherent with the newly
@@ -1815,16 +1857,10 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             }
             // Newest first: group consecutive same-zone fights, ACT-sidebar
             // style ("The Emerald Halls - [25] 18:57:04") with per-zone
-            // "All" / "All Bosses" rollup nodes. Zone headers collapse on
-            // click; the Bosses-only filter trims trash fights.
-            var fights = manager.Correlator.History;
-            List<(string Zone, List<CorrelatedEncounter> Items)> groups = [];
-            foreach (var fight in fights)
-            {
-                if (groups.Count == 0 || !string.Equals(groups[^1].Zone, fight.Zone, StringComparison.OrdinalIgnoreCase))
-                    groups.Add((fight.Zone, []));
-                groups[^1].Items.Add(fight);
-            }
+            // "All" / "All Bosses" rollup nodes. The arrow collapses; the
+            // header body selects the zone's encounter summary. The
+            // Bosses-only filter trims trash fights.
+            var groups = GroupHistoryZones();
             for (var g = groups.Count - 1; g >= 0; g--)
             {
                 var (zone, items) = groups[g];
@@ -1838,10 +1874,12 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 {
                     IsHeader = true,
                     GroupKey = groupKey,
-                    Title = $"{(collapsed ? "▸" : "▾")} {zoneName} - [{shown.Count}] {items[0].StartTime.ToLocalTime():HH:mm:ss}",
+                    Arrow = collapsed ? "▸" : "▾",
+                    Title = $"{zoneName} - [{shown.Count}] {items[0].StartTime.ToLocalTime():HH:mm:ss}",
                     TitleBrush = ClassColors.TreeHeader,
                     IsDeletable = true,
                     GroupFights = [.. items],
+                    Fight = new ZoneFights(zoneName, groupKey, [.. shown]),
                 });
                 if (collapsed)
                     continue;
@@ -1888,6 +1926,77 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     /// <summary>Trash mobs are articled ("a bloom custodian"); named bosses
     /// are not. Placeholder-titled scraps are never bosses.</summary>
     private static bool IsBossTitle(string title) => Encounter.IsBossTitle(title);
+
+    /// <summary>Consecutive same-zone runs of history, oldest first — the
+    /// shape behind both the tree and the zone-summary view. Callers hold
+    /// the manager lock.</summary>
+    private List<(string Zone, List<CorrelatedEncounter> Items)> GroupHistoryZones()
+    {
+        List<(string Zone, List<CorrelatedEncounter> Items)> groups = [];
+        foreach (var fight in manager.Correlator.History)
+        {
+            if (groups.Count == 0 || !string.Equals(groups[^1].Zone, fight.Zone, StringComparison.OrdinalIgnoreCase))
+                groups.Add((fight.Zone, []));
+            groups[^1].Items.Add(fight);
+        }
+        return groups;
+    }
+
+    /// <summary>The zone group's current fights (respecting Bosses only) —
+    /// re-resolved so a live zone's summary gains new fights as they end.
+    /// Falls back to the click-time snapshot if the group re-shaped.</summary>
+    private List<CorrelatedEncounter> ResolveZoneFights(ZoneFights zone)
+    {
+        foreach (var (z, items) in GroupHistoryZones())
+        {
+            var zoneName = string.IsNullOrEmpty(z) ? "Unknown zone" : z;
+            if (!string.Equals($"{zoneName}|{items[0].StartTime.Ticks}", zone.GroupKey, StringComparison.Ordinal))
+                continue;
+            return BossesOnly ? [.. items.Where(f => IsBossTitle(f.Title))] : items;
+        }
+        return [.. zone.Snapshot];
+    }
+
+    /// <summary>One row per encounter: ally damage + deaths, enemy-side
+    /// deaths as kills, bar scaled to the biggest fight's damage.</summary>
+    private static List<ZoneFightRow> BuildZoneSummary(List<CorrelatedEncounter> fights)
+    {
+        List<(CorrelatedEncounter Fight, long Damage, int Kills, int Deaths)> stats = [];
+        long top = 1;
+        foreach (var fight in fights)
+        {
+            long damage = 0;
+            int deaths = 0, kills = 0;
+            foreach (var (key, entry) in fight.MergedCombatants)
+            {
+                if (fight.MergedAllyKeys.Contains(key))
+                {
+                    damage += entry.Combatant.Damage;
+                    deaths += entry.Combatant.Deaths;
+                }
+                else
+                {
+                    kills += entry.Combatant.Deaths;
+                }
+            }
+            stats.Add((fight, damage, kills, deaths));
+            top = Math.Max(top, damage);
+        }
+        List<ZoneFightRow> rows = [];
+        foreach (var (fight, damage, kills, deaths) in stats)
+        {
+            rows.Add(new ZoneFightRow(
+                fight, fight.Title, OutcomeBrush(fight),
+                fight.StartTime.ToLocalTime().ToString("HH:mm:ss"),
+                FmtSpan(fight.Duration),
+                CombatantRow.Compact(damage),
+                CombatantRow.Compact(fight.EncDps),
+                kills > 0 ? kills.ToString() : "",
+                deaths > 0 ? deaths.ToString() : "",
+                (double)damage / top));
+        }
+        return rows;
+    }
 
     private static TimeSpan SumDuration(IReadOnlyList<CorrelatedEncounter> fights)
     {
@@ -1950,6 +2059,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         var live = false;
         DetailData? detail = null;
         ChartData? chart = null;
+        List<ZoneFightRow>? zoneRows = null;
         object? resolvedFight;
 
         lock (manager.Sync)
@@ -1961,7 +2071,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             // While a report overlays the drill, the drill must not keep
             // driving the view (it was overwriting the report's title and
             // un-hiding its tables every tick).
-            if (DetailOpen && _detailKey is not null && !ReportLevel)
+            if (DetailOpen && _detailKey is not null && !ReportLevel && fight is not ZoneFights)
                 detail = SnapshotDetail(fight, _detailKey);
 
             switch (fight)
@@ -1985,15 +2095,31 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                         SumDuration(aggregate.Fights), allyDamage / seconds, live: false);
                     break;
                 }
+                case ZoneFights zone:
+                {
+                    var zoneFights = ResolveZoneFights(zone);
+                    breadcrumb = $"{zone.Zone}  ·  {zoneFights.Count} encounters  ·  {FmtSpan(SumDuration(zoneFights))}";
+                    var sig = (zone.GroupKey, zoneFights.Count, zoneFights.Count > 0 ? zoneFights[^1] : null);
+                    if (sig != _zoneSummarySig)
+                    {
+                        _zoneSummarySig = sig;
+                        zoneRows = BuildZoneSummary(zoneFights);
+                    }
+                    break;
+                }
                 default:
                     return;
             }
 
-            chart = MaybeSnapshotChart(resolvedFight, allies);
+            if (fight is not ZoneFights)
+                chart = MaybeSnapshotChart(resolvedFight, allies);
         }
 
         Breadcrumb = breadcrumb;
         InCombat = live;
+        ZoneSummaryOpen = resolvedFight is ZoneFights;
+        if (zoneRows is not null)
+            ZoneSummaryRows.ReplaceAll(zoneRows);
         PetHeader = $"Pets ({pets.Count})";
         EnemyHeader = $"Enemies ({enemies.Count})";
         if (chart is not null)
