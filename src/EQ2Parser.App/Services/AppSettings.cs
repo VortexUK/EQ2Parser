@@ -73,6 +73,11 @@ public sealed record AppSettings
     /// local dev server to test curation before it ships.</summary>
     public string LexiconBaseUrl { get; init; } = "https://varsoon.eq2lexicon.com";
 
+    /// <summary>Mass-detriment callouts ("8 players stunned").</summary>
+    public bool CalloutsEnabled { get; init; } = true;
+    public int CalloutMinPlayers { get; init; } = 3;
+    public int CalloutCooldownSeconds { get; init; } = 12;
+
     // The overlay windows. Null = never configured (defaults apply; timer
     // panel A seeds from the legacy fields, the DPS meter from the old
     // single mini parse).

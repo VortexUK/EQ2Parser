@@ -1,6 +1,7 @@
 using EQ2Parser.Core.Analysis;
 using EQ2Parser.Core.Correlation;
 using EQ2Parser.Core.Engine;
+using EQ2Parser.Core.Triggers;
 
 namespace EQ2Parser.App.Services;
 
@@ -21,6 +22,11 @@ public sealed class SourceManager : IDisposable
     public TriggerService Triggers { get; }
     public TimerService SpellTimers { get; }
     public LexiconSyncService Lexicon { get; }
+    public StatusCalloutMonitor Callouts { get; } = new();
+
+    /// <summary>A mass-detriment callout was announced (already spoken) —
+    /// the Notifications overlay toasts it too.</summary>
+    public event Action<string>? CalloutAnnounced;
     public HistoryService History { get; } = new();
     public UpdateService Updates { get; } = new();
     public AppSettings Settings { get; set; } = AppSettings.Load();
@@ -40,6 +46,17 @@ public sealed class SourceManager : IDisposable
         Triggers = new TriggerService(Audio);
         SpellTimers = new TimerService(Audio, Sync);
         Lexicon = new LexiconSyncService(Triggers, SpellTimers, Settings.LexiconBaseUrl);
+        Callouts.MinVictims = Settings.CalloutMinPlayers;
+        Callouts.Cooldown = TimeSpan.FromSeconds(Settings.CalloutCooldownSeconds);
+        Callouts.Callout += (effect, count) =>
+        {
+            if (!Settings.CalloutsEnabled)
+                return;
+            var word = Vocabulary.CalloutWord(effect);
+            var text = count == 1 ? $"1 player {word}" : $"{count} players {word}";
+            Audio.Speak(text);
+            CalloutAnnounced?.Invoke(text);
+        };
         Correlator.Created += _ => HistoryChanged?.Invoke();
         Correlator.Merged += _ => HistoryChanged?.Invoke();
     }
@@ -71,6 +88,7 @@ public sealed class SourceManager : IDisposable
         {
             Correlator.Attach(source.Engine);
             source.Engine.EncounterEnded += History.QueueSave;
+            source.Processor.StatusApplied += Callouts.OnStatusApplied;
             _sources.Add(source);
         }
         return source;

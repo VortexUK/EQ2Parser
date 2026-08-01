@@ -61,6 +61,31 @@
 
                 <Border Style="{StaticResource Card}" Margin="0,0,0,12" VerticalAlignment="Top">
                     <StackPanel>
+                        <TextBlock Text="Detriment callouts" Style="{StaticResource SectionLabel}" />
+                        <CheckBox Content="Announce mass detriments" IsChecked="{Binding CalloutsEnabled}"
+                                  FontSize="12" Margin="0,8,0,0"
+                                  ToolTip="When several players get hit by the same control effect at once, speak it — “8 players stunned”.&#10;Detected straight from the log's status lines; no per-boss setup needed." />
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="200" />
+                                <ColumnDefinition Width="80" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="Players before it fires" Style="{StaticResource MutedText}" VerticalAlignment="Center"
+                                       ToolTip="Distinct players hit within a few seconds before the callout fires. Higher = raid-wide AoEs only; 1 = every CC on anyone." />
+                            <TextBox Grid.Column="1" Text="{Binding CalloutMinPlayers, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Margin="0,2" />
+                            <TextBlock Grid.Row="1" Text="Cooldown per effect (s)" Style="{StaticResource MutedText}" VerticalAlignment="Center"
+                                       ToolTip="Quiet period after a callout for that effect — one stun wave is one call, not a stream." />
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding CalloutCooldown, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Margin="0,2" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Margin="0,0,0,12" VerticalAlignment="Top">
+                    <StackPanel>
                         <TextBlock Text="About" Style="{StaticResource SectionLabel}" />
                         <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                             <TextBlock Text="{Binding VersionLabel, Mode=OneWay}" Foreground="{StaticResource TextBrush}" FontSize="13" />

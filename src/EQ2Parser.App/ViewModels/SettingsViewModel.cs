@@ -199,6 +199,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         _lexiconStatus = manager.Lexicon.Status;
         manager.Lexicon.StatusChanged += () =>
             System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => LexiconStatus = manager.Lexicon.Status);
+        _loadingCallouts = true;
+        CalloutsEnabled = manager.Settings.CalloutsEnabled;
+        CalloutMinPlayers = manager.Settings.CalloutMinPlayers.ToString();
+        CalloutCooldown = manager.Settings.CalloutCooldownSeconds.ToString();
+        _loadingCallouts = false;
         _idleEndSeconds = manager.Settings.IdleEndSeconds.ToString("0.#");
         _pollMilliseconds = manager.Settings.PollMilliseconds.ToString();
         _historyBossDays = manager.Settings.HistoryBossDays.ToString();
@@ -216,6 +221,41 @@ public sealed partial class SettingsViewModel : ObservableObject
             ?? Voices.FirstOrDefault(v => v.DisplayName.Contains("Natural", StringComparison.OrdinalIgnoreCase))
             ?? Voices.FirstOrDefault(v => PiperVoiceCatalog.Find(v.Id) is null);
     }
+
+    [ObservableProperty]
+    private bool _calloutsEnabled;
+
+    [ObservableProperty]
+    private string _calloutMinPlayers = "3";
+
+    [ObservableProperty]
+    private string _calloutCooldown = "12";
+
+    partial void OnCalloutsEnabledChanged(bool value) => PersistCallouts();
+
+    partial void OnCalloutMinPlayersChanged(string value) => PersistCallouts();
+
+    partial void OnCalloutCooldownChanged(string value) => PersistCallouts();
+
+    /// <summary>Callout knobs apply + persist immediately (like audio).</summary>
+    private void PersistCallouts()
+    {
+        if (_loadingCallouts)
+            return;
+        var minPlayers = int.TryParse(CalloutMinPlayers, out var mp) ? Math.Clamp(mp, 1, 24) : 3;
+        var cooldown = int.TryParse(CalloutCooldown, out var cd) ? Math.Clamp(cd, 3, 120) : 12;
+        _manager.Callouts.MinVictims = minPlayers;
+        _manager.Callouts.Cooldown = TimeSpan.FromSeconds(cooldown);
+        _manager.Settings = _manager.Settings with
+        {
+            CalloutsEnabled = CalloutsEnabled,
+            CalloutMinPlayers = minPlayers,
+            CalloutCooldownSeconds = cooldown,
+        };
+        _manager.Settings.Save();
+    }
+
+    private bool _loadingCallouts;
 
     [ObservableProperty]
     private string _lexiconStatus = "";

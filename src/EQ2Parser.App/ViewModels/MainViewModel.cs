@@ -54,6 +54,7 @@ public sealed partial class MainViewModel : ObservableObject
     public void Tick()
     {
         Manager.SpellTimers.Tick(DateTimeOffset.Now);
+        Manager.Callouts.Tick(DateTimeOffset.Now);
         if (SelectedItem.Page == Main)
             Main.Refresh();
         else if (SelectedItem.Page == Sources)

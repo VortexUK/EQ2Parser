@@ -30,6 +30,22 @@ public static class Vocabulary
     /// than guessed. The 2026-07 log sweep showed boss abilities land
     /// overwhelmingly in the canonical table; the flavour words are almost
     /// all raid-on-mob debuffs.</summary>
+    /// <summary>Canonical effect → the word a mass-detriment callout speaks
+    /// ("8 players stunned").</summary>
+    public static string CalloutWord(string canonical) => canonical switch
+    {
+        "stun" => "stunned",
+        "stifle" => "stifled",
+        "mez" => "mesmerized",
+        "fear" => "feared",
+        "root" => "rooted",
+        "snare" => "snared",
+        "daze" => "dazed",
+        "charm" => "charmed",
+        "knockup" => "knocked up",
+        _ => canonical,
+    };
+
     public static string? CanonicalControlEffect(string? logWord) => logWord switch
     {
         "stunned" or "stupified" => "stun",

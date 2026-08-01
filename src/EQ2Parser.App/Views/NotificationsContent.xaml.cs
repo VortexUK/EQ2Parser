@@ -56,13 +56,22 @@ public partial class NotificationsContent : IOverlayContent
         // AlertFired arrives on the log pump thread — the handler only
         // touches the locked toast list; the UI syncs on Refresh ticks.
         manager.Triggers.AlertFired += OnFired;
-        Unloaded += (_, _) => _manager.Triggers.AlertFired -= OnFired;
+        manager.CalloutAnnounced += AddToast;
+        Unloaded += (_, _) =>
+        {
+            _manager.Triggers.AlertFired -= OnFired;
+            _manager.CalloutAnnounced -= AddToast;
+        };
     }
 
     private void OnFired(TriggerFired fired)
     {
-        if (TextFor(fired) is not { } text)
-            return;
+        if (TextFor(fired) is { } text)
+            AddToast(text);
+    }
+
+    private void AddToast(string text)
+    {
         var now = DateTimeOffset.Now;
         lock (_gate)
         {
