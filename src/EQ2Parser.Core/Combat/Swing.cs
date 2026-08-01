@@ -12,6 +12,11 @@ public enum SwingCategory
     PowerReplenish = 13,
     Threat = 16,
     CureDispel = 20,
+
+    /// <summary>Control-effect apply/release lines ("X is stunned!" /
+    /// "X is no longer stunned."). Ours, not ACT's — files only into the
+    /// Ref buckets (no damage stats), archived for CC-kind mining.</summary>
+    StatusEffect = 30,
 }
 
 /// <summary>

@@ -44,11 +44,21 @@ public sealed class HistoryService : IDisposable
                     lock (_gate)
                     {
                         // A re-parse of an already-archived fight maps to
-                        // its existing row instead of saving a duplicate.
-                        id = _store.FindEncounter(
-                                encounter.SourceId, encounter.OwnerName,
-                                encounter.StartTime, encounter.EndTime, encounter.Title)
-                            ?? _store.SaveEncounter(encounter);
+                        // its existing row instead of saving a duplicate —
+                        // UNLESS the re-parse captured MORE swings (newer
+                        // grammar shapes, e.g. status effects): richer data
+                        // replaces the stale rows in place.
+                        var existing = _store.FindEncounter(
+                            encounter.SourceId, encounter.OwnerName,
+                            encounter.StartTime, encounter.EndTime, encounter.Title);
+                        if (existing is { } staleId
+                            && CountUniqueSwings(encounter) > _store.CountSwings(staleId))
+                        {
+                            _store.DeleteEncounter(staleId);
+                            _inParser.Remove(staleId);
+                            existing = null;
+                        }
+                        id = existing ?? _store.SaveEncounter(encounter);
                         _inParser.Add(id);
                     }
                     _storedIds.Add(encounter, new StrongBox<long>(id));
@@ -60,6 +70,13 @@ public sealed class HistoryService : IDisposable
             }
         });
     }
+
+    /// <summary>Swings the store would persist (each combatant's outgoing
+    /// reference bucket, deduplicated by the same rule SaveEncounter uses).</summary>
+    private static int CountUniqueSwings(Encounter encounter) =>
+        encounter.Combatants.Values
+            .Where(c => c.OutgoingBuckets.ContainsKey(Core.Combat.BucketConfig.AllOutgoingRef))
+            .Sum(c => c.OutgoingBuckets[Core.Combat.BucketConfig.AllOutgoingRef].All.Swings.Count);
 
     /// <summary>Engine EncounterEnded handler — snapshot is final by now,
     /// so the actual write happens off-thread.</summary>

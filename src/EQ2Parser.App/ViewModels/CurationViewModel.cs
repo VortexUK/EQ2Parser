@@ -46,11 +46,18 @@ public sealed partial class CurationAbilityRow(MinedAbility mined) : ObservableO
         {
             var targets = Mined.AvgTargets >= 1.8 ? $" · AOE ×{Mined.AvgTargets:0.#}" : "";
             var dot = Mined.TicksPerCast >= 1.8 ? $" · reapplies ×{Mined.TicksPerCast:0.#}" : "";
+            // Correlated control kind, with measured duration when the
+            // release lines paired: "· stuns ~4s".
+            var effect = Mined.EffectKind is { } kind2
+                ? Mined.EffectDurationSeconds is { } dur
+                    ? $" · {kind2} ~{dur:0.#}s"
+                    : $" · {kind2}"
+                : "";
             if (Mined.IsDetriment)
-                return $"detriment / control{targets}{dot}";
+                return $"detriment / control{effect}{targets}{dot}";
             var perCast = Mined.Casts > 0 ? Mined.TotalDamage / Mined.Casts : 0;
             var kind = Mined.IsMelee ? "melee" : "spell";
-            return $"{CombatantRow.Compact(perCast)}/cast · {kind}{targets}{dot}";
+            return $"{CombatantRow.Compact(perCast)}/cast · {kind}{effect}{targets}{dot}";
         }
     }
 

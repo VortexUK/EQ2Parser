@@ -377,6 +377,16 @@ public sealed class HistoryStore : IDisposable
         return cmd.ExecuteNonQuery();
     }
 
+    /// <summary>Stored swing count — the richer-data check for re-parse
+    /// upgrades (new grammar shapes add swings old saves lack).</summary>
+    public int CountSwings(long encounterId)
+    {
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM swings WHERE encounter_id = $enc;";
+        cmd.Parameters.AddWithValue("$enc", encounterId);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
     public bool DeleteEncounter(long encounterId)
     {
         using var cmd = _conn.CreateCommand();

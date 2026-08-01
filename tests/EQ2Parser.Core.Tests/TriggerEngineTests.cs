@@ -216,6 +216,32 @@ public class TriggerEngineTests
     }
 
     [Fact]
+    public void Status_Effect_Lines_Parse_As_Status_Swings()
+    {
+        // Apply flavours vary; releases are uniform. Real shapes from live
+        // Wuoshi logs.
+        var apply = Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("An Awakened trial servant is stunned!"));
+        Assert.Equal(Combat.SwingCategory.StatusEffect, apply.Category);
+        Assert.Equal("stunned", apply.Ability);
+        Assert.Equal("An Awakened trial servant", apply.Victim);
+        Assert.Equal("applied", apply.DamageType);
+
+        var flavoured = Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("A sentinel of the Trial is unnerved by a stare!"));
+        Assert.Equal("unnerved", flavoured.Ability);
+
+        var totally = Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("An Awakened trial servant is totally confused!"));
+        Assert.Equal("confused", totally.Ability);
+
+        var release = Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("An Awakened trial servant is no longer stunned."));
+        Assert.Equal("stunned", release.Ability);
+        Assert.Equal("released", release.DamageType);
+    }
+
+    [Fact]
     public void Processor_Skips_Triggers_For_Replayed_History()
     {
         // Parse-from-start replays hours of old lines in seconds — those

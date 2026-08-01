@@ -129,6 +129,18 @@ public static partial class EnglishGrammar
     [GeneratedRegex(@"^YOUR (?<ability>.+?) relieves (?<effect>.+?) from (?<victim>.+?)\.$")]
     private static partial Regex YourCureRelieves();
 
+    // ── Status effects (control) ────────────────────────────────────────────
+    // An Awakened trial servant is stunned!            (apply — flavour varies:
+    // "is totally confused!", "is unnerved by a stare!", "is seared by a
+    // blast of heat!")
+    // An Awakened trial servant is no longer stunned.  (release — uniform)
+
+    [GeneratedRegex(@"^(?<victim>.+?) is (?:totally )?(?<effect>stunned|mesmerized|stupified|confused|unnerved|dazzled|gloomy|afraid|feared|disoriented|seared|dazed|rooted|snared)(?: by .+?)?!$")]
+    private static partial Regex StatusApplied();
+
+    [GeneratedRegex(@"^(?<victim>.+?) is no longer (?<effect>[a-z]+)\.$")]
+    private static partial Regex StatusReleased();
+
     // ── Deaths ──────────────────────────────────────────────────────────────
     // You have killed a glacial tunneler.
     // Alas, a Thurgadin watcher has died from pain and suffering.
@@ -210,6 +222,11 @@ public static partial class EnglishGrammar
             return Cure(m, You);
         if ((m = CureRelieves().Match(message)).Success)
             return Cure(m, m.Groups["attacker"].Value);
+        if (message.EndsWith('!') && (m = StatusApplied().Match(message)).Success)
+            return Status(m, applied: true);
+        if (message.Contains(" is no longer ", StringComparison.Ordinal)
+            && (m = StatusReleased().Match(message)).Success)
+            return Status(m, applied: false);
         if ((m = YouKilled().Match(message)).Success)
             return new DeathEvent(You, m.Groups["victim"].Value);
         if ((m = AlasDied().Match(message)).Success)
@@ -296,6 +313,16 @@ public static partial class EnglishGrammar
         Damage: ParseAmount(m.Groups["amount"].Value),
         Victim: m.Groups["victim"].Value,
         DamageType: m.Groups["direction"].Value == "reduces" ? "threat-reduce" : "threat");
+
+    private static SwingEvent Status(Match m, bool applied) => new(
+        SwingCategory.StatusEffect,
+        Critical: false,
+        Special: "None",
+        Attacker: "Unknown", // the line never names a source
+        Ability: m.Groups["effect"].Value,
+        Damage: DamageValue.NoDamage,
+        Victim: m.Groups["victim"].Value,
+        DamageType: applied ? "applied" : "released");
 
     private static SwingEvent Cure(Match m, string attacker) => new(
         SwingCategory.CureDispel,

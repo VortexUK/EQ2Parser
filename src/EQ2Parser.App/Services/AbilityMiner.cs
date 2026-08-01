@@ -24,7 +24,9 @@ public sealed record MinedAbility(
     double AvgTargets,
     double TicksPerCast,
     bool IsMelee,
-    bool IsDetriment);
+    bool IsDetriment,
+    string? EffectKind,
+    double? EffectDurationSeconds);
 
 /// <summary>A mob and its mined abilities.</summary>
 public sealed record MinedMob(string Zone, string Mob, IReadOnlyList<MinedAbility> Abilities);
@@ -57,6 +59,9 @@ public static class AbilityMiner
             new();
         Dictionary<(string Mob, string Ability), (long Damage, int Hits, int ZeroHits, int Volleys, int Casts, HashSet<long> FightIds, bool Melee)> stats =
             new();
+        // (mob, ability) → effect kind → (attributions, matched durations)
+        Dictionary<(string Mob, string Ability), Dictionary<string, (int Count, List<double> Durations)>> effects =
+            new();
 
         foreach (var (summary, swings, enemies) in history.EnumerateArchivedFights(zone))
         {
@@ -76,6 +81,43 @@ public static class AbilityMiner
             }
             foreach (var entry in swiped.Values)
                 MergeWindows(entry.Windows);
+
+            // Status timeline: applies (with matched release → duration)
+            // per victim, for pairing control kinds to the hits that caused
+            // them. ("X is stunned!" … "X is no longer stunned.")
+            Dictionary<string, List<(DateTimeOffset Time, string Effect, double? Duration)>> statusApplies =
+                new(StringComparer.OrdinalIgnoreCase);
+            List<(DateTimeOffset Time, string Victim, string Effect)> releases = [];
+            foreach (var swing in swings)
+            {
+                if (swing.Category != SwingCategory.StatusEffect)
+                    continue;
+                if (swing.DamageType == "applied")
+                {
+                    if (!statusApplies.TryGetValue(swing.Victim, out var list))
+                        statusApplies[swing.Victim] = list = [];
+                    list.Add((swing.Time, swing.Ability, null));
+                }
+                else
+                {
+                    releases.Add((swing.Time, swing.Victim, swing.Ability));
+                }
+            }
+            foreach (var (time, victim, effect) in releases)
+            {
+                if (!statusApplies.TryGetValue(victim, out var list))
+                    continue;
+                for (var i = list.Count - 1; i >= 0; i--)
+                {
+                    if (list[i].Duration is null
+                        && string.Equals(list[i].Effect, effect, StringComparison.OrdinalIgnoreCase)
+                        && list[i].Time <= time)
+                    {
+                        list[i] = (list[i].Time, list[i].Effect, (time - list[i].Time).TotalSeconds);
+                        break;
+                    }
+                }
+            }
             // Group this fight's hostile swings by enemy attacker + ability.
             Dictionary<(string, string), List<Swing>> byAbility = new();
             foreach (var swing in swings)
@@ -117,6 +159,27 @@ public static class AbilityMiner
                     damage += Math.Max(0, hit.Damage.Number);
                     if (hit.Category != SwingCategory.Melee)
                         melee = false;
+
+                    // A status apply on this victim right after this hit →
+                    // the hit carried the control effect.
+                    if (statusApplies.TryGetValue(hit.Victim, out var applies))
+                    {
+                        foreach (var apply in applies)
+                        {
+                            if (apply.Time < hit.Time || apply.Time - hit.Time > CastCluster)
+                                continue;
+                            if (!effects.TryGetValue((mob, ability), out var byEffect))
+                                effects[(mob, ability)] = byEffect = new Dictionary<string, (int, List<double>)>(StringComparer.OrdinalIgnoreCase);
+                            var entry = byEffect.TryGetValue(apply.Effect, out var existing2)
+                                ? existing2
+                                : (0, []);
+                            entry.Count++;
+                            if (apply.Duration is { } duration and > 0 and < 120)
+                                entry.Durations.Add(duration);
+                            byEffect[apply.Effect] = entry;
+                            break;
+                        }
+                    }
                 }
 
                 List<DateTimeOffset> applicationStarts = [];
@@ -173,6 +236,26 @@ public static class AbilityMiner
             intervals.Sort();
             baseIntervals.Sort();
             var s = stats[(mob, ability)];
+
+            // Dominant control kind: attributed on a meaningful share of
+            // casts, with the median measured duration when releases paired.
+            string? effectKind = null;
+            double? effectDuration = null;
+            if (effects.TryGetValue((mob, ability), out var byEffect2))
+            {
+                var dominant = byEffect2.OrderByDescending(kv => kv.Value.Count).First();
+                if (dominant.Value.Count >= Math.Max(2, s.Casts / 4))
+                {
+                    effectKind = dominant.Key;
+                    var durations = dominant.Value.Durations;
+                    if (durations.Count > 0)
+                    {
+                        durations.Sort();
+                        effectDuration = durations[durations.Count / 2];
+                    }
+                }
+            }
+
             var mined = new MinedAbility(
                 zone, mob, ability,
                 s.Casts, s.FightIds.Count,
@@ -186,7 +269,9 @@ public static class AbilityMiner
                 s.Melee,
                 // ~All hits dealing zero across every fight = a control/
                 // detriment effect; scattered zeros are just resists.
-                s.Hits > 0 && (double)s.ZeroHits / s.Hits >= 0.9);
+                s.Hits > 0 && (double)s.ZeroHits / s.Hits >= 0.9,
+                effectKind,
+                effectDuration);
             if (!mobs.TryGetValue(mob, out var list))
                 mobs[mob] = list = [];
             list.Add(mined);
