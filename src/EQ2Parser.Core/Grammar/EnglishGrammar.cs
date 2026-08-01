@@ -172,6 +172,14 @@ public static partial class EnglishGrammar
     [GeneratedRegex(@"^(?<victim>.+?) (?:regains (?:[Tt]heir wits|[Hh]is composure|[Hh]er composure|[Ii]ts composure|[Tt]heir composure)|returns to normal)\.$")]
     private static partial Regex StatusGenericReleased();
 
+    // A muck toad no longer appears terrified.  (second terrified phrasing)
+    [GeneratedRegex(@"^(?<victim>.+?) no longer appears (?<effect>[a-z]+)\.$")]
+    private static partial Regex StatusAppearsReleased();
+
+    // The corruptive symbol fades from Sofja.   (named-effect fade family)
+    [GeneratedRegex(@"^The (?<effect>.+?) fades from (?<victim>.+?)\.$")]
+    private static partial Regex StatusFadesFrom();
+
     // ── Deaths ──────────────────────────────────────────────────────────────
     // You have killed a glacial tunneler.
     // Alas, a Thurgadin watcher has died from pain and suffering.
@@ -279,6 +287,12 @@ public static partial class EnglishGrammar
             && !message.StartsWith("Your ", StringComparison.Ordinal) // "Your health returns to normal."
             && (m = StatusGenericReleased().Match(message)).Success)
             return Status(m.Groups["victim"].Value, "any", applied: false);
+        if (message.Contains(" no longer appears ", StringComparison.Ordinal)
+            && (m = StatusAppearsReleased().Match(message)).Success)
+            return Status(m.Groups["victim"].Value, m.Groups["effect"].Value, applied: false);
+        if (message.Contains(" fades from ", StringComparison.Ordinal)
+            && (m = StatusFadesFrom().Match(message)).Success)
+            return Status(m.Groups["victim"].Value, m.Groups["effect"].Value, applied: false);
         if ((m = YouKilled().Match(message)).Success)
             return new DeathEvent(You, m.Groups["victim"].Value);
         if ((m = AlasDied().Match(message)).Success)

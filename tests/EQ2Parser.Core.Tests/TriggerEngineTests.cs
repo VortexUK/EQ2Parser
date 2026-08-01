@@ -271,6 +271,15 @@ public class TriggerEngineTests
         Assert.Equal("any", Assert.IsType<Grammar.SwingEvent>(
             Grammar.EnglishGrammar.TryParse("King Itchhide returns to normal.")).Ability);
         Assert.Null(Grammar.EnglishGrammar.TryParse("Your health returns to normal."));
+
+        // Later-found release phrasings.
+        Assert.Equal("terrified", Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("A muck toad no longer appears terrified.")).Ability);
+        var fade = Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("The corruptive symbol fades from Sofja."));
+        Assert.Equal("corruptive symbol", fade.Ability);
+        Assert.Equal("Sofja", fade.Victim);
+        Assert.Equal("released", fade.DamageType);
     }
 
     [Fact]
