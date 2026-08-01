@@ -130,25 +130,35 @@ public sealed class SpellTimerService(TimerOptions? options = null)
         var zone = currentZone.ToLowerInvariant();
 
         // Candidate selection: category-restricted definitions must match
-        // attacker/victim/zone; a restricted match is preferred over an
-        // unrestricted one (last of each kind wins — ACT order semantics).
-        TimerDefinition? restricted = null, unrestricted = null;
+        // attacker/victim/zone and beat unrestricted ones (ACT semantics);
+        // within each kind, a definition whose Zone matches the current
+        // zone beats zone-less/other-zone twins — the same boss recurs
+        // across zones with retuned abilities. Last wins within a tier.
+        TimerDefinition? chosen = null;
+        var chosenTier = -1;
         foreach (var def in candidates)
         {
             if (!def.Enabled)
                 continue;
+            var zoneHit = def.Zone.Length > 0 && def.Zone.ToLowerInvariant() == zone;
+            int tier;
             if (def.RestrictToCategory)
             {
                 var cat = def.Category.ToLowerInvariant();
-                if (cat == attacker || cat == victim || cat == zone)
-                    restricted = def;
+                if (cat != attacker && cat != victim && cat != zone)
+                    continue;
+                tier = zoneHit ? 3 : 2;
             }
             else
             {
-                unrestricted = def;
+                tier = zoneHit ? 1 : 0;
+            }
+            if (tier >= chosenTier)
+            {
+                chosen = def;
+                chosenTier = tier;
             }
         }
-        var chosen = restricted ?? unrestricted;
         if (chosen is null)
             return false;
         if (chosen.RestrictToMe && !self)

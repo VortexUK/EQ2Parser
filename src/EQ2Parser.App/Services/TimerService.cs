@@ -146,12 +146,13 @@ public sealed class TimerService
 
     /// <summary>Start a timer by hand — the editor's Test button. The victim
     /// doubles as the definition's category so category-restricted timers
-    /// still fire in a test.</summary>
+    /// still fire, and the definition's zone rides along so the RIGHT twin
+    /// starts when the same mob+ability exists for several zones.</summary>
     public void StartTest(TimerDefinition definition)
     {
         lock (_sync)
         {
-            Service.Notify("you", definition.Name, self: true, definition.Category, DateTimeOffset.Now);
+            Service.Notify("you", definition.Name, self: true, definition.Category, DateTimeOffset.Now, definition.Zone);
         }
     }
 

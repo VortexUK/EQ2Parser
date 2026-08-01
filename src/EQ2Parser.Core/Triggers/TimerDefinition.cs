@@ -57,6 +57,9 @@ public sealed record TimerDefinition
     public string StartSoundData { get; init; } = "";
     public string WarningSoundData { get; init; } = "";
 
-    /// <summary>ACT identity: lower-cased category|name.</summary>
-    public string Key => $"{Category.ToLowerInvariant()}|{Name.ToLowerInvariant()}";
+    /// <summary>ACT's category|name identity, extended with zone: the same
+    /// mob+ability in two zones are DISTINCT timers (bosses recur across
+    /// zones with retuned abilities); the runtime prefers the current
+    /// zone's version when several could start.</summary>
+    public string Key => $"{Zone.ToLowerInvariant()}|{Category.ToLowerInvariant()}|{Name.ToLowerInvariant()}";
 }

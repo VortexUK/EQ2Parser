@@ -106,7 +106,7 @@ public sealed partial class CurationViewModel : ObservableObject
             Rows.Add(new CurationMobRow(mob.Mob, mob.Abilities.Count));
             foreach (var mined in mob.Abilities)
             {
-                var row = new CurationAbilityRow(mined) { HasTimer = TimerExists(mined.Ability) };
+                var row = new CurationAbilityRow(mined) { HasTimer = TimerExists(mined) };
                 Rows.Add(row);
                 abilities++;
                 if (!row.HasTimer && row.CanTime)
@@ -118,9 +118,13 @@ public sealed partial class CurationViewModel : ObservableObject
             : $"{mobs.Count} mob{(mobs.Count == 1 ? "" : "s")} · {abilities} abilit{(abilities == 1 ? "y" : "ies")} · {missing} timeable without a timer";
     }
 
-    private bool TimerExists(string ability) =>
+    /// <summary>Exact identity — zone + mob + ability. A timer for MMIS's
+    /// Mayong never marks ToNT's Vampire Lord version as covered.</summary>
+    private bool TimerExists(MinedAbility mined) =>
         _manager.SpellTimers.Definitions.Any(d =>
-            string.Equals(d.Name, ability, StringComparison.OrdinalIgnoreCase));
+            string.Equals(d.Name, mined.Ability, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(d.Category, mined.Mob, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(d.Zone, mined.Zone, StringComparison.OrdinalIgnoreCase));
 
     private TimerDefinition BuildDefinition(MinedAbility mined)
     {

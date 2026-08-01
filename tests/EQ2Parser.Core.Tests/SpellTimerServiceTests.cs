@@ -140,6 +140,41 @@ public class SpellTimerServiceTests
         Assert.Empty(service.Frames);
     }
 
+    [Fact]
+    public void Same_Mob_And_Ability_In_Two_Zones_Are_Distinct_And_Zone_Picks_The_Twin()
+    {
+        // Mayong recurs across zones with retuned abilities: both versions
+        // coexist (zone-qualified identity), and the current zone's version
+        // starts — the other stays a fallback.
+        var service = new SpellTimerService();
+        service.AddOrUpdateDefinition(new TimerDefinition
+        {
+            Name = "Blanket of Eternal Night", Category = "Mayong Mistmoore",
+            Zone = "Mistmoore's Inner Sanctum", RestrictToCategory = true, DurationSeconds = 53,
+        });
+        service.AddOrUpdateDefinition(new TimerDefinition
+        {
+            Name = "Blanket of Eternal Night", Category = "Mayong Mistmoore",
+            Zone = "Throne of New Tunaria", RestrictToCategory = true, DurationSeconds = 61,
+        });
+        Assert.Equal(2, service.Definitions.Count);
+
+        var timers = new List<ActiveTimer>();
+        service.TimerStarted += (_, t) => timers.Add(t);
+
+        service.Notify("Mayong Mistmoore", "Blanket of Eternal Night", false, "sofja", T0,
+            currentZone: "Throne of New Tunaria");
+        Assert.Equal(61, timers[^1].DurationSeconds);
+
+        service.Notify("Mayong Mistmoore", "Blanket of Eternal Night", false, "sofja", T0.AddSeconds(120),
+            currentZone: "Mistmoore's Inner Sanctum");
+        Assert.Equal(53, timers[^1].DurationSeconds);
+
+        // Unknown zone: falls back to a version rather than starting nothing.
+        service.Notify("Mayong Mistmoore", "Blanket of Eternal Night", false, "menludiir", T0.AddSeconds(240));
+        Assert.Equal(3, timers.Count);
+    }
+
     // ---- timer mods (ACT ApplyTimerMod: final = base × (1 + Σ mods),
     //      same-name mods replace, Modable=false ignores them) ----
 

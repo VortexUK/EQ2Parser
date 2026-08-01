@@ -54,7 +54,8 @@ public class ActShareFormatTests
         Assert.Equal(15, def.WarningSeconds);
         Assert.Equal(-15, def.RemoveSeconds); // default
         Assert.True(def.Modable);             // default
-        Assert.Equal("general|harm touch", def.Key);
+        // Zone-qualified identity (empty zone for ACT imports).
+        Assert.Equal("|general|harm touch", def.Key);
     }
 
     [Fact]
