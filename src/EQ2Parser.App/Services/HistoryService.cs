@@ -106,6 +106,45 @@ public sealed class HistoryService : IDisposable
         }
     }
 
+    /// <summary>Every zone with archived boss fights — the curation
+    /// workbench's zone picker.</summary>
+    public IReadOnlyList<string> ArchivedZones()
+    {
+        lock (_gate)
+        {
+            return [.. _store.SearchEncounters(bossOnly: true, limit: 2000)
+                .Select(s => s.Zone)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(z => z, StringComparer.OrdinalIgnoreCase)];
+        }
+    }
+
+    /// <summary>Stream a zone's archived boss fights with their full swing
+    /// lists and enemy name sets — the ability miner's feed. Each fight
+    /// loads under the gate; iteration between fights doesn't hold it.</summary>
+    public IEnumerable<(EncounterSummary Summary, IReadOnlyList<Core.Combat.Swing> Swings, HashSet<string> Enemies)>
+        EnumerateArchivedFights(string zone)
+    {
+        IReadOnlyList<EncounterSummary> summaries;
+        lock (_gate)
+        {
+            summaries = _store.SearchEncounters(zone: zone, bossOnly: true, limit: 500);
+        }
+        foreach (var summary in summaries)
+        {
+            IReadOnlyList<Core.Combat.Swing> swings;
+            HashSet<string> enemies;
+            lock (_gate)
+            {
+                swings = _store.LoadSwings(summary.Id);
+                enemies = new HashSet<string>(
+                    _store.LoadCombatants(summary.Id).Where(c => !c.IsAlly).Select(c => c.Name),
+                    StringComparer.OrdinalIgnoreCase);
+            }
+            yield return (summary, swings, enemies);
+        }
+    }
+
     public bool IsLoaded(long encounterId)
     {
         lock (_gate)

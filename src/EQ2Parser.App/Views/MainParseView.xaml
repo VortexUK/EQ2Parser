@@ -135,6 +135,9 @@
                 <Button Content="Archive" Style="{StaticResource GoldButton}" Margin="8,0,0,0" Padding="12,3"
                         ToolTip="Search every stored fight (bosses never age out) and pull them back into the parser"
                         Click="Archive_Click" />
+                <Button Content="Curation" Style="{StaticResource GoldButton}" Margin="8,0,0,0" Padding="12,3"
+                        ToolTip="Mine archived fights: what each mob casts, measured recast timings, and which abilities still need timers"
+                        Click="Curation_Click" />
             </StackPanel>
             <Border Grid.Row="1" Style="{StaticResource Card}" Padding="4">
             <ListBox ItemsSource="{Binding TreeNodes}" SelectedItem="{Binding SelectedNode}"

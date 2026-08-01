@@ -1,0 +1,105 @@
+<Window x:Class="EQ2Parser.App.Views.CurationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:EQ2Parser.App.ViewModels"
+        Title="Curation Workbench" Width="780" Height="600" WindowStartupLocation="CenterOwner"
+        Background="{StaticResource BgBrush}">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ComboBox ItemsSource="{Binding Zones}" SelectedItem="{Binding SelectedZone}"
+                      MinWidth="260" FontSize="13" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Style="{StaticResource MutedText}" FontSize="12" Margin="12,4,0,0"
+                       Text="What each mob actually casts, with recast timings measured from your archived fights." />
+            <Button Grid.Column="2" Content="Copy all missing as XML" Style="{StaticResource GoldButton}"
+                    ToolTip="Every timeable ability without a timer, as ACT &lt;Spell&gt; lines for the Lexicon curator pages"
+                    Command="{Binding CopyMissingXmlCommand}" />
+        </Grid>
+
+        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="4">
+            <ListBox ItemsSource="{Binding Rows}" Background="Transparent" BorderThickness="0"
+                     HorizontalContentAlignment="Stretch"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.VirtualizationMode="Recycling">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0" />
+                        <Setter Property="Focusable" Value="False" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <ContentPresenter />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.Resources>
+                    <DataTemplate DataType="{x:Type vm:CurationMobRow}">
+                        <Border Background="{StaticResource SurfaceRaisedBrush}" CornerRadius="4"
+                                Margin="0,3,0,1" Padding="8,6">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Mob}" FontSize="13"
+                                           FontFamily="{StaticResource BodySemiBoldFont}"
+                                           Foreground="{StaticResource GoldBrightBrush}" />
+                                <TextBlock Text="{Binding AbilityCount, StringFormat={}{0} abilities}"
+                                           Style="{StaticResource MutedText}" FontSize="11" Margin="10,1,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:CurationAbilityRow}">
+                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                Padding="8,6" Margin="16,0,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Ability}" FontSize="13"
+                                               Foreground="{StaticResource GoldBrightBrush}" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                        <TextBlock Text="{Binding CastsLabel}" Style="{StaticResource MutedText}" FontSize="11" />
+                                        <TextBlock Text="{Binding ProfileLabel}" Style="{StaticResource MutedText}" FontSize="11" Margin="10,0,0,0" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="{Binding RecastLabel}" FontFamily="Consolas"
+                                           FontSize="12" Foreground="{StaticResource TextBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,12,0" />
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="timer ✓" FontSize="12" Foreground="{StaticResource SuccessBrush}"
+                                               VerticalAlignment="Center" Margin="0,0,6,0"
+                                               Visibility="{Binding HasTimer, Converter={StaticResource BoolToVis}}" />
+                                    <Button Content="Make timer" Style="{StaticResource GoldButton}" Padding="10,3"
+                                            Visibility="{Binding HasTimer, Converter={StaticResource InverseBoolToVis}}"
+                                            IsEnabled="{Binding CanTime}"
+                                            Command="{Binding DataContext.CreateTimerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}" />
+                                    <Button Content="⧉" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
+                                            ToolTip="Copy as ACT &lt;Spell&gt; XML"
+                                            Command="{Binding DataContext.CopyXmlCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.Resources>
+            </ListBox>
+        </Border>
+
+        <TextBlock Grid.Row="2" Text="{Binding StatusLabel}" Foreground="{StaticResource GoldBrush}"
+                   FontSize="12" Margin="0,8,0,0" />
+    </Grid>
+</Window>
