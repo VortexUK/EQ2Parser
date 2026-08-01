@@ -44,10 +44,12 @@ public sealed partial class CurationAbilityRow(MinedAbility mined) : ObservableO
     {
         get
         {
+            var targets = Mined.AvgTargets >= 1.8 ? $" · AOE ×{Mined.AvgTargets:0.#}" : "";
+            var dot = Mined.TicksPerCast >= 1.8 ? $" · reapplies ×{Mined.TicksPerCast:0.#}" : "";
+            if (Mined.IsDetriment)
+                return $"detriment / control{targets}{dot}";
             var perCast = Mined.Casts > 0 ? Mined.TotalDamage / Mined.Casts : 0;
             var kind = Mined.IsMelee ? "melee" : "spell";
-            var targets = Mined.AvgTargets >= 1.8 ? $" · AOE ×{Mined.AvgTargets:0.#}" : "";
-            var dot = Mined.TicksPerCast >= 1.8 ? $" · DoT ×{Mined.TicksPerCast:0.#} ticks" : "";
             return $"{CombatantRow.Compact(perCast)}/cast · {kind}{targets}{dot}";
         }
     }
@@ -73,11 +75,21 @@ public sealed partial class CurationViewModel : ObservableObject
     public ObservableCollection<string> Zones { get; } = [];
     public ObservableCollection<object> Rows { get; } = [];
 
+    /// <summary>Damage mode ranks by what hurts; detriment mode surfaces
+    /// the zero-damage control effects (stifles, stuns, fears) that damage
+    /// ranking buries — sorted by how often they land.</summary>
+    public IReadOnlyList<string> ModeChoices { get; } = ["Damage", "Detriments (CC)"];
+
+    [ObservableProperty]
+    private int _modeIndex;
+
     [ObservableProperty]
     private string? _selectedZone;
 
     [ObservableProperty]
     private string _statusLabel = "";
+
+    private List<MinedMob> _mined = [];
 
     public CurationViewModel(SourceManager manager)
     {
@@ -91,20 +103,33 @@ public sealed partial class CurationViewModel : ObservableObject
 
     partial void OnSelectedZoneChanged(string? value)
     {
-        if (value is not null)
-            Mine(value);
+        if (value is null)
+            return;
+        _mined = AbilityMiner.MineZone(_manager.History, value);
+        RebuildRows();
     }
 
-    private void Mine(string zone)
+    partial void OnModeIndexChanged(int value) => RebuildRows();
+
+    private void RebuildRows()
     {
         Rows.Clear();
-        var mobs = AbilityMiner.MineZone(_manager.History, zone);
+        var detriments = ModeIndex == 1;
         var abilities = 0;
         var missing = 0;
-        foreach (var mob in mobs)
+        var mobsShown = 0;
+        foreach (var mob in _mined)
         {
-            Rows.Add(new CurationMobRow(mob.Mob, mob.Abilities.Count));
-            foreach (var mined in mob.Abilities)
+            // Damage mode ranks by pain; detriment mode by how often the
+            // control effect lands. Top 10 either way.
+            List<MinedAbility> shown = detriments
+                ? [.. mob.Abilities.Where(a => a.IsDetriment).OrderByDescending(a => a.Casts).Take(10)]
+                : [.. mob.Abilities.Where(a => !a.IsDetriment).Take(10)];
+            if (shown.Count == 0)
+                continue;
+            mobsShown++;
+            Rows.Add(new CurationMobRow(mob.Mob, shown.Count));
+            foreach (var mined in shown)
             {
                 var row = new CurationAbilityRow(mined) { HasTimer = TimerExists(mined) };
                 Rows.Add(row);
@@ -113,9 +138,11 @@ public sealed partial class CurationViewModel : ObservableObject
                     missing++;
             }
         }
-        StatusLabel = mobs.Count == 0
+        StatusLabel = _mined.Count == 0
             ? "No boss fights archived for this zone."
-            : $"{mobs.Count} mob{(mobs.Count == 1 ? "" : "s")} · {abilities} abilit{(abilities == 1 ? "y" : "ies")} · {missing} timeable without a timer";
+            : mobsShown == 0
+                ? (detriments ? "No control/detriment effects observed in this zone's fights." : "Nothing to show.")
+                : $"{mobsShown} mob{(mobsShown == 1 ? "" : "s")} · {abilities} abilit{(abilities == 1 ? "y" : "ies")} · {missing} timeable without a timer";
     }
 
     /// <summary>Exact identity — zone + mob + ability. A timer for MMIS's

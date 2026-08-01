@@ -14,14 +14,17 @@
         <Grid Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <ComboBox ItemsSource="{Binding Zones}" SelectedItem="{Binding SelectedZone}"
                       MinWidth="260" FontSize="13" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="1" Style="{StaticResource MutedText}" FontSize="12" Margin="12,4,0,0"
+            <ComboBox Grid.Column="1" ItemsSource="{Binding ModeChoices}" SelectedIndex="{Binding ModeIndex}"
+                      MinWidth="130" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0" />
+            <TextBlock Grid.Column="2" Style="{StaticResource MutedText}" FontSize="12" Margin="12,4,0,0"
                        Text="What each mob actually casts, with recast timings measured from your archived fights." />
-            <Button Grid.Column="2" Content="Copy all missing as XML" Style="{StaticResource GoldButton}"
+            <Button Grid.Column="3" Content="Copy all missing as XML" Style="{StaticResource GoldButton}"
                     ToolTip="Every timeable ability without a timer, as ACT &lt;Spell&gt; lines for the Lexicon curator pages"
                     Command="{Binding CopyMissingXmlCommand}" />
         </Grid>

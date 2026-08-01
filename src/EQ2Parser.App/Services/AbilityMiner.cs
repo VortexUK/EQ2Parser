@@ -23,7 +23,8 @@ public sealed record MinedAbility(
     long TotalDamage,
     double AvgTargets,
     double TicksPerCast,
-    bool IsMelee);
+    bool IsMelee,
+    bool IsDetriment);
 
 /// <summary>A mob and its mined abilities.</summary>
 public sealed record MinedMob(string Zone, string Mob, IReadOnlyList<MinedAbility> Abilities);
@@ -54,7 +55,7 @@ public static class AbilityMiner
         // swiped windows) — windows travel with the fight for normalization.
         Dictionary<(string Mob, string Ability), List<(List<DateTimeOffset> Casts, List<(DateTimeOffset Start, DateTimeOffset End)> Swiped, double Fraction)>> castsPerFight =
             new();
-        Dictionary<(string Mob, string Ability), (long Damage, int Hits, int Volleys, int Casts, HashSet<long> FightIds, bool Melee)> stats =
+        Dictionary<(string Mob, string Ability), (long Damage, int Hits, int ZeroHits, int Volleys, int Casts, HashSet<long> FightIds, bool Melee)> stats =
             new();
 
         foreach (var (summary, swings, enemies) in history.EnumerateArchivedFights(zone))
@@ -101,6 +102,7 @@ public static class AbilityMiner
                 hits.Sort((a, b) => a.Time.CompareTo(b.Time));
                 List<DateTimeOffset> volleyStarts = [];
                 var targets = 0;
+                var zeroHits = 0;
                 long damage = 0;
                 var melee = true;
                 DateTimeOffset? lastHit = null;
@@ -110,6 +112,8 @@ public static class AbilityMiner
                         volleyStarts.Add(hit.Time);
                     lastHit = hit.Time;
                     targets++;
+                    if (hit.Damage.Number <= 0)
+                        zeroHits++;
                     damage += Math.Max(0, hit.Damage.Number);
                     if (hit.Category != SwingCategory.Melee)
                         melee = false;
@@ -131,9 +135,10 @@ public static class AbilityMiner
                 fights.Add((applicationStarts, mobSwipes.Windows, mobSwipes.Fraction));
                 var s = stats.TryGetValue(key, out var existing)
                     ? existing
-                    : (0, 0, 0, 0, [], melee);
+                    : (0, 0, 0, 0, 0, [], melee);
                 s.Damage += damage;
                 s.Hits += targets;
+                s.ZeroHits += zeroHits;
                 s.Volleys += volleyStarts.Count;
                 s.Casts += applicationStarts.Count;
                 s.FightIds.Add(summary.Id);
@@ -178,15 +183,20 @@ public static class AbilityMiner
                 s.Damage,
                 s.Volleys > 0 ? (double)s.Hits / s.Volleys : 0,
                 s.Casts > 0 ? (double)s.Volleys / s.Casts : 0,
-                s.Melee);
+                s.Melee,
+                // ~All hits dealing zero across every fight = a control/
+                // detriment effect; scattered zeros are just resists.
+                s.Hits > 0 && (double)s.ZeroHits / s.Hits >= 0.9);
             if (!mobs.TryGetValue(mob, out var list))
                 mobs[mob] = list = [];
             list.Add(mined);
         }
 
+        // Full lists, damage-sorted — the workbench filters by mode
+        // (damage vs detriment) and applies its own caps.
         return [.. mobs
             .Select(kv => new MinedMob(zone, kv.Key,
-                [.. kv.Value.OrderByDescending(a => a.TotalDamage).Take(10)]))
+                [.. kv.Value.OrderByDescending(a => a.TotalDamage)]))
             .OrderBy(m => m.Mob, StringComparer.OrdinalIgnoreCase)];
     }
 
