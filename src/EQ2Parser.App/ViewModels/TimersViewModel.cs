@@ -58,8 +58,6 @@ public sealed partial class TimerDefRow : ObservableObject, ICategoryDropTarget
                 parts.Add("one at a time");
             if (Definition.RestrictToCategory)
                 parts.Add("category-locked");
-            if (Definition.OnlyMasterTicks)
-                parts.Add("restart only");
             if (!Definition.Modable)
                 parts.Add("mods off");
             if (Definition.StartSoundData.Length > 0 || Definition.WarningSoundData.Length > 0)

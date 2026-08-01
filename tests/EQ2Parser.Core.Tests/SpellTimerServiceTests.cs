@@ -46,35 +46,30 @@ public class SpellTimerServiceTests
     }
 
     [Fact]
-    public void Retrigger_Windows_Dedupe_Then_SubTimer_Then_Master()
+    public void Retrigger_Dedupes_Then_Restarts_The_One_Bar()
     {
         var service = Service(Doom);
         var timers = new List<ActiveTimer>();
         service.TimerStarted += (_, t) => timers.Add(t);
 
         Assert.True(service.Notify("x", "Doom", true, "sofja", T0));
-        // <2s: ignored outright.
+        // <2s: ignored outright — one AoE wave is one start.
         Assert.False(service.Notify("x", "Doom", true, "sofja", T0.AddSeconds(1)));
-        // 2-12s: sub-timer.
+        // Past the dedupe window: RESTARTS the single bar (no sub-timers).
         Assert.True(service.Notify("x", "Doom", true, "sofja", T0.AddSeconds(5)));
-        Assert.False(timers[^1].IsMaster);
-        // >12s since newest: fresh master.
-        Assert.True(service.Notify("x", "Doom", true, "sofja", T0.AddSeconds(20)));
         Assert.True(timers[^1].IsMaster);
-        Assert.Equal(3, timers.Count);
+        var frame = Assert.Single(service.Frames);
+        var only = Assert.Single(frame.Timers);
+        Assert.Equal(T0.AddSeconds(5), only.Start);
     }
 
     [Fact]
-    public void The_Windows_Are_Configurable()
+    public void The_Dedupe_Window_Is_Configurable()
     {
-        var service = Service(Doom, new TimerOptions
-        {
-            RetriggerIgnore = TimeSpan.FromMilliseconds(100),
-            SubTimerWindow = TimeSpan.FromSeconds(1),
-        });
+        var service = Service(Doom, new TimerOptions { RetriggerIgnore = TimeSpan.FromMilliseconds(100) });
         Assert.True(service.Notify("x", "Doom", true, "v", T0));
-        Assert.True(service.Notify("x", "Doom", true, "v", T0.AddSeconds(0.5))); // sub under custom window
-        Assert.True(service.Notify("x", "Doom", true, "v", T0.AddSeconds(2)));   // master past it
+        Assert.True(service.Notify("x", "Doom", true, "v", T0.AddSeconds(0.5)));
+        Assert.Single(Assert.Single(service.Frames).Timers); // restarted, not stacked
     }
 
     [Fact]

@@ -5,11 +5,12 @@ namespace EQ2Parser.Core.Triggers;
 public sealed record TimerOptions
 {
     /// <summary>A re-notify within this window of the frame's newest timer is
-    /// ignored outright (ACT: 2 s).</summary>
+    /// ignored outright (ACT: 2 s) — one AoE wave is one start.</summary>
     public TimeSpan RetriggerIgnore { get; init; } = TimeSpan.FromSeconds(2);
 
-    /// <summary>A re-notify within this window creates a sub-timer instead of
-    /// a fresh master (ACT: 12 s).</summary>
+    /// <summary>Legacy (ACT's sub-timer window) — sub-timers are gone: a
+    /// timer is the ability's recast clock, and every accepted notify
+    /// RESTARTS the one bar. Kept so existing config round-trips.</summary>
     public TimeSpan SubTimerWindow { get; init; } = TimeSpan.FromSeconds(12);
 }
 
@@ -208,9 +209,8 @@ public sealed class SpellTimerService(TimerOptions? options = null)
 
         var sinceNewest = time - frame.NewestStart;
         if (frame.Timers.Count > 0 && sinceNewest < _options.RetriggerIgnore)
-            return false; // dedupe
+            return false; // dedupe: one AoE wave is one start
 
-        var isMaster = chosen.OnlyMasterTicks || frame.Timers.Count == 0 || sinceNewest >= _options.SubTimerWindow;
         // Timer mods (ACT ApplyTimerMod): a Modable timer starting now is
         // scaled by the CASTER's active mods — final = base × (1 + Σ mods).
         // Non-modable definitions ignore mods entirely.
@@ -226,21 +226,16 @@ public sealed class SpellTimerService(TimerOptions? options = null)
                 modOwner = attacker;
             }
         }
-        var timer = new ActiveTimer(time, duration, isMaster)
+        var timer = new ActiveTimer(time, duration, isMaster: true)
         {
             BaseDurationSeconds = chosen.DurationSeconds,
             ModOwner = modOwner,
             AppliedMods = applied,
         };
-        if (isMaster)
-        {
-            // A fresh master resets the sound latches (sub-timers do not).
-            foreach (var t in frame.Timers)
-            {
-                t.WarningRaised = true;
-                t.ExpiryRaised = true;
-            }
-        }
+        // A timer is the ability's recast clock: every accepted notify
+        // RESTARTS the one bar. No sub-timers — an AoE straggler or a DoT
+        // tick re-anchors the countdown instead of spawning a sibling.
+        frame.Timers.Clear();
         frame.Timers.Add(timer);
         TimerStarted?.Invoke(frame, timer);
         return true;

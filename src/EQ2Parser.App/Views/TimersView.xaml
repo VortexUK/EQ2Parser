@@ -317,8 +317,9 @@
                                           ToolTip="While the bar is running, new casts are ignored — it always runs to zero before it can start again.&#10;Use when re-casts mid-window shouldn't reset the prediction (a scripted cycle, or an effect logged once per person it hits)." />
                                 <CheckBox Content="category lock" IsChecked="{Binding RestrictToCategory}" FontSize="12" Margin="0,0,10,4"
                                           ToolTip="Only start when the Category matches the caster, the victim, or the current zone.&#10;This keeps a boss timer that boss's own — another mob casting a same-named ability won't start it. Untick to fire for any caster." />
-                                <CheckBox Content="restart only" IsChecked="{Binding OnlyMasterTicks}" FontSize="12" Margin="0,0,10,4"
-                                          ToolTip="No per-target sub-bars — every matching hit just restarts the one bar.&#10;Tick for boss recast timers where all that matters is 'when is the next one'; untick to track a DoT landing on several people separately." />
+                                <!-- ACT's "restart only" checkbox is gone: every timer
+                                     restarts its one bar now (sub-timers removed engine-
+                                     wide); the flag still round-trips in XML for ACT. -->
                                 <CheckBox Content="allow timer mods" IsChecked="{Binding Modable}" FontSize="12" Margin="0,0,10,4"
                                           ToolTip="Recast debuffs stretch the countdown: with Traumatic Swipe on the mob, a 30s timer starts at 45s (base × 1.5), and rescales if the swiper dies.&#10;Tick for boss recasts (store the un-swiped base as Length); untick for fixed-length effects like a stifle duration." />
                                 <CheckBox Content="radial" IsChecked="{Binding RadialDisplay}" FontSize="12" Margin="0,0,10,4"
