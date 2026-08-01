@@ -13,6 +13,9 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        // First, before anything can throw: even a startup crash must leave
+        // a log behind.
+        CrashLog.Install(this);
         // The editors explain every option in its tooltip; WPF's default
         // ~5s auto-dismiss cuts them off mid-read.
         ToolTipService.ShowDurationProperty.OverrideMetadata(
