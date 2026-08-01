@@ -248,21 +248,25 @@
                                 <ColumnDefinition Width="70" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,10,0">
-                                <TextBlock Text="Category" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
+                                <TextBlock Text="Category (mob — “a|b” for split mobs)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="The mob name the restriction matches. A mob that splits into renamed copies can share one timer: separate the names with | — e.g. the earth rumbler|bisected rumbler|trisected rumbler" />
                                 <TextBox Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
                             </StackPanel>
+                            <!-- TextWrapping="Wrap" on the narrow numeric boxes: the Fluent
+                                 theme's clear (×) button appears on focus and covers the whole
+                                 value at this width; Wrap is the template's collapse trigger. -->
                             <StackPanel Grid.Column="1" Margin="0,0,8,0">
                                 <TextBlock Text="Length" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
-                                <TextBox Text="{Binding DurationSeconds, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
+                                <TextBox Text="{Binding DurationSeconds, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Padding="8,5" FontSize="13" />
                             </StackPanel>
                             <StackPanel Grid.Column="2" Margin="0,0,8,0">
                                 <TextBlock Text="Warn" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
-                                <TextBox Text="{Binding WarningSeconds, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
+                                <TextBox Text="{Binding WarningSeconds, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Padding="8,5" FontSize="13" />
                             </StackPanel>
                             <StackPanel Grid.Column="3">
                                 <TextBlock Text="Remove at" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
                                            ToolTip="Seconds remaining when the bar disappears — negative keeps it counting past zero" />
-                                <TextBox Text="{Binding RemoveSeconds, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
+                                <TextBox Text="{Binding RemoveSeconds, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Padding="8,5" FontSize="13" />
                             </StackPanel>
                         </Grid>
 

@@ -336,4 +336,21 @@ public class SpellTimerServiceTests
         service.NotifyDeath("Sennhe", T0.AddSeconds(10));
         Assert.Equal(61, timer.DurationSeconds);
     }
+
+    [Fact]
+    public void Multi_Name_Category_Matches_Any_Alternative()
+    {
+        // Split mobs: one restricted timer whose Category lists every name
+        // the mob takes ("the earth rumbler" splits into bisected copies).
+        var service = Service(new TimerDefinition
+        {
+            Name = "Rumbling of Earth",
+            Category = "the earth rumbler|bisected rumbler|trisected rumbler",
+            RestrictToCategory = true,
+            DurationSeconds = 30,
+        });
+        Assert.True(service.Notify("Bisected Rumbler", "Rumbling of Earth", self: false, "sofja", T0));
+        Assert.True(service.Notify("the earth rumbler", "Rumbling of Earth", self: false, "sofja", T0.AddSeconds(40)));
+        Assert.False(service.Notify("a lava rumbler", "Rumbling of Earth", self: false, "sofja", T0.AddSeconds(80)));
+    }
 }

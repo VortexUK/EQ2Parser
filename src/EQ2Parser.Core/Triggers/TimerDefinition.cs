@@ -7,7 +7,26 @@ namespace EQ2Parser.Core.Triggers;
 public sealed record TimerDefinition
 {
     public required string Name { get; init; }
+
+    /// <summary>The mob (or zone) the category restriction matches. May
+    /// hold several |-separated alternatives for mobs that split into
+    /// renamed copies mid-fight ("the earth rumbler|bisected
+    /// rumbler|trisected rumbler") — any of the names matches, and all
+    /// share ONE timer. Our extension; ACT's Category is a single name.</summary>
     public string Category { get; init; } = "General";
+
+    /// <summary>ACT's restrict-to-category check over every |-separated
+    /// alternative in <see cref="Category"/>. Inputs pre-lowercased.</summary>
+    public bool CategoryMatches(string attacker, string victim, string zone)
+    {
+        foreach (var raw in Category.Split('|'))
+        {
+            var name = raw.Trim().ToLowerInvariant();
+            if (name.Length > 0 && (name == attacker || name == victim || name == zone))
+                return true;
+        }
+        return false;
+    }
 
     /// <summary>Display grouping only (Zone → Mob → timers in the UI) —
     /// no engine semantics and not part of the ACT share format.</summary>

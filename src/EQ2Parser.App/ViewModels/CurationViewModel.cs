@@ -161,11 +161,12 @@ public sealed partial class CurationViewModel : ObservableObject
     }
 
     /// <summary>Exact identity — zone + mob + ability. A timer for MMIS's
-    /// Mayong never marks ToNT's Vampire Lord version as covered.</summary>
+    /// Mayong never marks ToNT's Vampire Lord version as covered. A
+    /// multi-name category ("a|b|c" split mobs) covers each of its mobs.</summary>
     private bool TimerExists(MinedAbility mined) =>
         _manager.SpellTimers.Definitions.Any(d =>
             string.Equals(d.Name, mined.Ability, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(d.Category, mined.Mob, StringComparison.OrdinalIgnoreCase)
+            && d.Category.Split('|').Any(c => string.Equals(c.Trim(), mined.Mob, StringComparison.OrdinalIgnoreCase))
             && string.Equals(d.Zone, mined.Zone, StringComparison.OrdinalIgnoreCase));
 
     private TimerDefinition BuildDefinition(MinedAbility mined)

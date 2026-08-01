@@ -144,8 +144,7 @@ public sealed class SpellTimerService(TimerOptions? options = null)
             int tier;
             if (def.RestrictToCategory)
             {
-                var cat = def.Category.ToLowerInvariant();
-                if (cat != attacker && cat != victim && cat != zone)
+                if (!def.CategoryMatches(attacker, victim, zone))
                     continue;
                 tier = zoneHit ? 3 : 2;
             }

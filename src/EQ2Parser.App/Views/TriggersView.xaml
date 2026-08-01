@@ -215,7 +215,9 @@
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                 <TextBlock Text="Cooldown (s)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3" />
-                                <TextBox Text="{Binding CooldownSeconds, UpdateSourceTrigger=PropertyChanged}" Width="70" Padding="8,5" FontSize="13" />
+                                <!-- Wrap collapses the Fluent clear (×) button, which covers
+                                     the whole value in a box this narrow. -->
+                                <TextBox Text="{Binding CooldownSeconds, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Width="70" Padding="8,5" FontSize="13" />
                             </StackPanel>
                         </Grid>
 
