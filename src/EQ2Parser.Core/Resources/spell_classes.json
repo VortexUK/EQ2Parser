@@ -9,11 +9,11 @@
 "Wizard"
 ],
 "a stocking-stuffed frostfell cube": [
-"Coercer",
-"Dirge"
+"Dirge",
+"Illusionist"
 ],
 "aanya's enforced worship": [
-"Illusionist"
+"Coercer"
 ],
 "abandoned fury": [
 "Berserker"
@@ -78,7 +78,7 @@
 "Bruiser"
 ],
 "academ": [
-"Coercer"
+"Illusionist"
 ],
 "accelerated decay": [
 "Necromancer"
@@ -121,11 +121,11 @@
 "Brigand",
 "Bruiser",
 "Channeler",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Fury",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -275,7 +275,7 @@
 ],
 "aftermath": [
 "Bruiser",
-"Illusionist"
+"Coercer"
 ],
 "aftershock": [
 "Warlock"
@@ -319,8 +319,8 @@
 "Wizard"
 ],
 "alabaster pekin": [
-"Coercer",
 "Dirge",
+"Illusionist",
 "Warden",
 "Wizard"
 ],
@@ -372,7 +372,7 @@
 "Paladin"
 ],
 "amnesia": [
-"Illusionist"
+"Coercer"
 ],
 "ample harvest": [
 "Assassin",
@@ -512,7 +512,7 @@
 "Paladin"
 ],
 "aneurysm": [
-"Coercer"
+"Illusionist"
 ],
 "animal form": [
 "Fury"
@@ -621,7 +621,7 @@
 "Wizard"
 ],
 "arcane hatred": [
-"Illusionist"
+"Coercer"
 ],
 "arcane minion": [
 "Conjuror",
@@ -697,7 +697,7 @@
 "Fury"
 ],
 "arms of imagination": [
-"Coercer"
+"Illusionist"
 ],
 "arrow arc": [
 "Channeler"
@@ -1078,7 +1078,7 @@
 "Warlock"
 ],
 "aspect of genius": [
-"Coercer"
+"Illusionist"
 ],
 "aspect of the etherlord": [
 "Assassin",
@@ -1133,7 +1133,7 @@
 "Beastlord"
 ],
 "asylum": [
-"Illusionist"
+"Coercer"
 ],
 "atomic reaction": [
 "Wizard"
@@ -1206,9 +1206,9 @@
 ],
 "aurous feathered stalker": [
 "Beastlord",
+"Coercer",
 "Conjuror",
 "Dirge",
-"Illusionist",
 "Mystic",
 "Paladin",
 "Templar",
@@ -1347,7 +1347,7 @@
 "Channeler"
 ],
 "barrier of intellect": [
-"Coercer"
+"Illusionist"
 ],
 "barroom negotiation": [
 "Brigand"
@@ -1522,7 +1522,7 @@
 "Beastlord"
 ],
 "bewilderment": [
-"Coercer"
+"Illusionist"
 ],
 "bind sight": [
 "Coercer",
@@ -1683,8 +1683,8 @@
 "Paladin"
 ],
 "blessing of xegony": [
-"Coercer",
 "Conjuror",
+"Illusionist",
 "Inquisitor"
 ],
 "blessings": [
@@ -1725,12 +1725,12 @@
 "Brigand",
 "Bruiser",
 "Channeler",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Fury",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -1909,8 +1909,8 @@
 "Necromancer"
 ],
 "blue-striped sentient present": [
-"Coercer",
 "Dirge",
+"Illusionist",
 "Wizard"
 ],
 "blushbeak stork": [
@@ -2058,9 +2058,9 @@
 "bouncy beast'r egg": [
 "Berserker",
 "Brigand",
-"Coercer",
 "Defiler",
 "Dirge",
+"Illusionist",
 "Shadowknight",
 "Troubador",
 "Wizard"
@@ -2071,11 +2071,11 @@
 "Brigand",
 "Bruiser",
 "Channeler",
-"Coercer",
 "Defiler",
 "Dirge",
 "Fury",
 "Guardian",
+"Illusionist",
 "Monk",
 "Mystic",
 "Paladin",
@@ -2095,10 +2095,10 @@
 "Warden"
 ],
 "brainburst": [
-"Coercer"
+"Illusionist"
 ],
 "brainshock": [
-"Illusionist"
+"Coercer"
 ],
 "brainstorm": [
 "Channeler",
@@ -2132,7 +2132,7 @@
 "Troubador"
 ],
 "breeze": [
-"Illusionist"
+"Coercer"
 ],
 "bria's entrancing sonnet": [
 "Troubador"
@@ -2255,8 +2255,8 @@
 "bubbly beast'r egg": [
 "Berserker",
 "Brigand",
-"Coercer",
 "Dirge",
+"Illusionist",
 "Shadowknight",
 "Troubador",
 "Wizard"
@@ -2265,10 +2265,10 @@
 "Assassin",
 "Brigand",
 "Channeler",
+"Coercer",
 "Conjuror",
 "Fury",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -2329,9 +2329,9 @@
 "Berserker",
 "Brigand",
 "Channeler",
-"Coercer",
 "Defiler",
 "Dirge",
+"Illusionist",
 "Shadowknight",
 "Templar",
 "Troubador",
@@ -2381,8 +2381,8 @@
 "Swashbuckler"
 ],
 "call bah humslug": [
-"Coercer",
 "Dirge",
+"Illusionist",
 "Inquisitor",
 "Necromancer"
 ],
@@ -2390,11 +2390,11 @@
 "Assassin",
 "Brigand",
 "Bruiser",
-"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Guardian",
+"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -2415,9 +2415,9 @@
 "Assassin",
 "Brigand",
 "Bruiser",
+"Coercer",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Necromancer",
 "Paladin",
@@ -2429,8 +2429,8 @@
 "call eeria the eerie": [
 "Beastlord",
 "Bruiser",
-"Coercer",
 "Guardian",
+"Illusionist",
 "Inquisitor",
 "Paladin",
 "Templar",
@@ -2468,11 +2468,11 @@
 "Beastlord",
 "Brigand",
 "Bruiser",
-"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Guardian",
+"Illusionist",
 "Inquisitor",
 "Monk",
 "Paladin",
@@ -2511,7 +2511,7 @@
 "Beastlord",
 "Berserker",
 "Bruiser",
-"Illusionist",
+"Coercer",
 "Mystic",
 "Necromancer",
 "Paladin",
@@ -2522,8 +2522,8 @@
 "call luciana the adventurous": [
 "Assassin",
 "Brigand",
-"Coercer",
 "Dirge",
+"Illusionist",
 "Necromancer",
 "Paladin",
 "Shadowknight"
@@ -2581,7 +2581,7 @@
 "Templar"
 ],
 "call pied slobberer": [
-"Coercer",
+"Illusionist",
 "Inquisitor",
 "Warlock"
 ],
@@ -2596,9 +2596,9 @@
 "Beastlord",
 "Berserker",
 "Brigand",
-"Coercer",
 "Conjuror",
 "Dirge",
+"Illusionist",
 "Inquisitor",
 "Necromancer",
 "Shadowknight",
@@ -2611,10 +2611,10 @@
 "Berserker",
 "Brigand",
 "Bruiser",
-"Coercer",
 "Conjuror",
 "Dirge",
 "Guardian",
+"Illusionist",
 "Inquisitor",
 "Necromancer",
 "Paladin",
@@ -2655,11 +2655,11 @@
 "Assassin",
 "Brigand",
 "Bruiser",
-"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Guardian",
+"Illusionist",
 "Inquisitor",
 "Monk",
 "Paladin",
@@ -2723,9 +2723,9 @@
 ],
 "call undertok minecrawler": [
 "Beastlord",
-"Coercer",
 "Conjuror",
 "Dirge",
+"Illusionist",
 "Mystic",
 "Shadowknight",
 "Troubador",
@@ -2758,11 +2758,11 @@
 "call void nebullate": [
 "Assassin",
 "Bruiser",
-"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Guardian",
+"Illusionist",
 "Inquisitor",
 "Mystic",
 "Paladin",
@@ -2799,7 +2799,7 @@
 "Defiler"
 ],
 "cannibalize thoughts": [
-"Illusionist"
+"Coercer"
 ],
 "capo ferro": [
 "Brigand",
@@ -2926,7 +2926,7 @@
 "Brigand"
 ],
 "channel": [
-"Illusionist"
+"Coercer"
 ],
 "channel essence": [
 "Channeler"
@@ -2944,7 +2944,7 @@
 "Channeler"
 ],
 "channeled focus": [
-"Coercer"
+"Illusionist"
 ],
 "channeled protection": [
 "Channeler"
@@ -2977,13 +2977,13 @@
 "Shadowknight"
 ],
 "charged warding": [
-"Illusionist"
+"Coercer"
 ],
 "charging tiger": [
 "Monk"
 ],
 "charm": [
-"Illusionist"
+"Coercer"
 ],
 "charm creature": [
 "Fury",
@@ -3002,9 +3002,9 @@
 "Berserker",
 "Brigand",
 "Channeler",
-"Coercer",
 "Defiler",
 "Dirge",
+"Illusionist",
 "Shadowknight",
 "Templar",
 "Troubador",
@@ -3014,9 +3014,9 @@
 "cheery beast'r egg": [
 "Brigand",
 "Channeler",
-"Coercer",
 "Conjuror",
 "Dirge",
+"Illusionist",
 "Shadowknight",
 "Templar",
 "Troubador",
@@ -3051,26 +3051,26 @@
 "Troubador"
 ],
 "chromatic illusion": [
-"Coercer"
+"Illusionist"
 ],
 "chromatic shower": [
-"Coercer"
+"Illusionist"
 ],
 "chromatic storm": [
-"Coercer"
+"Illusionist"
 ],
 "chromatic thundershower": [
-"Coercer"
+"Illusionist"
 ],
 "chronal mastery": [
-"Coercer"
+"Illusionist"
 ],
 "chronology": [
 "Coercer",
 "Illusionist"
 ],
 "chronomagic": [
-"Coercer"
+"Illusionist"
 ],
 "chronomotion": [
 "Coercer",
@@ -3147,16 +3147,16 @@
 "Swashbuckler"
 ],
 "coerced protection": [
-"Illusionist"
+"Coercer"
 ],
 "coercive healing": [
-"Illusionist"
+"Coercer"
 ],
 "coercive presence": [
-"Illusionist"
+"Coercer"
 ],
 "coercive shout": [
-"Illusionist"
+"Coercer"
 ],
 "collecting": [
 "Assassin",
@@ -3224,12 +3224,12 @@
 "Berserker",
 "Brigand",
 "Bruiser",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Fury",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -3247,7 +3247,7 @@
 "Assassin"
 ],
 "conceited blast": [
-"Illusionist"
+"Coercer"
 ],
 "concenter": [
 "Paladin",
@@ -3399,11 +3399,11 @@
 ],
 "contrapt": [
 "Beastlord",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -3448,10 +3448,10 @@
 "corporeal binding": [
 "Beastlord",
 "Bruiser",
+"Coercer",
 "Defiler",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -3465,10 +3465,10 @@
 "corporeal weave": [
 "Beastlord",
 "Bruiser",
+"Coercer",
 "Defiler",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -3517,12 +3517,12 @@
 "Berserker",
 "Bruiser",
 "Channeler",
-"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Fury",
 "Guardian",
+"Illusionist",
 "Monk",
 "Mystic",
 "Paladin",
@@ -3538,10 +3538,10 @@
 "Beastlord",
 "Bruiser",
 "Channeler",
-"Coercer",
 "Dirge",
 "Fury",
 "Guardian",
+"Illusionist",
 "Mystic",
 "Paladin",
 "Ranger",
@@ -3593,12 +3593,12 @@
 "Beastlord",
 "Berserker",
 "Channeler",
-"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Fury",
 "Guardian",
+"Illusionist",
 "Monk",
 "Mystic",
 "Necromancer",
@@ -3876,11 +3876,11 @@
 ],
 "data management": [
 "Beastlord",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -3986,7 +3986,7 @@
 "Brigand"
 ],
 "debilitating nightmares": [
-"Coercer"
+"Illusionist"
 ],
 "debilitating strikes": [
 "Brigand"
@@ -4025,7 +4025,7 @@
 "Bruiser"
 ],
 "defensive enchantment": [
-"Illusionist"
+"Coercer"
 ],
 "defensive haven": [
 "Conjuror"
@@ -4092,7 +4092,7 @@
 "Wizard"
 ],
 "depressed thoughts": [
-"Illusionist"
+"Coercer"
 ],
 "depressing chant": [
 "Troubador"
@@ -4162,13 +4162,13 @@
 "Wizard"
 ],
 "destructive mind": [
-"Illusionist"
+"Coercer"
 ],
 "destructive rage": [
 "Berserker"
 ],
 "destructive rampage": [
-"Coercer"
+"Illusionist"
 ],
 "detect evil": [
 "Inquisitor",
@@ -4267,10 +4267,10 @@
 "Beastlord",
 "Brigand",
 "Bruiser",
+"Coercer",
 "Dirge",
 "Fury",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Mystic",
 "Paladin",
@@ -4324,11 +4324,11 @@
 "Brigand",
 "Bruiser",
 "Channeler",
+"Coercer",
 "Conjuror",
 "Dirge",
 "Fury",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Mystic",
 "Necromancer",
@@ -4361,7 +4361,7 @@
 "Wizard"
 ],
 "dismay": [
-"Coercer"
+"Illusionist"
 ],
 "dismember": [
 "Berserker"
@@ -4558,12 +4558,12 @@
 "Brigand",
 "Bruiser",
 "Channeler",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Fury",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -4590,7 +4590,7 @@
 "Necromancer"
 ],
 "doppelganger": [
-"Coercer"
+"Illusionist"
 ],
 "double arrow": [
 "Ranger"
@@ -4637,7 +4637,7 @@
 "dragon scales": [
 "Berserker",
 "Bruiser",
-"Coercer",
+"Illusionist",
 "Necromancer",
 "Shadowknight",
 "Warlock"
@@ -4807,7 +4807,7 @@
 "Dirge"
 ],
 "edge of insanity": [
-"Illusionist"
+"Coercer"
 ],
 "effective method": [
 "Assassin",
@@ -4838,7 +4838,7 @@
 "Wizard"
 ],
 "ego shock": [
-"Illusionist"
+"Coercer"
 ],
 "eidolic ward": [
 "Defiler",
@@ -4984,12 +4984,12 @@
 "Brigand",
 "Bruiser",
 "Channeler",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Fury",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -5015,12 +5015,12 @@
 "Brigand",
 "Bruiser",
 "Channeler",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Fury",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -5168,7 +5168,7 @@
 "Beastlord"
 ],
 "energizing aura": [
-"Coercer"
+"Illusionist"
 ],
 "energizing ballad": [
 "Troubador"
@@ -5222,7 +5222,7 @@
 "Warlock"
 ],
 "enhance: absorb magic": [
-"Illusionist",
+"Coercer",
 "Necromancer"
 ],
 "enhance: abuse": [
@@ -5287,7 +5287,7 @@
 "Guardian"
 ],
 "enhance: asylum": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: atrophy": [
 "Defiler"
@@ -5371,7 +5371,7 @@
 "Warlock"
 ],
 "enhance: brainburst": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: brawler's tenacity": [
 "Bruiser"
@@ -5380,7 +5380,7 @@
 "Troubador"
 ],
 "enhance: breeze": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: bria's inspiring ballad": [
 "Dirge",
@@ -5408,7 +5408,7 @@
 "Guardian"
 ],
 "enhance: cannibalize thoughts": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: castigate": [
 "Paladin"
@@ -5423,7 +5423,7 @@
 "Necromancer"
 ],
 "enhance: channel": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: channeled protection": [
 "Channeler"
@@ -5441,7 +5441,7 @@
 "Beastlord"
 ],
 "enhance: charm": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: cheap shot": [
 "Assassin",
@@ -5452,10 +5452,10 @@
 "Beastlord"
 ],
 "enhance: chromatic shower": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: chromatic storm": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: clara's chaotic cacophony": [
 "Dirge"
@@ -5526,8 +5526,8 @@
 "Warden"
 ],
 "enhance: cure magic": [
-"Coercer",
-"Conjuror"
+"Conjuror",
+"Illusionist"
 ],
 "enhance: curse of darkness": [
 "Warlock"
@@ -5618,7 +5618,7 @@
 "Brigand"
 ],
 "enhance: destructive mind": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: destructive rage": [
 "Berserker"
@@ -5646,7 +5646,7 @@
 "Dirge"
 ],
 "enhance: dismay": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: dispatch": [
 "Brigand"
@@ -5684,7 +5684,7 @@
 "Mystic"
 ],
 "enhance: ego shock": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: elegy at death's door": [
 "Dirge"
@@ -5721,7 +5721,7 @@
 "Warlock"
 ],
 "enhance: epiphany": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: escape": [
 "Ranger"
@@ -5798,7 +5798,7 @@
 "Conjuror"
 ],
 "enhance: flash of brilliance": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: flash of steel": [
 "Swashbuckler"
@@ -5907,7 +5907,7 @@
 "Ranger"
 ],
 "enhance: hostage": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: hunker down": [
 "Guardian"
@@ -5931,7 +5931,7 @@
 "Bruiser"
 ],
 "enhance: illusory allies": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: immobilizing lunge": [
 "Ranger"
@@ -6031,10 +6031,10 @@
 "Ranger"
 ],
 "enhance: mana cloak": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: mana flow": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: mana sieve": [
 "Shadowknight"
@@ -6056,7 +6056,7 @@
 "Beastlord"
 ],
 "enhance: medusa gaze": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: mend": [
 "Monk"
@@ -6074,10 +6074,10 @@
 "Bruiser"
 ],
 "enhance: mind's eye": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: mindbend": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: misfortune's kiss": [
 "Dirge"
@@ -6125,7 +6125,7 @@
 "Troubador"
 ],
 "enhance: nightmare": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: noxious efflux": [
 "Defiler"
@@ -6146,7 +6146,7 @@
 "Mystic"
 ],
 "enhance: obliterated psyche": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: open wounds": [
 "Berserker"
@@ -6181,7 +6181,7 @@
 "Illusionist"
 ],
 "enhance: peaceful link": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: peerless predator": [
 "Fury"
@@ -6196,7 +6196,7 @@
 "Troubador"
 ],
 "enhance: personae reflection": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: petrify": [
 "Conjuror"
@@ -6226,7 +6226,7 @@
 "Fury"
 ],
 "enhance: prismatic chaos": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: psionic destruction": [
 "Beastlord"
@@ -6328,7 +6328,7 @@
 "Beastlord"
 ],
 "enhance: savante": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: searing shot": [
 "Ranger"
@@ -6364,7 +6364,7 @@
 "Templar"
 ],
 "enhance: shock wave": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: shoulder charge": [
 "Bruiser"
@@ -6434,7 +6434,7 @@
 "Channeler"
 ],
 "enhance: spell curse": [
-"Illusionist"
+"Coercer"
 ],
 "enhance: spinechiller blood": [
 "Beastlord"
@@ -6511,7 +6511,7 @@
 "Templar"
 ],
 "enhance: synergism": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: tap veins": [
 "Shadowknight"
@@ -6530,7 +6530,7 @@
 "Beastlord"
 ],
 "enhance: theorems": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: thieving essence": [
 "Swashbuckler"
@@ -6579,7 +6579,7 @@
 "Warden"
 ],
 "enhance: ultraviolet beam": [
-"Coercer"
+"Illusionist"
 ],
 "enhance: umbral trap": [
 "Defiler"
@@ -6814,7 +6814,7 @@
 "Berserker"
 ],
 "enraging demeanor": [
-"Illusionist"
+"Coercer"
 ],
 "ensnare": [
 "Ranger"
@@ -6823,10 +6823,10 @@
 "Brigand"
 ],
 "entrance": [
-"Coercer"
+"Illusionist"
 ],
 "epiphany": [
-"Coercer"
+"Illusionist"
 ],
 "equilibrium": [
 "Inquisitor",
@@ -6839,8 +6839,8 @@
 "Beastlord",
 "Brigand",
 "Channeler",
+"Coercer",
 "Dirge",
-"Illusionist",
 "Mystic",
 "Paladin",
 "Shadowknight",
@@ -6930,12 +6930,12 @@
 "Berserker",
 "Brigand",
 "Bruiser",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Fury",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -6980,13 +6980,13 @@
 "Necromancer"
 ],
 "ether assault": [
-"Illusionist"
+"Coercer"
 ],
 "ether balance": [
-"Illusionist"
+"Coercer"
 ],
 "ether flow": [
-"Illusionist"
+"Coercer"
 ],
 "ethereal conduit": [
 "Assassin",
@@ -7163,7 +7163,7 @@
 "Wizard"
 ],
 "etherwave": [
-"Illusionist"
+"Coercer"
 ],
 "evade": [
 "Assassin",
@@ -7238,11 +7238,11 @@
 "Brigand",
 "Bruiser",
 "Channeler",
-"Coercer",
 "Conjuror",
 "Dirge",
 "Fury",
 "Guardian",
+"Illusionist",
 "Mystic",
 "Necromancer",
 "Paladin",
@@ -7373,7 +7373,7 @@
 "Ranger"
 ],
 "extract mana": [
-"Coercer"
+"Illusionist"
 ],
 "exuberant encore": [
 "Dirge"
@@ -7390,7 +7390,7 @@
 "facade of the dhalgar skeleton": [
 "Assassin",
 "Brigand",
-"Coercer",
+"Illusionist",
 "Necromancer",
 "Paladin",
 "Ranger",
@@ -7662,10 +7662,10 @@
 "feisty beast'r egg": [
 "Berserker",
 "Brigand",
-"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
+"Illusionist",
 "Shadowknight",
 "Templar",
 "Troubador",
@@ -7893,7 +7893,7 @@
 ],
 "flamebearer mercenary infusion": [
 "Assassin",
-"Coercer"
+"Illusionist"
 ],
 "flames of velious": [
 "Warlock",
@@ -7907,7 +7907,7 @@
 "Necromancer"
 ],
 "flash of brilliance": [
-"Coercer"
+"Illusionist"
 ],
 "flash of power": [
 "Swashbuckler"
@@ -8009,7 +8009,7 @@
 "Guardian"
 ],
 "focus: asylum": [
-"Illusionist"
+"Coercer"
 ],
 "focus: autumn's kiss": [
 "Fury"
@@ -8074,7 +8074,7 @@
 "Warlock"
 ],
 "focus: breeze": [
-"Illusionist"
+"Coercer"
 ],
 "focus: cacophony of blades": [
 "Dirge"
@@ -8089,7 +8089,7 @@
 "Beastlord"
 ],
 "focus: chromatic shower": [
-"Coercer"
+"Illusionist"
 ],
 "focus: conduits": [
 "Channeler"
@@ -8184,7 +8184,7 @@
 "Berserker"
 ],
 "focus: destructive rampage": [
-"Coercer"
+"Illusionist"
 ],
 "focus: devour vitae": [
 "Shadowknight"
@@ -8203,7 +8203,7 @@
 "Paladin"
 ],
 "focus: doppelganger": [
-"Coercer"
+"Illusionist"
 ],
 "focus: elemental toxicity": [
 "Conjuror",
@@ -8216,10 +8216,10 @@
 "Swashbuckler"
 ],
 "focus: enraging demeanor (potency)": [
-"Illusionist"
+"Coercer"
 ],
 "focus: enraging demeanor (transfer)": [
-"Illusionist"
+"Coercer"
 ],
 "focus: explosive arrow": [
 "Ranger"
@@ -8249,7 +8249,7 @@
 "Monk"
 ],
 "focus: flash of brilliance": [
-"Coercer"
+"Illusionist"
 ],
 "focus: flash of steel": [
 "Swashbuckler"
@@ -8306,7 +8306,7 @@
 "Templar"
 ],
 "focus: hostage": [
-"Illusionist"
+"Coercer"
 ],
 "focus: hunter's instinct": [
 "Ranger"
@@ -8346,7 +8346,7 @@
 "Warden"
 ],
 "focus: intellectual remedy": [
-"Illusionist"
+"Coercer"
 ],
 "focus: jeering onslaught": [
 "Berserker"
@@ -8485,7 +8485,7 @@
 "Ranger"
 ],
 "focus: prismatic chaos": [
-"Coercer"
+"Illusionist"
 ],
 "focus: prophetic ward": [
 "Mystic"
@@ -8560,7 +8560,7 @@
 "Beastlord"
 ],
 "focus: savante": [
-"Coercer"
+"Illusionist"
 ],
 "focus: scream of death": [
 "Dirge"
@@ -8575,7 +8575,7 @@
 "Conjuror"
 ],
 "focus: shock wave": [
-"Illusionist"
+"Coercer"
 ],
 "focus: shroud of armor": [
 "Defiler"
@@ -8692,10 +8692,10 @@
 "Swashbuckler"
 ],
 "focus: synergism (crit bonus)": [
-"Coercer"
+"Illusionist"
 ],
 "focus: synergism (damage)": [
-"Coercer"
+"Illusionist"
 ],
 "focus: tap veins": [
 "Shadowknight"
@@ -8794,7 +8794,7 @@
 "Defiler"
 ],
 "focus: velocity": [
-"Illusionist"
+"Coercer"
 ],
 "focus: vengeful arrow": [
 "Channeler"
@@ -8907,7 +8907,7 @@
 "Paladin"
 ],
 "forced hesitation": [
-"Illusionist"
+"Coercer"
 ],
 "forced obedience": [
 "Inquisitor"
@@ -8948,7 +8948,7 @@
 "Wizard"
 ],
 "foretold prophecy": [
-"Illusionist"
+"Coercer"
 ],
 "form of the builder": [
 "Defiler",
@@ -9024,9 +9024,9 @@
 "frisky beast'r egg": [
 "Brigand",
 "Channeler",
-"Coercer",
 "Conjuror",
 "Dirge",
+"Illusionist",
 "Shadowknight",
 "Templar",
 "Troubador",
@@ -9216,10 +9216,10 @@
 "Shadowknight"
 ],
 "gaze of erollisi": [
-"Coercer",
 "Conjuror",
 "Dirge",
 "Guardian",
+"Illusionist",
 "Inquisitor",
 "Paladin",
 "Templar",
@@ -9237,11 +9237,11 @@
 "Brigand",
 "Bruiser",
 "Channeler",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Fury",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -9401,7 +9401,7 @@
 "Dirge"
 ],
 "grand illusion": [
-"Coercer"
+"Illusionist"
 ],
 "grandmaster's design": [
 "Assassin",
@@ -9507,13 +9507,13 @@
 "Conjuror"
 ],
 "group illusion: gnoll": [
-"Coercer"
+"Illusionist"
 ],
 "group illusion: half elf": [
-"Coercer"
+"Illusionist"
 ],
 "group illusion: human": [
-"Coercer"
+"Illusionist"
 ],
 "growth's replenishment": [
 "Defiler"
@@ -9659,10 +9659,10 @@
 "Swashbuckler"
 ],
 "hastened illusion": [
-"Coercer"
+"Illusionist"
 ],
 "hastened mana flow": [
-"Coercer"
+"Illusionist"
 ],
 "hastened poisoning": [
 "Defiler"
@@ -9678,9 +9678,9 @@
 "Assassin",
 "Beastlord",
 "Bruiser",
+"Coercer",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -9787,7 +9787,7 @@
 "Ranger"
 ],
 "hemorrhage": [
-"Illusionist"
+"Coercer"
 ],
 "herbal expertise": [
 "Defiler",
@@ -9985,7 +9985,7 @@
 "Ranger"
 ],
 "hostage": [
-"Illusionist"
+"Coercer"
 ],
 "hostile rift": [
 "Channeler"
@@ -10011,9 +10011,9 @@
 "Berserker",
 "Brigand",
 "Bruiser",
-"Coercer",
 "Conjuror",
 "Dirge",
+"Illusionist",
 "Inquisitor",
 "Paladin",
 "Shadowknight",
@@ -10114,22 +10114,22 @@
 "Bruiser"
 ],
 "illuminate": [
-"Coercer"
+"Illusionist"
 ],
 "illusion other: ratonga": [
-"Illusionist"
+"Coercer"
 ],
 "illusion other: troll": [
-"Illusionist"
+"Coercer"
 ],
 "illusion: air elemental": [
 "Conjuror"
 ],
 "illusion: barbarian": [
-"Coercer"
+"Illusionist"
 ],
 "illusion: burynai": [
-"Coercer"
+"Illusionist"
 ],
 "illusion: clockwork calamity": [
 "Assassin",
@@ -10153,10 +10153,10 @@
 "Wizard"
 ],
 "illusion: drachnid": [
-"Coercer"
+"Illusionist"
 ],
 "illusion: dwarf": [
-"Coercer"
+"Illusionist"
 ],
 "illusion: earth elemental": [
 "Conjuror"
@@ -10165,16 +10165,16 @@
 "Conjuror"
 ],
 "illusion: fishman": [
-"Coercer"
+"Illusionist"
 ],
 "illusion: gnoll": [
-"Coercer"
+"Illusionist"
 ],
 "illusion: half elf": [
-"Coercer"
+"Illusionist"
 ],
 "illusion: human": [
-"Coercer"
+"Illusionist"
 ],
 "illusion: jann magi": [
 "Assassin",
@@ -10199,25 +10199,25 @@
 "Wizard"
 ],
 "illusion: spiroc": [
-"Coercer"
+"Illusionist"
 ],
 "illusion: water elemental": [
 "Conjuror"
 ],
 "illusionary mindstorm": [
-"Coercer"
+"Illusionist"
 ],
 "illusionist's gifts": [
-"Coercer"
+"Illusionist"
 ],
 "illusory allies": [
-"Coercer"
+"Illusionist"
 ],
 "illusory arm": [
-"Coercer"
+"Illusionist"
 ],
 "illusory mask": [
-"Coercer"
+"Illusionist"
 ],
 "imbued claws of ice": [
 "Beastlord"
@@ -10319,7 +10319,7 @@
 "Defiler"
 ],
 "improved mind control": [
-"Illusionist"
+"Coercer"
 ],
 "improved moderation": [
 "Guardian"
@@ -10357,7 +10357,7 @@
 "Wizard"
 ],
 "increased velocity": [
-"Illusionist"
+"Coercer"
 ],
 "indomitable will": [
 "Bruiser"
@@ -10382,10 +10382,10 @@
 "infusive binding": [
 "Beastlord",
 "Bruiser",
+"Coercer",
 "Defiler",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -10399,10 +10399,10 @@
 "infusive weave": [
 "Beastlord",
 "Bruiser",
+"Coercer",
 "Defiler",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -10494,7 +10494,7 @@
 "Warden"
 ],
 "intellectual remedy": [
-"Illusionist"
+"Coercer"
 ],
 "intensified carnage": [
 "Assassin"
@@ -10563,11 +10563,11 @@
 "Brigand",
 "Bruiser",
 "Channeler",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -10600,7 +10600,7 @@
 "Inquisitor"
 ],
 "invoker's finesse": [
-"Coercer"
+"Illusionist"
 ],
 "involuntary gift": [
 "Templar"
@@ -10747,10 +10747,10 @@
 "Wizard"
 ],
 "kintaz' boggling request": [
-"Illusionist"
+"Coercer"
 ],
 "kintaz' mournful pose": [
-"Illusionist"
+"Coercer"
 ],
 "knee break": [
 "Berserker"
@@ -10850,9 +10850,9 @@
 "Shadowknight"
 ],
 "lemon yellow gumdrop": [
-"Coercer",
 "Conjuror",
 "Dirge",
+"Illusionist",
 "Shadowknight",
 "Templar"
 ],
@@ -10879,7 +10879,7 @@
 "Wizard"
 ],
 "lethal focus": [
-"Illusionist"
+"Coercer"
 ],
 "lethargy": [
 "Mystic"
@@ -10933,9 +10933,9 @@
 "lightning reflexes": [
 "Beastlord",
 "Bruiser",
+"Coercer",
 "Conjuror",
 "Dirge",
-"Illusionist",
 "Inquisitor",
 "Ranger",
 "Shadowknight",
@@ -10977,14 +10977,14 @@
 "lively beast'r egg": [
 "Berserker",
 "Brigand",
-"Coercer",
 "Dirge",
+"Illusionist",
 "Shadowknight",
 "Troubador",
 "Wizard"
 ],
 "lockdown": [
-"Coercer"
+"Illusionist"
 ],
 "lord of arcana": [
 "Wizard"
@@ -10993,8 +10993,8 @@
 "Berserker",
 "Brigand",
 "Channeler",
-"Coercer",
 "Dirge",
+"Illusionist",
 "Shadowknight",
 "Templar",
 "Troubador",
@@ -11080,10 +11080,10 @@
 "Troubador"
 ],
 "lysira's forced jig": [
-"Illusionist"
+"Coercer"
 ],
 "lysira's forced mirth": [
-"Illusionist"
+"Coercer"
 ],
 "lyssa's perpetual motion": [
 "Dirge"
@@ -11199,7 +11199,7 @@
 "Wizard"
 ],
 "mana mastery": [
-"Coercer"
+"Illusionist"
 ],
 "mana schism": [
 "Assassin",
@@ -11207,12 +11207,12 @@
 "Berserker",
 "Brigand",
 "Bruiser",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Fury",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -11244,13 +11244,13 @@
 "Illusionist"
 ],
 "manatap": [
-"Coercer"
+"Illusionist"
 ],
 "manawall": [
 "Paladin"
 ],
 "manaward": [
-"Illusionist"
+"Coercer"
 ],
 "manhandle": [
 "Bruiser"
@@ -11393,7 +11393,7 @@
 "Guardian"
 ],
 "mastermind": [
-"Illusionist"
+"Coercer"
 ],
 "maul": [
 "Berserker"
@@ -11405,7 +11405,7 @@
 "Monk"
 ],
 "medusa gaze": [
-"Illusionist"
+"Coercer"
 ],
 "melancholy melody": [
 "Dirge"
@@ -11435,13 +11435,13 @@
 "Channeler"
 ],
 "mental blast": [
-"Illusionist"
+"Coercer"
 ],
 "mental chaos": [
 "Troubador"
 ],
 "mental focus": [
-"Coercer"
+"Illusionist"
 ],
 "mental recovery": [
 "Warlock",
@@ -11455,7 +11455,7 @@
 "Illusionist"
 ],
 "mental trauma": [
-"Illusionist"
+"Coercer"
 ],
 "mercenary aspect: roehn theer": [
 "Dirge",
@@ -11478,7 +11478,7 @@
 "Dirge"
 ],
 "mesmerize": [
-"Illusionist"
+"Coercer"
 ],
 "messenger's letter": [
 "Dirge",
@@ -11509,19 +11509,19 @@
 "Templar"
 ],
 "mind control": [
-"Illusionist"
+"Coercer"
 ],
 "mind jolt": [
-"Illusionist"
+"Coercer"
 ],
 "mind over matter": [
 "Bruiser"
 ],
 "mind's eye": [
-"Illusionist"
+"Coercer"
 ],
 "mindbend": [
-"Illusionist"
+"Coercer"
 ],
 "mindful melody": [
 "Troubador"
@@ -11610,7 +11610,7 @@
 "Ranger"
 ],
 "mirage mastery": [
-"Coercer"
+"Illusionist"
 ],
 "miragul's dark heart summoning": [
 "Necromancer"
@@ -11669,11 +11669,11 @@
 ],
 "monkey with": [
 "Beastlord",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -11772,7 +11772,7 @@
 "Berserker"
 ],
 "mystical force": [
-"Illusionist"
+"Coercer"
 ],
 "mystical hex ward": [
 "Mystic"
@@ -11978,8 +11978,8 @@
 ],
 "new combine mercenary infusion": [
 "Assassin",
-"Coercer",
 "Guardian",
+"Illusionist",
 "Paladin"
 ],
 "night strike": [
@@ -11989,7 +11989,7 @@
 "Assassin"
 ],
 "nightmare": [
-"Coercer"
+"Illusionist"
 ],
 "nightshade": [
 "Necromancer"
@@ -12076,7 +12076,7 @@
 "Ranger"
 ],
 "obliterated psyche": [
-"Illusionist"
+"Coercer"
 ],
 "oblivion link": [
 "Beastlord",
@@ -12229,11 +12229,11 @@
 ],
 "overhaul": [
 "Beastlord",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -12252,7 +12252,7 @@
 "Guardian"
 ],
 "overpowering illusion": [
-"Coercer"
+"Illusionist"
 ],
 "overseer stash": [
 "Assassin",
@@ -12345,7 +12345,7 @@
 "Troubador"
 ],
 "pall of the elements": [
-"Illusionist"
+"Coercer"
 ],
 "pandemic": [
 "Defiler",
@@ -12355,7 +12355,7 @@
 "Assassin"
 ],
 "paranoia": [
-"Coercer"
+"Illusionist"
 ],
 "parry": [
 "Berserker",
@@ -12391,10 +12391,10 @@
 "Templar"
 ],
 "peaceful hostility": [
-"Illusionist"
+"Coercer"
 ],
 "peaceful link": [
-"Illusionist"
+"Coercer"
 ],
 "peal of battle": [
 "Dirge"
@@ -12422,10 +12422,10 @@
 "peppy beast'r egg": [
 "Berserker",
 "Brigand",
-"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
+"Illusionist",
 "Shadowknight",
 "Troubador",
 "Wizard"
@@ -12443,7 +12443,7 @@
 "Warlock"
 ],
 "perfect balance": [
-"Illusionist"
+"Coercer"
 ],
 "perfect evasion": [
 "Assassin"
@@ -12517,13 +12517,13 @@
 "Troubador"
 ],
 "personae reflection": [
-"Coercer"
+"Illusionist"
 ],
 "personae wall": [
-"Coercer"
+"Illusionist"
 ],
 "personae's gift": [
-"Coercer"
+"Illusionist"
 ],
 "pestilence": [
 "Shadowknight"
@@ -12565,16 +12565,16 @@
 "Shadowknight"
 ],
 "phantasmal awe": [
-"Coercer"
+"Illusionist"
 ],
 "phantasmal barrier": [
 "Defiler"
 ],
 "phantom troupe": [
-"Coercer"
+"Illusionist"
 ],
 "phase": [
-"Coercer"
+"Illusionist"
 ],
 "phoenix rising": [
 "Assassin",
@@ -12787,7 +12787,7 @@
 "Brigand"
 ],
 "possess essence": [
-"Illusionist"
+"Coercer"
 ],
 "potency": [
 "Swashbuckler"
@@ -12814,8 +12814,8 @@
 ],
 "power from the soul": [
 "Beastlord",
-"Coercer",
 "Conjuror",
+"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -12823,7 +12823,7 @@
 "Warden"
 ],
 "power of mind": [
-"Illusionist"
+"Coercer"
 ],
 "power of the great bear": [
 "Beastlord"
@@ -12856,7 +12856,7 @@
 "Warlock"
 ],
 "powerful rampage": [
-"Coercer"
+"Illusionist"
 ],
 "powerful solo": [
 "Troubador"
@@ -12955,7 +12955,7 @@
 "Fury"
 ],
 "prismatic chaos": [
-"Coercer"
+"Illusionist"
 ],
 "privateers flourish": [
 "Swashbuckler"
@@ -12965,11 +12965,11 @@
 "Beastlord",
 "Brigand",
 "Channeler",
-"Coercer",
 "Defiler",
 "Dirge",
 "Fury",
 "Guardian",
+"Illusionist",
 "Mystic",
 "Necromancer",
 "Paladin",
@@ -12988,11 +12988,11 @@
 "Berserker",
 "Brigand",
 "Channeler",
-"Coercer",
 "Defiler",
 "Dirge",
 "Fury",
 "Guardian",
+"Illusionist",
 "Monk",
 "Mystic",
 "Paladin",
@@ -13064,7 +13064,7 @@
 "Ranger"
 ],
 "psychic blast": [
-"Illusionist"
+"Coercer"
 ],
 "pucker pink gumdrop": [
 "Troubador",
@@ -13092,10 +13092,10 @@
 "Inquisitor"
 ],
 "puppetmaster": [
-"Illusionist"
+"Coercer"
 ],
 "pure awe": [
-"Illusionist"
+"Coercer"
 ],
 "pure serenity": [
 "Warden"
@@ -13186,7 +13186,7 @@
 "Channeler"
 ],
 "rain of colors": [
-"Coercer"
+"Illusionist"
 ],
 "raining attacks": [
 "Channeler"
@@ -13269,7 +13269,7 @@
 "Ranger"
 ],
 "rapidity": [
-"Coercer"
+"Illusionist"
 ],
 "rapturous strike": [
 "Templar"
@@ -13418,9 +13418,9 @@
 "red-striped sentient present": [
 "Berserker",
 "Brigand",
-"Coercer",
 "Conjuror",
 "Dirge",
+"Illusionist",
 "Troubador",
 "Wizard"
 ],
@@ -13437,7 +13437,7 @@
 "Warden"
 ],
 "reek of terror": [
-"Illusionist"
+"Coercer"
 ],
 "refine": [
 "Assassin",
@@ -13476,7 +13476,7 @@
 "Paladin"
 ],
 "regalia": [
-"Coercer"
+"Illusionist"
 ],
 "regenerating spores": [
 "Warden"
@@ -13575,7 +13575,7 @@
 "Ranger"
 ],
 "repeated shockwave": [
-"Illusionist"
+"Coercer"
 ],
 "repeated stabbing": [
 "Assassin"
@@ -13800,7 +13800,7 @@
 ],
 "ring of scale familiar infusion": [
 "Assassin",
-"Coercer"
+"Illusionist"
 ],
 "riot": [
 "Brigand"
@@ -13916,7 +13916,7 @@
 "Wizard"
 ],
 "rune of thought": [
-"Coercer"
+"Illusionist"
 ],
 "rune's tome of knowledge": [
 "Wizard"
@@ -14067,8 +14067,8 @@
 ],
 "sandtail hare": [
 "Beastlord",
-"Coercer",
 "Dirge",
+"Illusionist",
 "Necromancer",
 "Templar",
 "Warden",
@@ -14171,7 +14171,7 @@
 "Beastlord"
 ],
 "savage minds": [
-"Illusionist"
+"Coercer"
 ],
 "savage rake": [
 "Beastlord"
@@ -14207,7 +14207,7 @@
 "Illusionist"
 ],
 "savante": [
-"Coercer"
+"Illusionist"
 ],
 "saving grace": [
 "Berserker",
@@ -14215,8 +14215,8 @@
 "Inquisitor"
 ],
 "scale barrier": [
+"Coercer",
 "Conjuror",
-"Illusionist",
 "Warlock",
 "Wizard"
 ],
@@ -14371,7 +14371,7 @@
 "Necromancer"
 ],
 "self-coercion": [
-"Illusionist"
+"Coercer"
 ],
 "selo's accelerando": [
 "Dirge",
@@ -14381,7 +14381,7 @@
 "Defiler"
 ],
 "sensory overload": [
-"Coercer"
+"Illusionist"
 ],
 "sentinel": [
 "Guardian"
@@ -14634,7 +14634,7 @@
 "Channeler"
 ],
 "shift mana": [
-"Illusionist"
+"Coercer"
 ],
 "shift momentum": [
 "Wizard"
@@ -14643,7 +14643,7 @@
 "Necromancer"
 ],
 "shift vision": [
-"Coercer"
+"Illusionist"
 ],
 "shifty dodge": [
 "Bruiser"
@@ -14667,10 +14667,10 @@
 "Paladin"
 ],
 "shock wave": [
-"Illusionist"
+"Coercer"
 ],
 "shocking rays": [
-"Coercer"
+"Illusionist"
 ],
 "shockwave": [
 "Conjuror",
@@ -14706,11 +14706,11 @@
 "Assassin",
 "Beastlord",
 "Channeler",
+"Coercer",
 "Conjuror",
 "Dirge",
 "Fury",
 "Guardian",
-"Illusionist",
 "Monk",
 "Mystic",
 "Necromancer",
@@ -14750,10 +14750,10 @@
 "Templar"
 ],
 "signet of intellect": [
-"Illusionist"
+"Coercer"
 ],
 "silence": [
-"Illusionist",
+"Coercer",
 "Monk"
 ],
 "silent fist kata": [
@@ -14776,7 +14776,7 @@
 "Conjuror"
 ],
 "simple minds": [
-"Illusionist"
+"Coercer"
 ],
 "singing shot": [
 "Troubador"
@@ -14872,10 +14872,10 @@
 "Dirge"
 ],
 "siren's gift": [
-"Illusionist"
+"Coercer"
 ],
 "siren's stare": [
-"Illusionist"
+"Coercer"
 ],
 "skald's defense": [
 "Troubador"
@@ -15015,9 +15015,9 @@
 ],
 "snowflake sentient present": [
 "Brigand",
-"Coercer",
 "Conjuror",
 "Dirge",
+"Illusionist",
 "Warden",
 "Warlock",
 "Wizard"
@@ -15082,7 +15082,7 @@
 "Conjuror"
 ],
 "soothing mind": [
-"Coercer"
+"Illusionist"
 ],
 "sorcerer's shielding": [
 "Warlock",
@@ -15170,7 +15170,7 @@
 "Mystic"
 ],
 "speechless": [
-"Coercer"
+"Illusionist"
 ],
 "speedy summons": [
 "Assassin",
@@ -15193,7 +15193,7 @@
 "Wizard"
 ],
 "spell curse": [
-"Illusionist"
+"Coercer"
 ],
 "spell expertise": [
 "Warlock",
@@ -15225,7 +15225,7 @@
 "Wizard"
 ],
 "spellshield": [
-"Coercer"
+"Illusionist"
 ],
 "sphere of defense": [
 "Guardian"
@@ -15256,8 +15256,8 @@
 "Berserker",
 "Brigand",
 "Bruiser",
+"Coercer",
 "Conjuror",
-"Illusionist",
 "Necromancer",
 "Paladin",
 "Ranger",
@@ -15401,14 +15401,14 @@
 "Warden"
 ],
 "split channeling": [
-"Coercer",
+"Illusionist",
 "Warlock",
 "Wizard"
 ],
 "spotted baby bovoch": [
 "Channeler",
-"Coercer",
 "Dirge",
+"Illusionist",
 "Mystic",
 "Paladin",
 "Templar",
@@ -15527,11 +15527,11 @@
 "Assassin",
 "Brigand",
 "Channeler",
+"Coercer",
 "Conjuror",
 "Dirge",
 "Fury",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -15742,8 +15742,8 @@
 "Templar"
 ],
 "strike of the mage": [
-"Coercer",
 "Conjuror",
+"Illusionist",
 "Necromancer",
 "Warlock"
 ],
@@ -15763,7 +15763,7 @@
 "Berserker"
 ],
 "stupefy": [
-"Illusionist"
+"Coercer"
 ],
 "sturdy scales": [
 "Fury",
@@ -15776,10 +15776,10 @@
 "subastral binding": [
 "Beastlord",
 "Bruiser",
+"Coercer",
 "Defiler",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -15793,10 +15793,10 @@
 "subastral weave": [
 "Beastlord",
 "Bruiser",
+"Coercer",
 "Defiler",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -15823,7 +15823,7 @@
 ],
 "sugar sweet dreams": [
 "Berserker",
-"Coercer",
+"Illusionist",
 "Templar"
 ],
 "summon 'shroom spore": [
@@ -15914,11 +15914,11 @@
 "Brigand",
 "Bruiser",
 "Channeler",
-"Coercer",
 "Defiler",
 "Dirge",
 "Fury",
 "Guardian",
+"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -15942,7 +15942,7 @@
 "Beastlord"
 ],
 "summon black kitten": [
-"Coercer",
+"Illusionist",
 "Templar"
 ],
 "summon boarfiend": [
@@ -15950,8 +15950,8 @@
 ],
 "summon bonded drakkel pup": [
 "Bruiser",
+"Coercer",
 "Conjuror",
-"Illusionist",
 "Inquisitor",
 "Mystic",
 "Necromancer",
@@ -16005,7 +16005,7 @@
 "Wizard"
 ],
 "summon cream-point kitten": [
-"Coercer",
+"Illusionist",
 "Troubador",
 "Wizard"
 ],
@@ -16079,9 +16079,9 @@
 "Beastlord",
 "Brigand",
 "Bruiser",
-"Coercer",
 "Conjuror",
 "Dirge",
+"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -16148,10 +16148,10 @@
 "Beastlord",
 "Brigand",
 "Bruiser",
+"Coercer",
 "Conjuror",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -16453,10 +16453,10 @@
 "summon zygomyd sporeling": [
 "Brigand",
 "Bruiser",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Paladin",
@@ -16470,7 +16470,7 @@
 "Assassin",
 "Berserker",
 "Brigand",
-"Illusionist",
+"Coercer",
 "Inquisitor",
 "Mystic",
 "Ranger"
@@ -16521,10 +16521,10 @@
 "Paladin"
 ],
 "summon: imp of ro": [
-"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
+"Illusionist",
 "Mystic",
 "Necromancer",
 "Ranger",
@@ -16548,8 +16548,8 @@
 "summon: the tribunal's bailiff": [
 "Beastlord",
 "Brigand",
+"Coercer",
 "Guardian",
-"Illusionist",
 "Paladin",
 "Troubador",
 "Wizard"
@@ -16559,9 +16559,9 @@
 "Berserker",
 "Brigand",
 "Bruiser",
+"Coercer",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Swashbuckler"
 ],
 "summoned ebonblight": [
@@ -16603,10 +16603,10 @@
 "Assassin",
 "Bruiser",
 "Channeler",
+"Coercer",
 "Dirge",
 "Fury",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Mystic",
 "Necromancer",
@@ -16775,7 +16775,7 @@
 "Templar"
 ],
 "synergism": [
-"Coercer"
+"Illusionist"
 ],
 "systematic conservation": [
 "Assassin",
@@ -16783,10 +16783,10 @@
 "Brigand",
 "Bruiser",
 "Channeler",
-"Coercer",
 "Conjuror",
 "Fury",
 "Guardian",
+"Illusionist",
 "Mystic",
 "Necromancer",
 "Paladin",
@@ -16886,7 +16886,7 @@
 ],
 "tan frosttail reindeer": [
 "Berserker",
-"Coercer"
+"Illusionist"
 ],
 "tangy orange gumdrop": [
 "Troubador",
@@ -16902,7 +16902,7 @@
 "Dirge"
 ],
 "tashiana": [
-"Illusionist"
+"Coercer"
 ],
 "taunting assault": [
 "Guardian"
@@ -17042,11 +17042,11 @@
 ],
 "test run": [
 "Beastlord",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -17062,7 +17062,7 @@
 "Inquisitor"
 ],
 "theorems": [
-"Coercer"
+"Illusionist"
 ],
 "thermal depletion": [
 "Assassin",
@@ -17134,7 +17134,7 @@
 "Ranger"
 ],
 "thought snap": [
-"Illusionist"
+"Coercer"
 ],
 "thug's poison": [
 "Brigand"
@@ -17177,13 +17177,13 @@
 "Monk"
 ],
 "time compression": [
-"Coercer"
+"Illusionist"
 ],
 "time rampage": [
-"Coercer"
+"Illusionist"
 ],
 "time warp": [
-"Coercer"
+"Illusionist"
 ],
 "time-locked player debuffs": [
 "Assassin",
@@ -17214,12 +17214,12 @@
 "Wizard"
 ],
 "timelord": [
-"Coercer"
+"Illusionist"
 ],
 "tiny frostfell dragon": [
-"Coercer",
 "Conjuror",
 "Dirge",
+"Illusionist",
 "Troubador",
 "Warlock",
 "Wizard"
@@ -17651,7 +17651,7 @@
 "Defiler"
 ],
 "ultraviolet beam": [
-"Coercer"
+"Illusionist"
 ],
 "umbral trap": [
 "Defiler",
@@ -17706,8 +17706,8 @@
 ],
 "undeniable power": [
 "Beastlord",
-"Coercer",
 "Conjuror",
+"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -17786,7 +17786,7 @@
 "Shadowknight"
 ],
 "uninterruptable actions": [
-"Coercer"
+"Illusionist"
 ],
 "union of stone": [
 "Assassin",
@@ -17855,7 +17855,7 @@
 "Warden"
 ],
 "unveil": [
-"Illusionist"
+"Coercer"
 ],
 "unwavering resolve": [
 "Inquisitor",
@@ -17962,7 +17962,7 @@
 "Mystic"
 ],
 "velocity": [
-"Illusionist"
+"Coercer"
 ],
 "vengeance": [
 "Inquisitor"
@@ -18076,9 +18076,9 @@
 "Brigand",
 "Bruiser",
 "Channeler",
+"Coercer",
 "Defiler",
 "Dirge",
-"Illusionist",
 "Mystic",
 "Paladin",
 "Templar",
@@ -18264,7 +18264,7 @@
 ],
 "war's aftermath": [
 "Bruiser",
-"Illusionist"
+"Coercer"
 ],
 "ward of rage": [
 "Berserker"
@@ -18369,8 +18369,8 @@
 "Swashbuckler"
 ],
 "weave": [
-"Coercer",
 "Conjuror",
+"Illusionist",
 "Warlock",
 "Wizard"
 ],
@@ -18512,11 +18512,11 @@
 ],
 "wing it": [
 "Beastlord",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Guardian",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Necromancer",
@@ -18662,11 +18662,11 @@
 "Brigand",
 "Bruiser",
 "Channeler",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Fury",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -18715,8 +18715,8 @@
 "zesty beast'r egg": [
 "Berserker",
 "Brigand",
-"Coercer",
 "Dirge",
+"Illusionist",
 "Shadowknight",
 "Troubador",
 "Wizard"
@@ -18749,10 +18749,10 @@
 "Wizard"
 ],
 "zumaik's call of the banshee": [
-"Illusionist"
+"Coercer"
 ],
 "zumaik's wincing posture": [
-"Illusionist"
+"Coercer"
 ]
 },
 "effects": {
@@ -18836,7 +18836,7 @@
 "Templar"
 ],
 "calming assault": [
-"Illusionist"
+"Coercer"
 ],
 "cat-like reflexes": [
 "Ranger"
@@ -18873,7 +18873,7 @@
 "Conjuror"
 ],
 "convulsions": [
-"Illusionist"
+"Coercer"
 ],
 "cooperative strike": [
 "Guardian"
@@ -18904,10 +18904,10 @@
 "Defiler"
 ],
 "despotic mind": [
-"Illusionist"
+"Coercer"
 ],
 "disorientation": [
-"Illusionist"
+"Coercer"
 ],
 "dissonant note": [
 "Troubador"
@@ -18941,7 +18941,7 @@
 "Warden"
 ],
 "dynamism": [
-"Coercer"
+"Illusionist"
 ],
 "eerie avenger": [
 "Defiler"
@@ -18953,14 +18953,14 @@
 "Dirge"
 ],
 "enraging assault": [
-"Illusionist"
+"Coercer"
 ],
 "equilibrium": [
 "Inquisitor",
 "Templar"
 ],
 "ether balance": [
-"Illusionist"
+"Coercer"
 ],
 "fae fires": [
 "Fury"
@@ -18998,7 +18998,7 @@
 "Ranger"
 ],
 "foretold prophecy": [
-"Illusionist"
+"Coercer"
 ],
 "frost spikes": [
 "Wizard"
@@ -19020,7 +19020,7 @@
 "Wizard"
 ],
 "illusionary mindstorm": [
-"Coercer"
+"Illusionist"
 ],
 "infuriating thorns": [
 "Warden"
@@ -19032,13 +19032,13 @@
 "Templar"
 ],
 "lash": [
-"Illusionist"
+"Coercer"
 ],
 "linked agony": [
-"Illusionist"
+"Coercer"
 ],
 "linked pain": [
-"Illusionist"
+"Coercer"
 ],
 "mana boon": [
 "Warlock"
@@ -19061,7 +19061,7 @@
 "Guardian"
 ],
 "mystic illusion": [
-"Coercer"
+"Illusionist"
 ],
 "mystical hex ward": [
 "Mystic"
@@ -19102,11 +19102,11 @@
 "Brigand",
 "Bruiser",
 "Channeler",
+"Coercer",
 "Conjuror",
 "Defiler",
 "Dirge",
 "Fury",
-"Illusionist",
 "Inquisitor",
 "Monk",
 "Mystic",
@@ -19197,7 +19197,7 @@
 "Warden"
 ],
 "prismatic shock": [
-"Coercer"
+"Illusionist"
 ],
 "pulse of oblivion": [
 "Dirge",
@@ -19318,7 +19318,7 @@
 "Templar"
 ],
 "shock of mana": [
-"Coercer"
+"Illusionist"
 ],
 "shock of sound": [
 "Troubador"
@@ -19423,7 +19423,7 @@
 "Inquisitor"
 ],
 "theorems": [
-"Coercer"
+"Illusionist"
 ],
 "thermal depletion": [
 "Assassin",
