@@ -60,11 +60,14 @@ public sealed partial class CurationAbilityRow(MinedAbility mined) : ObservableO
                     ? $" · {kind2} ~{dur:0.#}s"
                     : $" · {kind2}"
                 : "";
+            // The log named no caster for these — attributed to the fight's
+            // subject, so the curator can sanity-check the assignment.
+            var inferred = Mined.SourceInferred ? " · source inferred" : "";
             if (Mined.IsDetriment)
-                return $"detriment / control{effect}{targets}{dot}";
+                return $"detriment / control{effect}{targets}{dot}{inferred}";
             var perCast = Mined.Casts > 0 ? Mined.TotalDamage / Mined.Casts : 0;
             var kind = Mined.IsMelee ? "melee" : "spell";
-            return $"{CombatantRow.Compact(perCast)}/cast · {kind}{effect}{targets}{dot}";
+            return $"{CombatantRow.Compact(perCast)}/cast · {kind}{effect}{targets}{dot}{inferred}";
         }
     }
 
@@ -177,10 +180,13 @@ public sealed partial class CurationViewModel : ObservableObject
             Name = mined.Ability,
             // Filed Zone → Mob, and category-locked to the mob: the timer
             // only starts when this mob casts the ability, so same-named
-            // abilities on other mobs never cross-trigger.
+            // abilities on other mobs never cross-trigger. EXCEPT when the
+            // source was inferred — those lines name no caster, so at
+            // runtime the attacker is "Unknown" and a category lock could
+            // never match. Zone-qualified identity still keeps twins apart.
             Category = mined.Mob,
             Zone = mined.Zone,
-            RestrictToCategory = true,
+            RestrictToCategory = !mined.SourceInferred,
             DurationSeconds = Math.Max(5, duration),
             WarningSeconds = Math.Clamp(duration / 4, 3, 10),
             // ACT's convention: bare "tts" speaks "<name> soon" at warning.

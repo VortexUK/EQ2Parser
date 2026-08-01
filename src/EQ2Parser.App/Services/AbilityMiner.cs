@@ -26,7 +26,8 @@ public sealed record MinedAbility(
     bool IsMelee,
     bool IsDetriment,
     string? EffectKind,
-    double? EffectDurationSeconds);
+    double? EffectDurationSeconds,
+    bool SourceInferred);
 
 /// <summary>A mob and its mined abilities.</summary>
 public sealed record MinedMob(string Zone, string Mob, IReadOnlyList<MinedAbility> Abilities);
@@ -51,13 +52,16 @@ public static class AbilityMiner
     /// measured, and aren't timer material anyway.</summary>
     private static readonly TimeSpan ApplicationChain = TimeSpan.FromSeconds(12);
 
+    /// <summary>The engine's placeholder for a caster the log didn't name.</summary>
+    private const string UnknownAttacker = "Unknown";
+
     public static List<MinedMob> MineZone(HistoryService history, string zone)
     {
         // ability key: (mob, ability) → per-fight (cast starts, that mob's
         // swiped windows) — windows travel with the fight for normalization.
         Dictionary<(string Mob, string Ability), List<(List<DateTimeOffset> Casts, List<(DateTimeOffset Start, DateTimeOffset End)> Swiped, double Fraction)>> castsPerFight =
             new();
-        Dictionary<(string Mob, string Ability), (long Damage, int Hits, int ZeroHits, int Volleys, int Casts, HashSet<long> FightIds, bool Melee)> stats =
+        Dictionary<(string Mob, string Ability), (long Damage, int Hits, int ZeroHits, int InferredHits, int Volleys, int Casts, HashSet<long> FightIds, bool Melee)> stats =
             new();
         // (mob, ability) → effect kind → (attributions, matched durations)
         Dictionary<(string Mob, string Ability), Dictionary<string, (int Count, List<double> Durations)>> effects =
@@ -121,6 +125,14 @@ public static class AbilityMiner
                     }
                 }
             }
+            // Some mob AoEs log anonymously ("Voorfuror is hit by Stench of
+            // Death for 4,205 focus damage.") — no caster named, so the
+            // engine records attacker "Unknown". Attribute those to the
+            // fight's subject (its strongest enemy = the title) and mark
+            // them inferred, rather than stranding them under "Unknown".
+            var titleMob = summary.Title is { Length: > 0 } t && t != Encounter.PlaceholderTitle ? t : null;
+            HashSet<string> inferredAbilities = new(StringComparer.OrdinalIgnoreCase);
+
             // Group this fight's hostile swings by enemy attacker + ability.
             Dictionary<(string, string), List<Swing>> byAbility = new();
             foreach (var swing in swings)
@@ -134,7 +146,15 @@ public static class AbilityMiner
                 // Auto-attacks are never timer material — pure noise here.
                 if (swing.Ability == Core.Grammar.EnglishGrammar.AutoAttackAbility)
                     continue;
-                var key = (swing.Attacker, swing.Ability);
+                var attacker = swing.Attacker;
+                if (attacker == UnknownAttacker)
+                {
+                    if (titleMob is null)
+                        continue; // nothing to attribute to
+                    attacker = titleMob;
+                    inferredAbilities.Add(swing.Ability);
+                }
+                var key = (attacker, swing.Ability);
                 if (!byAbility.TryGetValue(key, out var list))
                     byAbility[key] = list = [];
                 list.Add(swing);
@@ -201,10 +221,12 @@ public static class AbilityMiner
                 fights.Add((applicationStarts, mobSwipes.Windows, mobSwipes.Fraction));
                 var s = stats.TryGetValue(key, out var existing)
                     ? existing
-                    : (0, 0, 0, 0, 0, [], melee);
+                    : (0, 0, 0, 0, 0, 0, [], melee);
                 s.Damage += damage;
                 s.Hits += targets;
                 s.ZeroHits += zeroHits;
+                if (inferredAbilities.Contains(ability))
+                    s.InferredHits += targets;
                 s.Volleys += volleyStarts.Count;
                 s.Casts += applicationStarts.Count;
                 s.FightIds.Add(summary.Id);
@@ -274,7 +296,8 @@ public static class AbilityMiner
                 // detriment effect; scattered zeros are just resists.
                 s.Hits > 0 && (double)s.ZeroHits / s.Hits >= 0.9,
                 effectKind,
-                effectDuration);
+                effectDuration,
+                s.Hits > 0 && (double)s.InferredHits / s.Hits >= 0.5);
             if (!mobs.TryGetValue(mob, out var list))
                 mobs[mob] = list = [];
             list.Add(mined);
