@@ -19,6 +19,9 @@ public sealed partial class OverlayConfigVm : ObservableObject
     public bool HasMaxItems { get; }
     public bool IsResizable => !HasMaxItems;
 
+    /// <summary>Notifications only: the toast stay-duration slider.</summary>
+    public bool HasToastSeconds { get; }
+
     public OverlayConfigVm(OverlayController controller, OverlayKind kind, string title, string itemsLabel)
     {
         _controller = controller;
@@ -26,6 +29,7 @@ public sealed partial class OverlayConfigVm : ObservableObject
         Title = title;
         ItemsLabel = itemsLabel;
         HasMaxItems = !OverlayController.IsResizable(kind);
+        HasToastSeconds = kind == OverlayKind.Notifications;
         SyncFrom(controller.GetSettings(kind));
         controller.SettingsChanged += changed =>
         {
@@ -43,6 +47,7 @@ public sealed partial class OverlayConfigVm : ObservableObject
         Scale = s.Scale;
         Width = s.Width;
         MaxItems = s.MaxItems;
+        ToastSeconds = s.ToastSeconds;
         _syncing = false;
     }
 
@@ -64,10 +69,14 @@ public sealed partial class OverlayConfigVm : ObservableObject
     [ObservableProperty]
     private int _maxItems;
 
+    [ObservableProperty]
+    private double _toastSeconds;
+
     public string OpacityLabel => $"{Opacity:P0}";
     public string ScaleLabel => $"{Scale:0.00}×";
     public string WidthLabel => $"{Width:0}px";
     public string MaxItemsLabel => MaxItems.ToString();
+    public string ToastSecondsLabel => $"{ToastSeconds:0}s";
 
     partial void OnVisibleChanged(bool value)
     {
@@ -111,6 +120,13 @@ public sealed partial class OverlayConfigVm : ObservableObject
         OnPropertyChanged(nameof(MaxItemsLabel));
         if (!_syncing)
             _controller.Update(_kind, s => s with { MaxItems = Math.Clamp(value, 3, 25) });
+    }
+
+    partial void OnToastSecondsChanged(double value)
+    {
+        OnPropertyChanged(nameof(ToastSecondsLabel));
+        if (!_syncing)
+            _controller.Update(_kind, s => s with { ToastSeconds = Math.Clamp(value, 2, 30) });
     }
 }
 

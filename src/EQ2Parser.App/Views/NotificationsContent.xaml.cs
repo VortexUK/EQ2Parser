@@ -35,9 +35,13 @@ public partial class NotificationsContent : IOverlayContent
         public int Count { get; set; } = 1;
     }
 
-    private static readonly TimeSpan Hold = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan FadeOut = TimeSpan.FromMilliseconds(800);
     private static readonly TimeSpan FadeIn = TimeSpan.FromMilliseconds(150);
+
+    /// <summary>User-configurable stay duration (the overlay card's
+    /// "stay for" slider); refreshed from settings each tick, read on the
+    /// log pump thread for the repeat-merge window.</summary>
+    private TimeSpan _hold = TimeSpan.FromSeconds(6);
 
     private readonly SourceManager _manager;
     private readonly object _gate = new();
@@ -62,7 +66,7 @@ public partial class NotificationsContent : IOverlayContent
         var now = DateTimeOffset.Now;
         lock (_gate)
         {
-            if (_toasts.FirstOrDefault(t => t.Text == text && now - t.Last <= Hold) is { } existing)
+            if (_toasts.FirstOrDefault(t => t.Text == text && now - t.Last <= _hold) is { } existing)
             {
                 existing.Count++;
                 existing.Last = now;
@@ -98,16 +102,18 @@ public partial class NotificationsContent : IOverlayContent
     public bool Refresh(OverlayWindowSettings settings)
     {
         var now = DateTimeOffset.Now;
+        var hold = TimeSpan.FromSeconds(Math.Clamp(settings.ToastSeconds, 2, 30));
         List<(string Text, string Count, double Opacity)> visible = [];
         lock (_gate)
         {
-            _toasts.RemoveAll(t => now - t.Last > Hold + FadeOut);
+            _hold = hold;
+            _toasts.RemoveAll(t => now - t.Last > hold + FadeOut);
             foreach (var toast in _toasts.OrderByDescending(t => t.Last).Take(settings.MaxItems))
             {
                 var sinceLast = now - toast.Last;
-                var opacity = sinceLast <= Hold
+                var opacity = sinceLast <= hold
                     ? 1.0
-                    : 1.0 - (sinceLast - Hold) / FadeOut;
+                    : 1.0 - (sinceLast - hold) / FadeOut;
                 var fadeIn = (now - toast.First) / FadeIn;
                 opacity = Math.Clamp(Math.Min(opacity, fadeIn), 0, 1);
                 visible.Add((toast.Text, toast.Count > 1 ? $"×{toast.Count}" : "", opacity));

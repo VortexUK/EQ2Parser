@@ -27,6 +27,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
                         <TextBlock Text="Opacity" Style="{StaticResource MutedText}" FontSize="12" VerticalAlignment="Center" />
@@ -55,6 +56,15 @@
                         <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding MaxItemsLabel}" Foreground="{StaticResource GoldBrush}"
                                    FontSize="11" VerticalAlignment="Center" TextAlignment="Right"
                                    Visibility="{Binding HasMaxItems, Converter={StaticResource BoolToVis}}" />
+
+                        <TextBlock Grid.Row="4" Text="Stay for" Style="{StaticResource MutedText}" FontSize="12" VerticalAlignment="Center"
+                                   Visibility="{Binding HasToastSeconds, Converter={StaticResource BoolToVis}}" />
+                        <Slider Grid.Row="4" Grid.Column="1" Minimum="2" Maximum="30" Value="{Binding ToastSeconds}"
+                                IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center" Margin="0,4"
+                                Visibility="{Binding HasToastSeconds, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding ToastSecondsLabel}" Foreground="{StaticResource GoldBrush}"
+                                   FontSize="11" VerticalAlignment="Center" TextAlignment="Right"
+                                   Visibility="{Binding HasToastSeconds, Converter={StaticResource BoolToVis}}" />
                     </Grid>
                     <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"
                                Text="Drag the corner grip to resize — rows fill the space (fit the whole raid for streaming)."

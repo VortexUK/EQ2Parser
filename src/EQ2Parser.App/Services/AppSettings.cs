@@ -25,6 +25,10 @@ public sealed record OverlayWindowSettings
     public double Opacity { get; init; } = 0.95;
     public double Scale { get; init; } = 1.0;
     public int MaxItems { get; init; } = 10;
+
+    /// <summary>Notifications overlay only: seconds a toast stays before
+    /// fading out.</summary>
+    public double ToastSeconds { get; init; } = 6;
 }
 
 /// <summary>Persisted app settings — %LocalAppData%\EQ2Parser\settings.json.</summary>
