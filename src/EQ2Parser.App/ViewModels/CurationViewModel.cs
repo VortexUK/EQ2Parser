@@ -188,6 +188,9 @@ public sealed partial class CurationViewModel : ObservableObject
             DamageType = mined.DamageTypes,
             ControlEffect = Vocabulary.CanonicalControlEffect(mined.EffectKind) ?? "",
             RestrictToCategory = !mined.SourceInferred,
+            // Recast timers: every hit restarts the ONE bar — no
+            // per-victim sub-bars from AoE stragglers.
+            OnlyMasterTicks = true,
             DurationSeconds = Math.Max(5, duration),
             WarningSeconds = Math.Clamp(duration / 4, 3, 10),
             // ACT's convention: bare "tts" speaks the timer name at start

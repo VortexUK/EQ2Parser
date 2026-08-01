@@ -39,13 +39,17 @@ public sealed class ActiveTimer(DateTimeOffset start, int durationSeconds, bool 
         DurationSeconds - (now - Start).TotalSeconds;
 }
 
-/// <summary>All live timers for one (spell, combatant) pair — one bar group.</summary>
+/// <summary>All live timers for ONE definition — one bar group. A timer
+/// tracks the ability's recast, not each person it hit: an AoE landing on
+/// 24 raiders is one countdown, not 24 (the per-victim keying this
+/// replaces did exactly that). Combatant is the first notifying ATTACKER,
+/// display-only ("Blanket of Eternal Night · Mayong Mistmoore").</summary>
 public sealed class TimerFrame(TimerDefinition definition, string combatant)
 {
     public TimerDefinition Definition { get; } = definition;
     public string Combatant { get; } = combatant;
     public List<ActiveTimer> Timers { get; } = [];
-    public string Key => $"{Definition.Name} - {Combatant}";
+    public string Key => Definition.Key;
 
     public DateTimeOffset NewestStart =>
         Timers.Count == 0 ? DateTimeOffset.MinValue : Timers.Max(t => t.Start);
@@ -196,7 +200,7 @@ public sealed class SpellTimerService(TimerOptions? options = null)
         if (chosen.RestrictToMe && !self)
             return false;
 
-        var frame = GetOrCreateFrame(chosen, victim);
+        var frame = GetOrCreateFrame(chosen, attacker);
 
         // One-only: refuse while a master runs.
         if (chosen.AbsoluteTiming && frame.HasRunningMaster(time))
@@ -244,9 +248,8 @@ public sealed class SpellTimerService(TimerOptions? options = null)
 
     private TimerFrame GetOrCreateFrame(TimerDefinition def, string combatant)
     {
-        var key = $"{def.Name} - {combatant}";
-        if (!_frames.TryGetValue(key, out var frame))
-            _frames[key] = frame = new TimerFrame(def, combatant);
+        if (!_frames.TryGetValue(def.Key, out var frame))
+            _frames[def.Key] = frame = new TimerFrame(def, combatant);
         return frame;
     }
 

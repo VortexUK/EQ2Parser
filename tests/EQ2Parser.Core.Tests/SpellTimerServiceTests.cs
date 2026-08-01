@@ -30,7 +30,10 @@ public class SpellTimerServiceTests
 
         Assert.True(service.Notify("bossmob", "Doom", self: true, "sofja", T0));
         var (frame, timer) = Assert.Single(started);
-        Assert.Equal("Doom - sofja", frame.Key);
+        // One frame per DEFINITION (an AoE on 24 raiders is one bar);
+        // the attacker rides along for display.
+        Assert.Equal("|general|doom", frame.Key);
+        Assert.Equal("bossmob", frame.Combatant);
         Assert.True(timer.IsMaster);
         Assert.Equal(30, timer.SecondsLeft(T0), precision: 3);
     }
@@ -192,10 +195,10 @@ public class SpellTimerServiceTests
         Assert.Equal(60, timer.BaseDurationSeconds);
 
         // Different names sum additively: 60 × (1 + 0.5 + 0.25) = 105.
+        // (+3s: past the dedupe window, lands as a sub-timer in the frame.)
         service.AddTimerMod("Bossmob", "Temporal Drag", 0.25, T0, TimeSpan.FromSeconds(30));
-        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0));
-        var second = Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers);
-        Assert.Equal(105, second.DurationSeconds);
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(3)));
+        Assert.Contains(Assert.Single(service.Frames).Timers, t => t.DurationSeconds == 105);
     }
 
     [Fact]
@@ -227,7 +230,7 @@ public class SpellTimerServiceTests
 
         // Mods are gone: the next timer is unmodified.
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(5)));
-        Assert.Equal(60, Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers).DurationSeconds);
+        Assert.All(Assert.Single(service.Frames).Timers, t => Assert.Equal(60, t.DurationSeconds));
     }
 
     [Fact]
@@ -255,7 +258,7 @@ public class SpellTimerServiceTests
         Assert.Equal(90, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
         // …but the mod itself is gone for future timers.
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(5)));
-        Assert.Equal(60, Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers).DurationSeconds);
+        Assert.Contains(Assert.Single(service.Frames).Timers, t => t.DurationSeconds == 60);
     }
 
     [Fact]
@@ -268,10 +271,10 @@ public class SpellTimerServiceTests
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "sofja", T0.AddSeconds(31)));
         Assert.Equal(60, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
 
-        // Re-applying refreshes the window.
+        // Re-applying refreshes the window (+60s: a fresh master in the frame).
         service.AddTimerMod("Bossmob", "Sluggish Recast", 0.5, T0.AddSeconds(40), TimeSpan.FromSeconds(30));
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(60)));
-        Assert.Equal(90, Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers).DurationSeconds);
+        Assert.Contains(Assert.Single(service.Frames).Timers, t => t.DurationSeconds == 90);
     }
 
     [Fact]
@@ -290,7 +293,7 @@ public class SpellTimerServiceTests
         service.NotifyDispel("Bossmob", "Some Other Effect", T0.AddSeconds(3));
         service.NotifyDispel("Bossmob", "Traumatic Swipe", T0.AddSeconds(3));
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(10)));
-        Assert.Equal(60, Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers).DurationSeconds);
+        Assert.Contains(Assert.Single(service.Frames).Timers, t => t.DurationSeconds == 60);
     }
 
     [Fact]
@@ -310,7 +313,7 @@ public class SpellTimerServiceTests
 
         // The pending mod is gone too — the next timer is unmodified.
         Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(35)));
-        Assert.Equal(60, Assert.Single(service.Frames.First(f => f.Combatant == "menludiir").Timers).DurationSeconds);
+        Assert.Contains(Assert.Single(service.Frames).Timers, t => t.DurationSeconds == 60);
 
         // A second death is a no-op — the contribution was already removed.
         service.NotifyDeath("Teramo", T0.AddSeconds(40));

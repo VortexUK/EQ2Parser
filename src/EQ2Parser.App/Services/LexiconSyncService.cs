@@ -173,6 +173,17 @@ public sealed class LexiconSyncService
                 }
                 foreach (var t in encounter.SpellTimers)
                 {
+                    // The site's editor doesn't expose sounds yet, and its
+                    // saves write them empty — a curated timer with BOTH
+                    // blank gets the curator convention (speak the name at
+                    // start, "<name> soon" at warning) instead of silence.
+                    var startWav = t.StartWav;
+                    var warningWav = t.WarningWav;
+                    if (startWav.Length == 0 && warningWav.Length == 0)
+                    {
+                        startWav = "tts";
+                        warningWav = "tts";
+                    }
                     timers.Add(new TimerDefinition
                     {
                         Name = t.Name,
@@ -187,8 +198,8 @@ public sealed class LexiconSyncService
                         OnlyMasterTicks = t.OnlyMasterTicks,
                         RestrictToMe = t.Restrict,
                         AbsoluteTiming = t.Absolute,
-                        StartSoundData = t.StartWav,
-                        WarningSoundData = t.WarningWav,
+                        StartSoundData = startWav,
+                        WarningSoundData = warningWav,
                         RadialDisplay = t.RadialDisplay,
                         Modable = t.Modable,
                         Tooltip = t.Tooltip,
