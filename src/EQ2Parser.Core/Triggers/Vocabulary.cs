@@ -19,10 +19,10 @@ public static class Vocabulary
     ];
 
     /// <summary>Control effects in tooltip vocabulary — the set worth a
-    /// timer warning. Charm never logs a status line but exists in-game,
-    /// so it stays hand-taggable.</summary>
+    /// timer warning. Charm and knockup never log status lines but exist
+    /// in-game, so they stay hand-taggable.</summary>
     public static readonly IReadOnlyList<string> ControlEffects =
-        ["stun", "stifle", "mez", "fear", "root", "snare", "daze", "charm"];
+        ["stun", "stifle", "mez", "fear", "root", "snare", "daze", "charm", "knockup"];
 
     /// <summary>Log status word → canonical control effect, or null for
     /// flavour-only adjectives (gloomy, seared, confused, unnerved…) whose
