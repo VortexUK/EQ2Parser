@@ -129,8 +129,10 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     /// <summary>Exposed for view-owned windows (the Archive).</summary>
     public SourceManager Manager => manager;
 
-    /// <summary>ACT-style configurable encounter-grid columns.</summary>
-    public EncounterColumnsVm Columns { get; } = new(manager);
+    /// <summary>ACT-style configurable columns: encounter grid + drill table.</summary>
+    public ColumnSetVm Columns { get; } = ColumnSets.Encounter(manager);
+
+    public ColumnSetVm DrillColumns { get; } = ColumnSets.Drill(manager);
 
     private object? _pinnedFight;
     private (int HistoryCount, bool AnyActive) _treeSignature = (-1, false);

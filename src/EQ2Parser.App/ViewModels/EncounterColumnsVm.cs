@@ -4,9 +4,9 @@ using EQ2Parser.App.Services;
 
 namespace EQ2Parser.App.ViewModels;
 
-/// <summary>One togglable column of the encounter grid. The header button,
-/// the row cells, and both grids' ColumnDefinitions all bind to
-/// <see cref="Visible"/>, so flipping it collapses the column everywhere.</summary>
+/// <summary>One togglable column of a grid. The header cell, the row cells,
+/// and both grids' ColumnDefinitions all bind to <see cref="Visible"/>, so
+/// flipping it collapses the column everywhere.</summary>
 public sealed partial class ColumnToggle(string key, string label, bool defaultVisible) : ObservableObject
 {
     public string Key { get; } = key;
@@ -23,20 +23,14 @@ public sealed partial class ColumnToggle(string key, string label, bool defaultV
 }
 
 /// <summary>
-/// ACT-style "Encounter View Options": which columns the combatant grid
-/// shows. NAME is always on; everything else toggles and persists in
-/// settings. The grid snapshot only walks the swing buckets for the
-/// extended stats (swings/hits/crits/heal detail) while at least one of
-/// those columns is on — the default view costs nothing extra.
+/// ACT-style "View Options" for one grid: which columns show. The name
+/// column is always on; everything else toggles and persists in settings
+/// (null = never customised, so future default changes apply cleanly).
 /// </summary>
-public sealed partial class EncounterColumnsVm : ObservableObject
+public sealed partial class ColumnSetVm : ObservableObject
 {
-    /// <summary>The classic column set whose stats every snapshot already
-    /// computes; anything else needs the extended bucket walk.</summary>
-    private static readonly HashSet<string> CoreKeys =
-        ["Class", "Time", "Damage", "Percent", "Dps", "Hps", "Taken", "Deaths"];
-
-    private readonly SourceManager _manager;
+    private readonly HashSet<string> _coreKeys;
+    private readonly Action<List<string>?> _save;
     private bool _applying;
 
     public IReadOnlyList<ColumnToggle> Toggles { get; }
@@ -45,10 +39,64 @@ public sealed partial class EncounterColumnsVm : ObservableObject
     /// (<c>ByKey[Swings].Visible</c>).</summary>
     public Dictionary<string, ColumnToggle> ByKey { get; }
 
-    public EncounterColumnsVm(SourceManager manager)
+    public ColumnSetVm(
+        IReadOnlyList<ColumnToggle> toggles, HashSet<string> coreKeys,
+        List<string>? saved, Action<List<string>?> save)
     {
-        _manager = manager;
-        Toggles =
+        Toggles = toggles;
+        _coreKeys = coreKeys;
+        _save = save;
+        ByKey = toggles.ToDictionary(t => t.Key, StringComparer.Ordinal);
+        if (saved is { } keys)
+        {
+            var visible = new HashSet<string>(keys, StringComparer.Ordinal);
+            foreach (var toggle in Toggles)
+                toggle.Visible = visible.Contains(toggle.Key);
+        }
+        foreach (var toggle in Toggles)
+            toggle.Changed = Persist;
+    }
+
+    /// <summary>Any column beyond the always-computed core set is on — the
+    /// grid snapshot only gathers the pricier stats while this holds.</summary>
+    public bool Extended
+    {
+        get
+        {
+            foreach (var toggle in Toggles)
+            {
+                if (toggle.Visible && !_coreKeys.Contains(toggle.Key))
+                    return true;
+            }
+            return false;
+        }
+    }
+
+    private void Persist()
+    {
+        if (_applying)
+            return;
+        _save([.. Toggles.Where(t => t.Visible).Select(t => t.Key)]);
+    }
+
+    [RelayCommand]
+    private void Reset()
+    {
+        _applying = true;
+        foreach (var toggle in Toggles)
+            toggle.Visible = toggle.DefaultVisible;
+        _applying = false;
+        _save(null);
+    }
+}
+
+/// <summary>The app's configurable grids, ACT's view-options catalogue.</summary>
+public static class ColumnSets
+{
+    /// <summary>Encounter view: the main combatant grid. The classic column
+    /// set is core (its stats are computed every tick regardless); anything
+    /// else triggers the extended swing-bucket walk.</summary>
+    public static ColumnSetVm Encounter(SourceManager manager) => new(
         [
             new("Class", "Class", true),
             new("Time", "Time", true),
@@ -71,52 +119,41 @@ public sealed partial class EncounterColumnsVm : ObservableObject
             new("Taken", "Damage taken", true),
             new("HealsTaken", "Healing taken", false),
             new("Deaths", "Deaths", true),
+        ],
+        ["Class", "Time", "Damage", "Percent", "Dps", "Hps", "Taken", "Deaths"],
+        manager.Settings.EncounterColumns,
+        keys =>
+        {
+            manager.Settings = manager.Settings with { EncounterColumns = keys };
+            manager.Settings.Save();
+        });
+
+    /// <summary>Combatant view: the drill-down bucket/ability table. Every
+    /// stat is already accumulated, so all columns are core.</summary>
+    public static ColumnSetVm Drill(SourceManager manager)
+    {
+        List<ColumnToggle> toggles =
+        [
+            new("Damage", "Damage", true),
+            new("Dps", "EncDPS", true),
+            new("Types", "Type", true),
+            new("Source", "Source", true),
+            new("Swings", "Swings", true),
+            new("Freq", "Frequency", true),
+            new("Hits", "Hits", true),
+            new("CritPct", "Crit %", true),
+            new("Avg", "Average", true),
+            new("Max", "Max hit", true),
+            new("Percent", "% share", true),
         ];
-        ByKey = Toggles.ToDictionary(t => t.Key, StringComparer.Ordinal);
-        if (manager.Settings.EncounterColumns is { } saved)
-        {
-            var visible = new HashSet<string>(saved, StringComparer.Ordinal);
-            foreach (var toggle in Toggles)
-                toggle.Visible = visible.Contains(toggle.Key);
-        }
-        foreach (var toggle in Toggles)
-            toggle.Changed = Persist;
-    }
-
-    /// <summary>Any column beyond the classic set is on.</summary>
-    public bool Extended
-    {
-        get
-        {
-            foreach (var toggle in Toggles)
+        return new(
+            toggles,
+            [.. toggles.Select(t => t.Key)],
+            manager.Settings.CombatantColumns,
+            keys =>
             {
-                if (toggle.Visible && !CoreKeys.Contains(toggle.Key))
-                    return true;
-            }
-            return false;
-        }
-    }
-
-    private void Persist()
-    {
-        if (_applying)
-            return;
-        _manager.Settings = _manager.Settings with
-        {
-            EncounterColumns = [.. Toggles.Where(t => t.Visible).Select(t => t.Key)],
-        };
-        _manager.Settings.Save();
-    }
-
-    [RelayCommand]
-    private void Reset()
-    {
-        _applying = true;
-        foreach (var toggle in Toggles)
-            toggle.Visible = toggle.DefaultVisible;
-        _applying = false;
-        // Null = "never customised" — future default changes apply cleanly.
-        _manager.Settings = _manager.Settings with { EncounterColumns = null };
-        _manager.Settings.Save();
+                manager.Settings = manager.Settings with { CombatantColumns = keys };
+                manager.Settings.Save();
+            });
     }
 }

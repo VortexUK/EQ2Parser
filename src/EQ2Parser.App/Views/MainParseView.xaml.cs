@@ -33,6 +33,16 @@ public partial class MainParseView : System.Windows.Controls.UserControl
         }
     }
 
+    private void DrillColumnsToggle_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (DrillColumnsPopup.IsOpen)
+        {
+            DrillColumnsPopup.IsOpen = false;
+            DrillColumnsToggle.IsChecked = false;
+            e.Handled = true;
+        }
+    }
+
     private void TreeSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
     {
         if (DataContext is not MainParseViewModel vm)
