@@ -23,6 +23,14 @@ public static class BarAnimation
     {
         if (d is not UIElement element || element.RenderTransform is not ScaleTransform scale)
             return;
+        // During template instantiation the declared ScaleTransform can
+        // still be the template's SHARED FROZEN instance (WPF only clones
+        // per element lazily) — animating that throws. Take our own copy.
+        if (scale.IsFrozen)
+        {
+            scale = scale.Clone();
+            element.RenderTransform = scale;
+        }
         var animation = new DoubleAnimation((double)e.NewValue, TimeSpan.FromMilliseconds(220))
         {
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
