@@ -179,8 +179,18 @@
                                                            Visibility="{Binding ZoneRestricted, Converter={StaticResource BoolToVis}}" />
                                                 <TextBlock Text="{Binding SoundLabel}" FontSize="11" Margin="0,1,0,0"
                                                            Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding TimerLabel}" FontSize="11" Margin="8,1,0,0"
-                                                           Foreground="{StaticResource SuccessBrush}" />
+                                                <TextBlock Text="{Binding TimerLabel}" FontSize="11" Margin="8,1,0,0">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding LinkedTimerMissing}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
                                             </StackPanel>
                                         </StackPanel>
                                         <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Top">
@@ -292,13 +302,15 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <CheckBox Content="starts timer" IsChecked="{Binding StartsTimer}" VerticalAlignment="Center" FontSize="12"
-                                      ToolTip="On a match, also start the spell timer with this name (its Name on the Timers page must match exactly).&#10;E.g. match the boss's warm-up emote and start the 'Inferno' countdown — timers can run off emotes, not just casts." />
+                                      ToolTip="On a match, also start the spell timer with this name — timers can run off emotes, not just casts.&#10;No timer with this name yet? Saving creates a 30s default on the Timers page for you to tune." />
                             <TextBox Grid.Column="1" Text="{Binding TimerName, UpdateSourceTrigger=PropertyChanged}"
                                      Margin="10,0,0,0" Padding="8,5" FontSize="13"
                                      IsEnabled="{Binding StartsTimer}" />
                         </Grid>
 
                         <TextBlock Text="{Binding EditorError}" Foreground="{StaticResource DangerBrush}" FontSize="12"
+                                   TextWrapping="Wrap" Margin="0,8,0,0" />
+                        <TextBlock Text="{Binding EditorInfo}" Foreground="{StaticResource SuccessBrush}" FontSize="12"
                                    TextWrapping="Wrap" Margin="0,8,0,0" />
 
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">

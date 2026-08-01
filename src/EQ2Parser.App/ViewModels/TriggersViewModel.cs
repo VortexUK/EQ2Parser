@@ -37,8 +37,13 @@ public sealed partial class TriggerRow : ObservableObject, ICategoryDropTarget
         _ => "Silent",
     };
 
+    /// <summary>The linked spell timer is gone (deleted after the link was
+    /// made) — the trigger would fire but no bar would start.</summary>
+    public bool LinkedTimerMissing =>
+        Trigger.StartsTimer && Trigger.TimerName.Length > 0 && !_owner.HasTimerNamed(Trigger.TimerName);
+
     public string TimerLabel => Trigger.StartsTimer && Trigger.TimerName.Length > 0
-        ? $"⏱ {Trigger.TimerName}"
+        ? $"⏱ {Trigger.TimerName}{(LinkedTimerMissing ? " — no such timer!" : "")}"
         : "";
 
     [ObservableProperty]
@@ -82,6 +87,38 @@ public sealed partial class TriggersViewModel : ObservableObject
         manager.Triggers.AlertFired += OnAlertFired;
         manager.Triggers.DefinitionsChanged += () =>
             Application.Current?.Dispatcher.BeginInvoke(RebuildRows);
+        // Timer edits too: the rows show linked-timer state ("no such
+        // timer!"), which changes when a timer is created or deleted.
+        manager.SpellTimers.DefinitionsChanged += () =>
+            Application.Current?.Dispatcher.BeginInvoke(RebuildRows);
+    }
+
+    internal bool HasTimerNamed(string name) =>
+        _manager.SpellTimers.Definitions.Any(d => d.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>The trigger-side half of a linked pair is useless without
+    /// the timer-side half — ACT quietly auto-registers unknown spell
+    /// timers, and so do we: a 30s default the user then tunes.</summary>
+    private int EnsureLinkedTimers(IEnumerable<Trigger> triggers)
+    {
+        var created = 0;
+        foreach (var trigger in triggers)
+        {
+            if (!trigger.StartsTimer || trigger.TimerName.Length == 0 || HasTimerNamed(trigger.TimerName))
+                continue;
+            _manager.SpellTimers.AddOrUpdate(new TimerDefinition
+            {
+                Name = trigger.TimerName,
+                Category = trigger.Category,
+                Zone = trigger.Zone,
+                // Trigger-started: the notify's attacker is whatever the
+                // regex matched, so a category lock would strangle it.
+                RestrictToCategory = false,
+                WarningSoundData = "tts",
+            });
+            created++;
+        }
+        return created;
     }
 
     // ---- list ----
@@ -296,6 +333,9 @@ public sealed partial class TriggersViewModel : ObservableObject
     [ObservableProperty]
     private string _editorError = "";
 
+    [ObservableProperty]
+    private string _editorInfo = "";
+
     public bool SoundDataIsWav => SoundChoice == 2;
     public bool SoundDataIsTts => SoundChoice == 3;
     public bool SoundDataVisible => SoundChoice is 2 or 3;
@@ -382,6 +422,9 @@ public sealed partial class TriggersViewModel : ObservableObject
         }
         _manager.Triggers.AddOrUpdate(trigger, _editingKey);
         _editingKey = null;
+        EditorInfo = EnsureLinkedTimers([trigger]) > 0
+            ? $"Also created spell timer “{trigger.TimerName}” (30s default) — set its real length on the Timers page."
+            : "";
         var zoneKey = trigger.Zone.Length > 0 ? trigger.Zone : "General";
         _collapsedZones.Remove(zoneKey);
         _expandedCategories.Add($"{zoneKey}|{category}");
@@ -454,11 +497,16 @@ public sealed partial class TriggersViewModel : ObservableObject
         }
         _manager.Triggers.AddOrUpdateMany(imported);
         _manager.SpellTimers.ImportMany(timers);
+        // AFTER the explicit <Spell> lines land, so a pasted pair links up
+        // rather than spawning a default next to the real definition.
+        var linked = EnsureLinkedTimers(imported);
         List<string> parts = [];
         if (imported.Count > 0)
             parts.Add($"{imported.Count} trigger{(imported.Count == 1 ? "" : "s")} imported");
         if (timers.Count > 0)
             parts.Add($"{timers.Count} spell timer{(timers.Count == 1 ? "" : "s")} imported (see Timers page)");
+        if (linked > 0)
+            parts.Add($"{linked} linked timer{(linked == 1 ? "" : "s")} created with 30s defaults — set real lengths on the Timers page");
         if (failedLines.Count > 0)
             parts.Add($"{failedLines.Count} line{(failedLines.Count == 1 ? "" : "s")} not recognised (line {string.Join(", ", failedLines.Take(5))}{(failedLines.Count > 5 ? ", …" : "")})");
         ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : "Nothing to import — paste ACT share XML first.";
