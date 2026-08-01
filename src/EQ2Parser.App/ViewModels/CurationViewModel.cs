@@ -133,6 +133,8 @@ public sealed partial class CurationViewModel : ObservableObject
             Category = mined.Zone,
             DurationSeconds = Math.Max(5, duration),
             WarningSeconds = Math.Clamp(duration / 4, 3, 10),
+            // ACT's convention: bare "tts" speaks "<name> soon" at warning.
+            WarningSoundData = "tts",
         };
     }
 
