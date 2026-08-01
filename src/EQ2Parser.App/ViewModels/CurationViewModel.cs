@@ -47,7 +47,8 @@ public sealed partial class CurationAbilityRow(MinedAbility mined) : ObservableO
             var perCast = Mined.Casts > 0 ? Mined.TotalDamage / Mined.Casts : 0;
             var kind = Mined.IsMelee ? "melee" : "spell";
             var targets = Mined.AvgTargets >= 1.8 ? $" · AOE ×{Mined.AvgTargets:0.#}" : "";
-            return $"{CombatantRow.Compact(perCast)}/cast · {kind}{targets}";
+            var dot = Mined.TicksPerCast >= 1.8 ? $" · DoT ×{Mined.TicksPerCast:0.#} ticks" : "";
+            return $"{CombatantRow.Compact(perCast)}/cast · {kind}{targets}{dot}";
         }
     }
 

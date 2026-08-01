@@ -22,6 +22,7 @@ public sealed record MinedAbility(
     double SwipeCoverage,
     long TotalDamage,
     double AvgTargets,
+    double TicksPerCast,
     bool IsMelee);
 
 /// <summary>A mob and its mined abilities.</summary>
@@ -36,9 +37,16 @@ public sealed record MinedMob(string Zone, string Mob, IReadOnlyList<MinedAbilit
 /// </summary>
 public static class AbilityMiner
 {
-    /// <summary>Hits within this window of the previous hit belong to the
-    /// same cast (multi-target landing + a tick of lag).</summary>
+    /// <summary>Hits within this window of the previous hit are one VOLLEY
+    /// (multi-target landing + a tick of lag).</summary>
     private static readonly TimeSpan CastCluster = TimeSpan.FromSeconds(2);
+
+    /// <summary>Volleys within this window of the previous volley are the
+    /// same APPLICATION — a DoT's tick series, not fresh casts (ACT's
+    /// sub-timer window, mirrored). Recast is measured between application
+    /// starts; the trade-off is that true recasts under ~12 s can't be
+    /// measured, and aren't timer material anyway.</summary>
+    private static readonly TimeSpan ApplicationChain = TimeSpan.FromSeconds(12);
 
     public static List<MinedMob> MineZone(HistoryService history, string zone)
     {
@@ -46,7 +54,7 @@ public static class AbilityMiner
         // swiped windows) — windows travel with the fight for normalization.
         Dictionary<(string Mob, string Ability), List<(List<DateTimeOffset> Casts, List<(DateTimeOffset Start, DateTimeOffset End)> Swiped, double Fraction)>> castsPerFight =
             new();
-        Dictionary<(string Mob, string Ability), (long Damage, int Hits, int Casts, HashSet<long> FightIds, bool Melee)> stats =
+        Dictionary<(string Mob, string Ability), (long Damage, int Hits, int Volleys, int Casts, HashSet<long> FightIds, bool Melee)> stats =
             new();
 
         foreach (var (summary, swings, enemies) in history.EnumerateArchivedFights(zone))
@@ -88,35 +96,46 @@ public static class AbilityMiner
 
             foreach (var ((mob, ability), hits) in byAbility)
             {
-                // Cluster hits into casts.
+                // Level 1: hits → volleys. Level 2: volleys → applications
+                // (a DoT's ticks chain into ONE application).
                 hits.Sort((a, b) => a.Time.CompareTo(b.Time));
-                List<DateTimeOffset> castStarts = [];
-                var castTargets = 0;
+                List<DateTimeOffset> volleyStarts = [];
+                var targets = 0;
                 long damage = 0;
                 var melee = true;
                 DateTimeOffset? lastHit = null;
                 foreach (var hit in hits)
                 {
                     if (lastHit is null || hit.Time - lastHit.Value > CastCluster)
-                        castStarts.Add(hit.Time);
+                        volleyStarts.Add(hit.Time);
                     lastHit = hit.Time;
-                    castTargets++;
+                    targets++;
                     damage += Math.Max(0, hit.Damage.Number);
                     if (hit.Category != SwingCategory.Melee)
                         melee = false;
+                }
+
+                List<DateTimeOffset> applicationStarts = [];
+                DateTimeOffset? previousVolley = null;
+                foreach (var volley in volleyStarts)
+                {
+                    if (previousVolley is null || volley - previousVolley.Value > ApplicationChain)
+                        applicationStarts.Add(volley);
+                    previousVolley = volley;
                 }
 
                 var key = (mob, ability);
                 if (!castsPerFight.TryGetValue(key, out var fights))
                     castsPerFight[key] = fights = [];
                 var mobSwipes = swiped.TryGetValue(mob, out var sw) ? sw : ([], 0.5);
-                fights.Add((castStarts, mobSwipes.Windows, mobSwipes.Fraction));
+                fights.Add((applicationStarts, mobSwipes.Windows, mobSwipes.Fraction));
                 var s = stats.TryGetValue(key, out var existing)
                     ? existing
-                    : (0, 0, 0, [], melee);
+                    : (0, 0, 0, 0, [], melee);
                 s.Damage += damage;
-                s.Hits += castTargets;
-                s.Casts += castStarts.Count;
+                s.Hits += targets;
+                s.Volleys += volleyStarts.Count;
+                s.Casts += applicationStarts.Count;
                 s.FightIds.Add(summary.Id);
                 s.Melee &= melee;
                 stats[key] = s;
@@ -157,7 +176,8 @@ public static class AbilityMiner
                 baseIntervals.Count > 0 ? baseIntervals[baseIntervals.Count / 2] : null,
                 totalTime > 0 ? swipedTime / totalTime : 0,
                 s.Damage,
-                s.Casts > 0 ? (double)s.Hits / s.Casts : 0,
+                s.Volleys > 0 ? (double)s.Hits / s.Volleys : 0,
+                s.Casts > 0 ? (double)s.Volleys / s.Casts : 0,
                 s.Melee);
             if (!mobs.TryGetValue(mob, out var list))
                 mobs[mob] = list = [];
