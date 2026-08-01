@@ -239,6 +239,14 @@ public class TriggerEngineTests
             Grammar.EnglishGrammar.TryParse("An Awakened trial servant is no longer stunned."));
         Assert.Equal("stunned", release.Ability);
         Assert.Equal("released", release.DamageType);
+
+        // Effect-specific flavours found in the 1.2 GB archive sweep.
+        Assert.Equal("frozen", Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("A charred diviner is briefly frozen in place!")).Ability);
+        Assert.Equal("terrified", Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("Claw looks terrified!")).Ability);
+        Assert.Equal("gloomy", Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("Slaverjaw is consumed by gloom!")).Ability);
     }
 
     [Fact]

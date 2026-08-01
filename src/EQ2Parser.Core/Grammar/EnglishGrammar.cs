@@ -138,6 +138,19 @@ public static partial class EnglishGrammar
     [GeneratedRegex(@"^(?<victim>.+?) is (?:totally )?(?<effect>stunned|mesmerized|stupified|confused|unnerved|dazzled|gloomy|afraid|feared|disoriented|seared|dazed|rooted|snared)(?: by .+?)?!$")]
     private static partial Regex StatusApplied();
 
+    // Effect-specific apply flavours (real Wuoshi log shapes):
+    // A charred diviner is briefly frozen in place!   → frozen (root)
+    // Claw looks terrified!                           → terrified (fear)
+    // Slaverjaw is consumed by gloom!                 → gloomy
+    [GeneratedRegex(@"^(?<victim>.+?) is briefly frozen in place!$")]
+    private static partial Regex StatusFrozen();
+
+    [GeneratedRegex(@"^(?<victim>.+?) looks terrified!$")]
+    private static partial Regex StatusTerrified();
+
+    [GeneratedRegex(@"^(?<victim>.+?) is consumed by gloom!$")]
+    private static partial Regex StatusGloom();
+
     [GeneratedRegex(@"^(?<victim>.+?) is no longer (?<effect>[a-z]+)\.$")]
     private static partial Regex StatusReleased();
 
@@ -222,11 +235,20 @@ public static partial class EnglishGrammar
             return Cure(m, You);
         if ((m = CureRelieves().Match(message)).Success)
             return Cure(m, m.Groups["attacker"].Value);
-        if (message.EndsWith('!') && (m = StatusApplied().Match(message)).Success)
-            return Status(m, applied: true);
+        if (message.EndsWith('!'))
+        {
+            if ((m = StatusApplied().Match(message)).Success)
+                return Status(m.Groups["victim"].Value, m.Groups["effect"].Value, applied: true);
+            if ((m = StatusFrozen().Match(message)).Success)
+                return Status(m.Groups["victim"].Value, "frozen", applied: true);
+            if ((m = StatusTerrified().Match(message)).Success)
+                return Status(m.Groups["victim"].Value, "terrified", applied: true);
+            if ((m = StatusGloom().Match(message)).Success)
+                return Status(m.Groups["victim"].Value, "gloomy", applied: true);
+        }
         if (message.Contains(" is no longer ", StringComparison.Ordinal)
             && (m = StatusReleased().Match(message)).Success)
-            return Status(m, applied: false);
+            return Status(m.Groups["victim"].Value, m.Groups["effect"].Value, applied: false);
         if ((m = YouKilled().Match(message)).Success)
             return new DeathEvent(You, m.Groups["victim"].Value);
         if ((m = AlasDied().Match(message)).Success)
@@ -314,14 +336,14 @@ public static partial class EnglishGrammar
         Victim: m.Groups["victim"].Value,
         DamageType: m.Groups["direction"].Value == "reduces" ? "threat-reduce" : "threat");
 
-    private static SwingEvent Status(Match m, bool applied) => new(
+    private static SwingEvent Status(string victim, string effect, bool applied) => new(
         SwingCategory.StatusEffect,
         Critical: false,
         Special: "None",
         Attacker: "Unknown", // the line never names a source
-        Ability: m.Groups["effect"].Value,
+        Ability: effect,
         Damage: DamageValue.NoDamage,
-        Victim: m.Groups["victim"].Value,
+        Victim: victim,
         DamageType: applied ? "applied" : "released");
 
     private static SwingEvent Cure(Match m, string attacker) => new(
