@@ -6,6 +6,10 @@
              xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF">
     <UserControl.Resources>
         <views:BarWidthConverter x:Key="BarWidth" />
+        <views:ColumnWidthConverter x:Key="ColWidth" />
+        <!-- Carries the VM into ColumnDefinitions (no visual-tree DataContext
+             inside the row template) so header + rows collapse columns together. -->
+        <views:BindingProxy x:Key="ColsProxy" Data="{Binding Columns}" />
 
         <!-- Column widths shared by header + rows. Name stretches. -->
         <Style x:Key="HeaderButton" TargetType="Button">
@@ -77,35 +81,95 @@
                 <Grid Margin="8,0" VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="118" />
-                        <ColumnDefinition Width="56" />
-                        <ColumnDefinition Width="82" />
-                        <ColumnDefinition Width="44" />
-                        <ColumnDefinition Width="82" />
-                        <ColumnDefinition Width="82" />
-                        <ColumnDefinition Width="82" />
-                        <ColumnDefinition Width="50" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Class].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=118}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Time].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=56}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Damage].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=82}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Percent].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=44}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Dps].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=82}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Hps].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=82}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Heals].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=82}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[CritHeals].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=76}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Cures].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=56}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[PowerDrain].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=78}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[PowerRep].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=70}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Swings].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=62}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Hits].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=52}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Crits].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=54}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Misses].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=50}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Avoids].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=56}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[ToHit].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=60}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[CritPct].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=56}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Taken].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=82}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[HealsTaken].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=80}" />
+                        <ColumnDefinition Width="{Binding Data.ByKey[Deaths].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=50}" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextBrush}"
                                FontFamily="{StaticResource BodySemiBoldFont}" FontSize="13.5"
                                TextTrimming="CharacterEllipsis" />
                     <TextBlock Grid.Column="1" Text="{Binding ClassName}" Foreground="{Binding ClassBrush}"
                                FontFamily="{StaticResource BodyFont}" FontSize="12.5" VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis" />
+                               TextTrimming="CharacterEllipsis"
+                               Visibility="{Binding Data.ByKey[Class].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
                     <TextBlock Grid.Column="2" Text="{Binding Duration}" Foreground="{StaticResource TextMutedBrush}"
-                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right" />
+                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Time].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
                     <TextBlock Grid.Column="3" Text="{Binding Damage}" Foreground="{StaticResource TextBrush}"
-                               FontFamily="{StaticResource BodyFont}" FontSize="13" TextAlignment="Right" />
+                               FontFamily="{StaticResource BodyFont}" FontSize="13" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Damage].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
                     <TextBlock Grid.Column="4" Text="{Binding Percent}" Foreground="{StaticResource TextMutedBrush}"
-                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right" />
+                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Percent].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
                     <TextBlock Grid.Column="5" Text="{Binding Dps}" Foreground="{StaticResource GoldBrightBrush}"
-                               FontFamily="{StaticResource BodySemiBoldFont}" FontSize="13.5" TextAlignment="Right" />
+                               FontFamily="{StaticResource BodySemiBoldFont}" FontSize="13.5" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Dps].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
                     <TextBlock Grid.Column="6" Text="{Binding Hps}" Foreground="{StaticResource SuccessBrush}"
-                               FontFamily="{StaticResource BodyFont}" FontSize="13" TextAlignment="Right" />
-                    <TextBlock Grid.Column="7" Text="{Binding Taken}" Foreground="{StaticResource TextMutedBrush}"
-                               FontFamily="{StaticResource BodyFont}" FontSize="12.5" TextAlignment="Right" />
-                    <TextBlock Grid.Column="8" Text="{Binding Deaths}" Foreground="{StaticResource DangerBrush}"
-                               FontFamily="{StaticResource BodyFont}" FontSize="12.5" TextAlignment="Right" />
+                               FontFamily="{StaticResource BodyFont}" FontSize="13" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Hps].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="7" Text="{Binding Heals}" Foreground="{StaticResource SuccessBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12.5" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Heals].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="8" Text="{Binding CritHeals}" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[CritHeals].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="9" Text="{Binding Cures}" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Cures].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="10" Text="{Binding PowerDrain}" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[PowerDrain].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="11" Text="{Binding PowerRep}" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[PowerRep].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="12" Text="{Binding Swings}" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Swings].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="13" Text="{Binding Hits}" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Hits].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="14" Text="{Binding Crits}" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Crits].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="15" Text="{Binding Misses}" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Misses].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="16" Text="{Binding Avoids}" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Avoids].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="17" Text="{Binding ToHit}" Foreground="{StaticResource TextBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[ToHit].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="18" Text="{Binding CritPct}" Foreground="{StaticResource TextBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[CritPct].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="19" Text="{Binding Taken}" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12.5" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Taken].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="20" Text="{Binding HealsTaken}" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12.5" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[HealsTaken].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Grid.Column="21" Text="{Binding Deaths}" Foreground="{StaticResource DangerBrush}"
+                               FontFamily="{StaticResource BodyFont}" FontSize="12.5" TextAlignment="Right"
+                               Visibility="{Binding Data.ByKey[Deaths].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
                 </Grid>
             </Grid>
             <DataTemplate.Triggers>
@@ -237,50 +301,143 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Breadcrumb -->
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                <TextBlock Text="{Binding Breadcrumb}" Foreground="{StaticResource GoldBrightBrush}"
-                           FontFamily="{StaticResource HeadingFont}" FontSize="15"
-                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                <Border Margin="10,0,0,0" VerticalAlignment="Center" CornerRadius="99"
-                        Background="#334ADE80" Padding="8,2"
-                        Visibility="{Binding InCombat, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="LIVE" FontSize="10" Foreground="{StaticResource SuccessBrush}"
-                               FontFamily="{StaticResource BodySemiBoldFont}" />
-                </Border>
-            </StackPanel>
+            <!-- Breadcrumb + column picker -->
+            <Grid Margin="0,0,0,10">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,120,0">
+                    <TextBlock Text="{Binding Breadcrumb}" Foreground="{StaticResource GoldBrightBrush}"
+                               FontFamily="{StaticResource HeadingFont}" FontSize="15"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <Border Margin="10,0,0,0" VerticalAlignment="Center" CornerRadius="99"
+                            Background="#334ADE80" Padding="8,2"
+                            Visibility="{Binding InCombat, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="LIVE" FontSize="10" Foreground="{StaticResource SuccessBrush}"
+                                   FontFamily="{StaticResource BodySemiBoldFont}" />
+                    </Border>
+                </StackPanel>
+                <ToggleButton x:Name="ColumnsToggle" Style="{StaticResource PillToggle}"
+                              Content="☰ COLUMNS" HorizontalAlignment="Right" VerticalAlignment="Center"
+                              PreviewMouseLeftButtonDown="ColumnsToggle_PreviewMouseLeftButtonDown" />
+                <Popup x:Name="ColumnsPopup" PlacementTarget="{Binding ElementName=ColumnsToggle}"
+                       Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
+                       HorizontalOffset="-160" VerticalOffset="6"
+                       IsOpen="{Binding IsChecked, ElementName=ColumnsToggle, Mode=TwoWay}">
+                    <Border Background="{StaticResource SurfaceRaisedBrush}" BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="14,12">
+                        <StackPanel>
+                            <TextBlock Text="ENCOUNTER COLUMNS" Style="{StaticResource SectionLabel}" Margin="0,0,0,8" />
+                            <ItemsControl ItemsSource="{Binding Columns.Toggles}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="2" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Content="{Binding Label}" IsChecked="{Binding Visible}"
+                                                  Margin="0,3,16,3" Foreground="{StaticResource TextBrush}"
+                                                  FontFamily="{StaticResource BodyFont}" FontSize="12.5" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="Reset to default" Style="{StaticResource GoldButton}"
+                                    Margin="0,10,0,0" HorizontalAlignment="Left"
+                                    Command="{Binding Columns.ResetCommand}" />
+                        </StackPanel>
+                    </Border>
+                </Popup>
+            </Grid>
 
             <!-- Column headers -->
             <Grid Grid.Row="1" Margin="8,0,26,4">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="118" />
-                    <ColumnDefinition Width="56" />
-                    <ColumnDefinition Width="82" />
-                    <ColumnDefinition Width="44" />
-                    <ColumnDefinition Width="82" />
-                    <ColumnDefinition Width="82" />
-                    <ColumnDefinition Width="82" />
-                    <ColumnDefinition Width="50" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Class].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=118}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Time].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=56}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Damage].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=82}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Percent].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=44}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Dps].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=82}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Hps].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=82}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Heals].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=82}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[CritHeals].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=76}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Cures].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=56}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[PowerDrain].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=78}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[PowerRep].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=70}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Swings].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=62}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Hits].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=52}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Crits].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=54}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Misses].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=50}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Avoids].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=56}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[ToHit].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=60}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[CritPct].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=56}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Taken].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=82}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[HealsTaken].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=80}" />
+                    <ColumnDefinition Width="{Binding Data.ByKey[Deaths].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=50}" />
                 </Grid.ColumnDefinitions>
                 <Button Content="NAME" Style="{StaticResource HeaderButton}" HorizontalContentAlignment="Left"
                         Command="{Binding SortByCommand}" CommandParameter="Name" />
                 <Button Grid.Column="1" Content="CLASS" Style="{StaticResource HeaderButton}" HorizontalContentAlignment="Left"
-                        Command="{Binding SortByCommand}" CommandParameter="Class" />
+                        Command="{Binding SortByCommand}" CommandParameter="Class"
+                        Visibility="{Binding Data.ByKey[Class].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
                 <Button Grid.Column="2" Content="TIME" Style="{StaticResource HeaderButton}"
-                        Command="{Binding SortByCommand}" CommandParameter="Duration" />
+                        Command="{Binding SortByCommand}" CommandParameter="Duration"
+                        Visibility="{Binding Data.ByKey[Time].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
                 <Button Grid.Column="3" Content="DAMAGE" Style="{StaticResource HeaderButton}"
-                        Command="{Binding SortByCommand}" CommandParameter="Damage" />
+                        Command="{Binding SortByCommand}" CommandParameter="Damage"
+                        Visibility="{Binding Data.ByKey[Damage].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
                 <Button Grid.Column="4" Content="%" Style="{StaticResource HeaderButton}"
-                        Command="{Binding SortByCommand}" CommandParameter="Damage" />
+                        Command="{Binding SortByCommand}" CommandParameter="Damage"
+                        Visibility="{Binding Data.ByKey[Percent].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
                 <Button Grid.Column="5" Content="ENCDPS" Style="{StaticResource HeaderButton}"
-                        Command="{Binding SortByCommand}" CommandParameter="Dps" />
+                        Command="{Binding SortByCommand}" CommandParameter="Dps"
+                        Visibility="{Binding Data.ByKey[Dps].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
                 <Button Grid.Column="6" Content="ENCHPS" Style="{StaticResource HeaderButton}"
-                        Command="{Binding SortByCommand}" CommandParameter="Hps" />
-                <Button Grid.Column="7" Content="TAKEN" Style="{StaticResource HeaderButton}"
-                        Command="{Binding SortByCommand}" CommandParameter="Taken" />
-                <Button Grid.Column="8" Content="DEATHS" Style="{StaticResource HeaderButton}"
-                        Command="{Binding SortByCommand}" CommandParameter="Deaths" />
+                        Command="{Binding SortByCommand}" CommandParameter="Hps"
+                        Visibility="{Binding Data.ByKey[Hps].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="7" Content="HEALS" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="Heals"
+                        Visibility="{Binding Data.ByKey[Heals].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="8" Content="CRITHEAL" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="CritHeals"
+                        Visibility="{Binding Data.ByKey[CritHeals].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="9" Content="CURES" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="Cures"
+                        Visibility="{Binding Data.ByKey[Cures].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="10" Content="PWR DRN" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="PowerDrain"
+                        Visibility="{Binding Data.ByKey[PowerDrain].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="11" Content="PWR REP" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="PowerRep"
+                        Visibility="{Binding Data.ByKey[PowerRep].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="12" Content="SWINGS" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="Swings"
+                        Visibility="{Binding Data.ByKey[Swings].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="13" Content="HITS" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="Hits"
+                        Visibility="{Binding Data.ByKey[Hits].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="14" Content="CRITS" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="Crits"
+                        Visibility="{Binding Data.ByKey[Crits].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="15" Content="MISS" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="Misses"
+                        Visibility="{Binding Data.ByKey[Misses].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="16" Content="AVOID" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="Avoids"
+                        Visibility="{Binding Data.ByKey[Avoids].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="17" Content="TOHIT%" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="ToHit"
+                        Visibility="{Binding Data.ByKey[ToHit].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="18" Content="CRIT%" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="CritPct"
+                        Visibility="{Binding Data.ByKey[CritPct].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="19" Content="TAKEN" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="Taken"
+                        Visibility="{Binding Data.ByKey[Taken].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="20" Content="H.TAKEN" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="HealsTaken"
+                        Visibility="{Binding Data.ByKey[HealsTaken].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
+                <Button Grid.Column="21" Content="DEATHS" Style="{StaticResource HeaderButton}"
+                        Command="{Binding SortByCommand}" CommandParameter="Deaths"
+                        Visibility="{Binding Data.ByKey[Deaths].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
             </Grid>
 
             <!-- Allies, then pets/enemies flowing directly beneath the last

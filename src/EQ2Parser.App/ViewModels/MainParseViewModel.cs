@@ -114,6 +114,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     /// <summary>Exposed for view-owned windows (the Archive).</summary>
     public SourceManager Manager => manager;
 
+    /// <summary>ACT-style configurable encounter-grid columns.</summary>
+    public EncounterColumnsVm Columns { get; } = new(manager);
+
     private object? _pinnedFight;
     private (int HistoryCount, bool AnyActive) _treeSignature = (-1, false);
 
@@ -1901,7 +1904,42 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     private sealed record RowData(
         string Key, string Name, string Cls, System.Windows.Media.Brush Brush, bool IsPet,
-        double Seconds, long Damage, double Dps, double Hps, long Taken, int Deaths);
+        double Seconds, long Damage, double Dps, double Hps, long Taken, int Deaths,
+        ExtStats? Ext = null);
+
+    /// <summary>Stats behind the opt-in columns — computed from the swing
+    /// buckets only while one of those columns is visible.</summary>
+    private sealed record ExtStats(
+        long Healed, int CritHeals, int Cures, long PowerDrain, long PowerRep,
+        int Swings, int Hits, int Crits, int Misses, int Avoids, long HealsTaken);
+
+    private ExtStats? ExtOf(Combatant combatant)
+    {
+        if (!Columns.Extended)
+            return null;
+        var damage = combatant.OutgoingBuckets.GetValueOrDefault(BucketConfig.OutgoingDamage)
+            ?.Abilities.GetValueOrDefault(Bucket.AllAbility);
+        var heals = combatant.OutgoingBuckets.GetValueOrDefault(BucketConfig.HealedOut)
+            ?.Abilities.GetValueOrDefault(Bucket.AllAbility);
+        return new ExtStats(
+            combatant.Healed, heals?.CritHits ?? 0, combatant.CureDispels,
+            combatant.PowerDamage, combatant.PowerReplenish,
+            damage?.SwingCount ?? 0, damage?.Hits ?? 0, damage?.CritHits ?? 0,
+            damage?.Misses ?? 0, damage?.Avoids ?? 0, combatant.HealsTaken);
+    }
+
+    private static ExtStats? SumExt(ExtStats? a, ExtStats? b) =>
+        a is null ? b : b is null ? a : new ExtStats(
+            a.Healed + b.Healed, a.CritHeals + b.CritHeals, a.Cures + b.Cures,
+            a.PowerDrain + b.PowerDrain, a.PowerRep + b.PowerRep,
+            a.Swings + b.Swings, a.Hits + b.Hits, a.Crits + b.Crits,
+            a.Misses + b.Misses, a.Avoids + b.Avoids, a.HealsTaken + b.HealsTaken);
+
+    private static double ToHitOf(RowData row) =>
+        row.Ext is { Swings: > 0 } ext ? (double)ext.Hits / ext.Swings : 0;
+
+    private static double CritPctOf(RowData row) =>
+        row.Ext is { Hits: > 0 } ext ? (double)ext.Crits / ext.Hits : 0;
 
     private void RefreshGrid()
     {
@@ -2774,7 +2812,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 combatant.Key, combatant.Name, tag,
                 combatant.Duration.TotalSeconds, combatant.Damage,
                 encounter.EncDpsOf(combatant), encounter.EncHpsOf(combatant),
-                combatant.DamageTaken, combatant.Deaths);
+                combatant.DamageTaken, combatant.Deaths, ExtOf(combatant));
             BucketRow(tag, row, allies, pets, enemies);
         }
     }
@@ -2796,7 +2834,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 key, combatant.Name, tag,
                 combatant.Duration.TotalSeconds, combatant.Damage,
                 combatant.Damage / seconds, combatant.Healed / seconds,
-                combatant.DamageTaken, combatant.Deaths);
+                combatant.DamageTaken, combatant.Deaths, ExtOf(combatant));
             BucketRow(tag, row, allies, pets, enemies);
         }
     }
@@ -2808,7 +2846,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     private void SnapshotAggregate(AggregateFights aggregate, List<RowData> allies, List<RowData> pets, List<RowData> enemies)
     {
         var totalSeconds = Math.Max(1, SumDuration(aggregate.Fights).TotalSeconds);
-        var acc = new Dictionary<string, (string Name, CombatantTag Tag, double Seconds, long Damage, long Healed, long Taken, int Deaths)>(StringComparer.Ordinal);
+        var acc = new Dictionary<string, (string Name, CombatantTag Tag, double Seconds, long Damage, long Healed, long Taken, int Deaths, ExtStats? Ext)>(StringComparer.Ordinal);
 
         foreach (var fight in aggregate.Fights)
         {
@@ -2830,13 +2868,15 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                         existing.Damage + combatant.Damage,
                         existing.Healed + combatant.Healed,
                         existing.Taken + combatant.DamageTaken,
-                        existing.Deaths + combatant.Deaths);
+                        existing.Deaths + combatant.Deaths,
+                        SumExt(existing.Ext, ExtOf(combatant)));
                 }
                 else
                 {
                     acc[key] = (combatant.Name, tag,
                         combatant.Duration.TotalSeconds, combatant.Damage,
-                        combatant.Healed, combatant.DamageTaken, combatant.Deaths);
+                        combatant.Healed, combatant.DamageTaken, combatant.Deaths,
+                        ExtOf(combatant));
                 }
             }
         }
@@ -2847,7 +2887,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 key, entry.Name, entry.Tag,
                 entry.Seconds, entry.Damage,
                 entry.Damage / totalSeconds, entry.Healed / totalSeconds,
-                entry.Taken, entry.Deaths);
+                entry.Taken, entry.Deaths, entry.Ext);
             BucketRow(entry.Tag, row, allies, pets, enemies);
         }
     }
@@ -2865,14 +2905,15 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     private static RowData BuildRow(
         string key, string name, CombatantTag tag,
-        double seconds, long damage, double dps, double hps, long taken, int deaths)
+        double seconds, long damage, double dps, double hps, long taken, int deaths,
+        ExtStats? ext = null)
     {
         var isPet = tag.Kind == CombatantKind.Pet;
         var cls = isPet
             ? (tag.PetOwner is not null ? $"pet · {tag.PetOwner}" : "pet")
             : tag.Class.ClassName ?? "";
         var brush = isPet ? ClassColors.Neutral : ClassColors.For(tag.Class.ClassName);
-        return new RowData(key, name, cls, brush, isPet, seconds, damage, dps, hps, taken, deaths);
+        return new RowData(key, name, cls, brush, isPet, seconds, damage, dps, hps, taken, deaths, ext);
     }
 
     private List<RowData> Sort(List<RowData> rows)
@@ -2886,6 +2927,19 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             "Hps" => (a, b) => a.Hps.CompareTo(b.Hps),
             "Taken" => (a, b) => a.Taken.CompareTo(b.Taken),
             "Deaths" => (a, b) => a.Deaths.CompareTo(b.Deaths),
+            "Heals" => (a, b) => (a.Ext?.Healed ?? 0).CompareTo(b.Ext?.Healed ?? 0),
+            "CritHeals" => (a, b) => (a.Ext?.CritHeals ?? 0).CompareTo(b.Ext?.CritHeals ?? 0),
+            "Cures" => (a, b) => (a.Ext?.Cures ?? 0).CompareTo(b.Ext?.Cures ?? 0),
+            "PowerDrain" => (a, b) => (a.Ext?.PowerDrain ?? 0).CompareTo(b.Ext?.PowerDrain ?? 0),
+            "PowerRep" => (a, b) => (a.Ext?.PowerRep ?? 0).CompareTo(b.Ext?.PowerRep ?? 0),
+            "Swings" => (a, b) => (a.Ext?.Swings ?? 0).CompareTo(b.Ext?.Swings ?? 0),
+            "Hits" => (a, b) => (a.Ext?.Hits ?? 0).CompareTo(b.Ext?.Hits ?? 0),
+            "Crits" => (a, b) => (a.Ext?.Crits ?? 0).CompareTo(b.Ext?.Crits ?? 0),
+            "Misses" => (a, b) => (a.Ext?.Misses ?? 0).CompareTo(b.Ext?.Misses ?? 0),
+            "Avoids" => (a, b) => (a.Ext?.Avoids ?? 0).CompareTo(b.Ext?.Avoids ?? 0),
+            "ToHit" => (a, b) => ToHitOf(a).CompareTo(ToHitOf(b)),
+            "CritPct" => (a, b) => CritPctOf(a).CompareTo(CritPctOf(b)),
+            "HealsTaken" => (a, b) => (a.Ext?.HealsTaken ?? 0).CompareTo(b.Ext?.HealsTaken ?? 0),
             _ => (a, b) => a.Damage.CompareTo(b.Damage),
         };
         rows.Sort(SortDescending ? (a, b) => compare(b, a) : compare);
@@ -2924,6 +2978,20 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             row.Hps = data.Hps > 0 ? CombatantRow.Compact(data.Hps) : "";
             row.Taken = data.Taken > 0 ? CombatantRow.Compact(data.Taken) : "";
             row.Deaths = data.Deaths > 0 ? data.Deaths.ToString() : "";
+            var ext = data.Ext;
+            row.Heals = ext is { Healed: > 0 } ? CombatantRow.Compact(ext.Healed) : "";
+            row.CritHeals = ext is { CritHeals: > 0 } ? ext.CritHeals.ToString("N0") : "";
+            row.Cures = ext is { Cures: > 0 } ? ext.Cures.ToString("N0") : "";
+            row.PowerDrain = ext is { PowerDrain: > 0 } ? CombatantRow.Compact(ext.PowerDrain) : "";
+            row.PowerRep = ext is { PowerRep: > 0 } ? CombatantRow.Compact(ext.PowerRep) : "";
+            row.Swings = ext is { Swings: > 0 } ? ext.Swings.ToString("N0") : "";
+            row.Hits = ext is { Hits: > 0 } ? ext.Hits.ToString("N0") : "";
+            row.Crits = ext is { Crits: > 0 } ? ext.Crits.ToString("N0") : "";
+            row.Misses = ext is { Misses: > 0 } ? ext.Misses.ToString("N0") : "";
+            row.Avoids = ext is { Avoids: > 0 } ? ext.Avoids.ToString("N0") : "";
+            row.ToHit = ext is { Swings: > 0 } ? $"{100.0 * ext.Hits / ext.Swings:F1}%" : "";
+            row.CritPct = ext is { Hits: > 0 } ? $"{100.0 * ext.Crits / ext.Hits:F1}%" : "";
+            row.HealsTaken = ext is { HealsTaken: > 0 } ? CombatantRow.Compact(ext.HealsTaken) : "";
             row.BarFraction = MetricOf(data, metric) / top;
         }
         while (rows.Count > snapshot.Count)

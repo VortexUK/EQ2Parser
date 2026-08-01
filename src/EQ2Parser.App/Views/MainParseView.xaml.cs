@@ -20,6 +20,19 @@ public partial class MainParseView : System.Windows.Controls.UserControl
         };
     }
 
+    private void ColumnsToggle_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        // StaysOpen=False closes the popup on the mousedown, then the click
+        // would re-toggle it straight back open — swallow the click so the
+        // button is a real open/close toggle.
+        if (ColumnsPopup.IsOpen)
+        {
+            ColumnsPopup.IsOpen = false;
+            ColumnsToggle.IsChecked = false;
+            e.Handled = true;
+        }
+    }
+
     private void TreeSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
     {
         if (DataContext is not MainParseViewModel vm)

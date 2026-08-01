@@ -48,6 +48,47 @@ public sealed partial class CombatantRow : ObservableObject
     [ObservableProperty]
     private string _deaths = "";
 
+    // Extended (opt-in) columns — filled only while one of them is visible.
+
+    [ObservableProperty]
+    private string _heals = "";
+
+    [ObservableProperty]
+    private string _critHeals = "";
+
+    [ObservableProperty]
+    private string _cures = "";
+
+    [ObservableProperty]
+    private string _powerDrain = "";
+
+    [ObservableProperty]
+    private string _powerRep = "";
+
+    [ObservableProperty]
+    private string _swings = "";
+
+    [ObservableProperty]
+    private string _hits = "";
+
+    [ObservableProperty]
+    private string _crits = "";
+
+    [ObservableProperty]
+    private string _misses = "";
+
+    [ObservableProperty]
+    private string _avoids = "";
+
+    [ObservableProperty]
+    private string _toHit = "";
+
+    [ObservableProperty]
+    private string _critPct = "";
+
+    [ObservableProperty]
+    private string _healsTaken = "";
+
     /// <summary>0..1 share of the top row's damage — drives the row bar.</summary>
     [ObservableProperty]
     private double _barFraction;
