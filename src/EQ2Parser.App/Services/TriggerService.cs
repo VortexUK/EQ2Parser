@@ -15,7 +15,8 @@ public sealed record TriggerSetting(
     string SoundData,
     bool StartsTimer,
     string TimerName,
-    double CooldownSeconds);
+    double CooldownSeconds,
+    string Zone = "");
 
 /// <summary>
 /// The app-side owner of the trigger system: the persisted definition list
@@ -168,7 +169,7 @@ public sealed class TriggerService
         // rebuild would reset the list's scroll on every checkbox click.
     }
 
-    private static Trigger CloneWith(Trigger t, bool enabled) => new(t.RegexText, t.Category)
+    private static Trigger CloneWith(Trigger t, bool enabled) => new(t.RegexText, t.Category, t.Zone)
     {
         Enabled = enabled,
         RestrictToCategoryZone = t.RestrictToCategoryZone,
@@ -210,7 +211,7 @@ public sealed class TriggerService
             {
                 try
                 {
-                    _definitions.Add(new Trigger(s.Regex, s.Category)
+                    _definitions.Add(new Trigger(s.Regex, s.Category, s.Zone)
                     {
                         Enabled = s.Enabled,
                         RestrictToCategoryZone = s.RestrictToZone,
@@ -241,7 +242,7 @@ public sealed class TriggerService
             List<TriggerSetting> settings = [.. _definitions.Select(t => new TriggerSetting(
                 t.RegexText, t.Category, t.Enabled, t.RestrictToCategoryZone,
                 (int)t.SoundType, t.SoundData, t.StartsTimer, t.TimerName,
-                t.AudioCooldown.TotalSeconds))];
+                t.AudioCooldown.TotalSeconds, t.Zone))];
             File.WriteAllText(FilePath, JsonSerializer.Serialize(settings, JsonOptions));
         }
         catch (Exception)

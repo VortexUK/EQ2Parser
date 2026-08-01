@@ -26,6 +26,7 @@ public sealed partial class TriggerRow : ObservableObject, ICategoryDropTarget
     public string RegexText => Trigger.RegexText;
     public string Category => Trigger.Category;
     public string CategoryName => Trigger.Category;
+    public string Zone => Trigger.Zone;
     public bool ZoneRestricted => Trigger.RestrictToCategoryZone;
 
     public string SoundLabel => Trigger.SoundType switch
@@ -64,12 +65,12 @@ public sealed partial class TriggersViewModel : ObservableObject
     private readonly SourceManager _manager;
     private string? _editingKey;
 
-    /// <summary>Flat virtualized tree: CategoryRow headers with
-    /// TriggerRow children under the expanded ones (same idiom as the
-    /// encounter tree on the Main page).</summary>
+    /// <summary>Flat virtualized tree: ZoneRow → CategoryRow (mob) →
+    /// TriggerRow, same three-level idiom as the Timers page.</summary>
     public ObservableCollection<object> Rows { get; } = [];
     public ObservableCollection<FiredRow> RecentFires { get; } = [];
 
+    private readonly HashSet<string> _collapsedZones = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _expandedCategories = new(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyList<string> SoundChoices { get; } = ["Silent", "Beep", "Play WAV file", "Speak text (TTS)"];
@@ -97,34 +98,64 @@ public sealed partial class TriggersViewModel : ObservableObject
         FilterText.Length == 0
         || trigger.RegexText.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
         || trigger.Category.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
+        || trigger.Zone.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
         || trigger.SoundData.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
+
+    private static string ZoneKey(Trigger trigger) =>
+        trigger.Zone.Length > 0 ? trigger.Zone : "General";
 
     private void RebuildRows()
     {
         Rows.Clear();
         var filtering = FilterText.Length > 0;
-        foreach (var group in _manager.Triggers.Definitions
-                     .GroupBy(t => t.Category, StringComparer.OrdinalIgnoreCase)
+        foreach (var zoneGroup in _manager.Triggers.Definitions
+                     .GroupBy(ZoneKey, StringComparer.OrdinalIgnoreCase)
                      .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
         {
-            List<Trigger> members = [.. group
-                .Where(MatchesFilter)
-                .OrderBy(t => t.RegexText, StringComparer.OrdinalIgnoreCase)];
-            if (members.Count == 0)
+            List<Trigger> zoneMembers = [.. zoneGroup.Where(MatchesFilter)];
+            if (zoneMembers.Count == 0)
                 continue;
-            // A filter opens everything it touches; otherwise remembered state.
-            var expanded = filtering || _expandedCategories.Contains(group.Key);
-            Rows.Add(new CategoryRow(group.Key, expanded)
+            // Zones default OPEN (there are few); categories default closed.
+            var zoneExpanded = filtering || !_collapsedZones.Contains(zoneGroup.Key);
+            Rows.Add(new ZoneRow(zoneGroup.Key, zoneExpanded)
             {
-                Count = members.Count,
-                EnabledCount = members.Count(t => t.Enabled),
+                Count = zoneMembers.Count,
+                EnabledCount = zoneMembers.Count(t => t.Enabled),
             });
-            if (!expanded)
+            if (!zoneExpanded)
                 continue;
-            foreach (var trigger in members)
-                Rows.Add(new TriggerRow(this, trigger));
+            foreach (var group in zoneMembers
+                         .GroupBy(t => t.Category, StringComparer.OrdinalIgnoreCase)
+                         .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                List<Trigger> members = [.. group
+                    .OrderBy(t => t.RegexText, StringComparer.OrdinalIgnoreCase)];
+                var expandKey = $"{zoneGroup.Key}|{group.Key}";
+                // A filter opens everything it touches; otherwise remembered state.
+                var expanded = filtering || _expandedCategories.Contains(expandKey);
+                Rows.Add(new CategoryRow(group.Key, expanded)
+                {
+                    Tag = zoneGroup.Key,
+                    Count = members.Count,
+                    EnabledCount = members.Count(t => t.Enabled),
+                });
+                if (!expanded)
+                    continue;
+                foreach (var trigger in members)
+                    Rows.Add(new TriggerRow(this, trigger));
+            }
         }
         HasTriggers = _manager.Triggers.Definitions.Count > 0;
+    }
+
+    [RelayCommand]
+    private void ToggleZone(ZoneRow? row)
+    {
+        if (row is null)
+            return;
+        if (!_collapsedZones.Add(row.Name))
+            _collapsedZones.Remove(row.Name);
+        RebuildRows();
     }
 
     [RelayCommand]
@@ -132,22 +163,31 @@ public sealed partial class TriggersViewModel : ObservableObject
     {
         if (row is null)
             return;
-        if (!_expandedCategories.Add(row.Name))
-            _expandedCategories.Remove(row.Name);
+        var key = $"{row.Tag}|{row.Name}";
+        if (!_expandedCategories.Add(key))
+            _expandedCategories.Remove(key);
         RebuildRows();
     }
 
-    /// <summary>Drag-and-drop re-file: rebuild the trigger under its new
-    /// category (the category is half the identity key, so this is a keyed
-    /// replace that fans out to every engine and persists).</summary>
-    public void MoveTrigger(TriggerRow row, string targetCategory)
+    /// <summary>Drag-and-drop re-file onto a mob header or one of its rows:
+    /// the trigger adopts the target's category AND zone (both are identity),
+    /// so it lands exactly where it was dropped.</summary>
+    public void MoveTrigger(TriggerRow row, ICategoryDropTarget target)
     {
-        targetCategory = targetCategory.Trim();
-        if (targetCategory.Length == 0
-            || string.Equals(row.Category, targetCategory, StringComparison.OrdinalIgnoreCase))
+        var targetCategory = target.CategoryName.Trim();
+        var targetZone = target switch
+        {
+            CategoryRow header => header.Tag is "General" or null ? "" : header.Tag,
+            TriggerRow other => other.Zone,
+            _ => row.Zone,
+        };
+        if (targetCategory.Length == 0)
             return;
         var current = _manager.Triggers.Definitions.FirstOrDefault(t => t.Key == row.Key) ?? row.Trigger;
-        var moved = new Trigger(current.RegexText, targetCategory)
+        if (string.Equals(current.Category, targetCategory, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(current.Zone, targetZone, StringComparison.OrdinalIgnoreCase))
+            return;
+        var moved = new Trigger(current.RegexText, targetCategory, targetZone)
         {
             Enabled = current.Enabled,
             RestrictToCategoryZone = current.RestrictToCategoryZone,
@@ -158,7 +198,8 @@ public sealed partial class TriggersViewModel : ObservableObject
             AudioCooldown = current.AudioCooldown,
         };
         _manager.Triggers.AddOrUpdate(moved, replaceKey: current.Key);
-        _expandedCategories.Add(targetCategory);
+        _collapsedZones.Remove(targetZone.Length > 0 ? targetZone : "General");
+        _expandedCategories.Add($"{(targetZone.Length > 0 ? targetZone : "General")}|{targetCategory}");
         if (_editingKey == current.Key)
             _editingKey = moved.Key;
         RebuildRows();
@@ -179,14 +220,16 @@ public sealed partial class TriggersViewModel : ObservableObject
     internal void SetRowEnabled(TriggerRow row, bool enabled)
     {
         _manager.Triggers.SetEnabled(row.Key, enabled);
+        var zoneKey = ZoneKey(row.Trigger);
         foreach (var item in Rows)
         {
             if (item is CategoryRow header
-                && header.Name.Equals(row.Category, StringComparison.OrdinalIgnoreCase))
-            {
+                && header.Name.Equals(row.Category, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(header.Tag, zoneKey, StringComparison.OrdinalIgnoreCase))
                 header.EnabledCount += enabled ? 1 : -1;
-                break;
-            }
+            else if (item is ZoneRow zone
+                && zone.Name.Equals(zoneKey, StringComparison.OrdinalIgnoreCase))
+                zone.EnabledCount += enabled ? 1 : -1;
         }
     }
 
@@ -230,6 +273,9 @@ public sealed partial class TriggersViewModel : ObservableObject
     private string _category = "General";
 
     [ObservableProperty]
+    private string _zoneText = "";
+
+    [ObservableProperty]
     private bool _restrictToZone;
 
     [ObservableProperty]
@@ -268,6 +314,7 @@ public sealed partial class TriggersViewModel : ObservableObject
         EditorTitle = "New trigger";
         RegexText = "";
         Category = "General";
+        ZoneText = "";
         RestrictToZone = false;
         SoundChoice = (int)TriggerSound.Tts;
         SoundData = "";
@@ -287,6 +334,7 @@ public sealed partial class TriggersViewModel : ObservableObject
         EditorTitle = "Edit trigger";
         RegexText = t.RegexText;
         Category = t.Category;
+        ZoneText = t.Zone;
         RestrictToZone = t.RestrictToCategoryZone;
         SoundChoice = (int)t.SoundType;
         SoundData = t.SoundData;
@@ -316,7 +364,7 @@ public sealed partial class TriggersViewModel : ObservableObject
         Trigger trigger;
         try
         {
-            trigger = new Trigger(regex, category)
+            trigger = new Trigger(regex, category, ZoneText.Trim())
             {
                 Enabled = true,
                 RestrictToCategoryZone = RestrictToZone,
@@ -334,7 +382,9 @@ public sealed partial class TriggersViewModel : ObservableObject
         }
         _manager.Triggers.AddOrUpdate(trigger, _editingKey);
         _editingKey = null;
-        _expandedCategories.Add(category);
+        var zoneKey = trigger.Zone.Length > 0 ? trigger.Zone : "General";
+        _collapsedZones.Remove(zoneKey);
+        _expandedCategories.Add($"{zoneKey}|{category}");
         NewTrigger();
         RebuildRows();
     }

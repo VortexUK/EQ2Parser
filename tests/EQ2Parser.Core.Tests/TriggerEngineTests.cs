@@ -88,6 +88,35 @@ public class TriggerEngineTests
     }
 
     [Fact]
+    public void Zone_Field_Gates_Instead_Of_Category_When_Set()
+    {
+        // With Zone set, Category is the MOB (not a zone name) — the gate
+        // must test Zone, or a mob-filed restricted trigger never fires.
+        var trigger = new Trigger("Come forth my brethren", "Malkonis D'Morte", "Freethinker Hideout")
+        {
+            RestrictToCategoryZone = true,
+            SoundType = TriggerSound.Beep,
+        };
+        var (engine, fired) = Engine(trigger);
+
+        engine.SetZone("Freethinker Hideout");
+        engine.Process("Come forth my brethren", T0);
+        Assert.Single(fired);
+
+        engine.SetZone("The Emerald Halls");
+        engine.Process("Come forth my brethren", T0.AddSeconds(5));
+        Assert.Single(fired); // gated out — Category alone never matches
+    }
+
+    [Fact]
+    public void Same_Regex_In_Two_Zones_Are_Distinct_Triggers()
+    {
+        var a = new Trigger("Darkened Reflection", "Mayong Mistmoore", "Mistmoore's Inner Sanctum");
+        var b = new Trigger("Darkened Reflection", "Vampire Lord Mayong Mistmoore", "Throne of New Tunaria");
+        Assert.NotEqual(a.Key, b.Key);
+    }
+
+    [Fact]
     public void Timer_Request_Reads_Attacker_And_Victim_Groups()
     {
         var (engine, fired) = Engine(new Trigger(@"(?<attacker>\w+) begins casting Doom on (?<victim>\w+)")

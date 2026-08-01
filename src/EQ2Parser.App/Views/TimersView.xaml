@@ -55,7 +55,7 @@
                         <ListBox.Resources>
                             <!-- Zone header: top level, grouping only (not a
                                  drop target — drops land on mobs). -->
-                            <DataTemplate DataType="{x:Type vm:TimerZoneRow}">
+                            <DataTemplate DataType="{x:Type vm:ZoneRow}">
                                 <Border CornerRadius="4" Margin="0,6,0,1" Padding="8,7" Cursor="Hand"
                                         Background="#2E1C1F2E" BorderBrush="#33C8A96E" BorderThickness="1"
                                         MouseLeftButtonUp="ZoneHeader_Click">

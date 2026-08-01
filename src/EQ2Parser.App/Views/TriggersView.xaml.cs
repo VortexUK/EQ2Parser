@@ -15,7 +15,7 @@ public partial class TriggersView
         _dragDrop = new CategoryDragDrop((dragged, target) =>
         {
             if (DataContext is TriggersViewModel vm && dragged is TriggerRow row)
-                vm.MoveTrigger(row, target.CategoryName);
+                vm.MoveTrigger(row, target);
         });
         DataContextChanged += (_, e) =>
         {
@@ -59,5 +59,12 @@ public partial class TriggersView
         if (DataContext is TriggersViewModel vm
             && (sender as FrameworkElement)?.DataContext is CategoryRow row)
             vm.ToggleCategoryCommand.Execute(row);
+    }
+
+    private void ZoneHeader_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is TriggersViewModel vm
+            && (sender as FrameworkElement)?.DataContext is ZoneRow row)
+            vm.ToggleZoneCommand.Execute(row);
     }
 }

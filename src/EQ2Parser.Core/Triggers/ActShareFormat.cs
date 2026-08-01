@@ -16,6 +16,9 @@ namespace EQ2Parser.Core.Triggers;
 /// The regex attribute uses ACT's extra escaping on top of XML:
 /// # → &amp;#35;, \\ → &amp;#92;&amp;#92;, \s → &amp;#92;s (applied on export,
 /// reversed by standard XML entity decoding on import).
+///
+/// Our one extension on both elements: an optional Z (zone) attribute so
+/// zone-filed triggers/timers round-trip; ACT ignores unknown attributes.
 /// </summary>
 public static class ActShareFormat
 {
@@ -64,7 +67,8 @@ public static class ActShareFormat
             return null;
         try
         {
-            return new Trigger(regex, category)
+            // Z is OUR extension (zone grouping/gate) — ACT ignores it.
+            return new Trigger(regex, category, Attr("Z", "Zone"))
             {
                 // Share snippets carry no enabled state — default on.
                 Enabled = !e.HasAttribute("Active") || Flag(e.GetAttribute("Active")),
@@ -108,6 +112,8 @@ public static class ActShareFormat
         {
             Name = name,
             Category = category,
+            // Z is OUR extension (zone grouping) — ACT ignores it.
+            Zone = Attr("Z", "Zone").Trim(),
             Enabled = !e.HasAttribute("Checked") || IsTrue(e.GetAttribute("Checked")),
             DurationSeconds = IntOr(Attr("T", "Timer"), 30),
             WarningSeconds = IntOr(Attr("WV", "WarningValue"), 10),
@@ -138,6 +144,9 @@ public static class ActShareFormat
         Attr(sb, "T", t.StartsTimer ? "T" : "F");
         Attr(sb, "TN", Escape(t.TimerName));
         Attr(sb, "Ta", "F");
+        // Our extension, emitted last so ACT-focused eyes read the standard
+        // attrs first; ACT ignores attributes it doesn't know.
+        if (t.Zone.Length > 0) Attr(sb, "Z", Escape(t.Zone));
         return sb.Append(" />").ToString();
     }
 
@@ -159,6 +168,7 @@ public static class ActShareFormat
         Attr(sb, "RC", d.RestrictToCategory ? "T" : "F");
         if (d.StartSoundData.Length > 0) Attr(sb, "SS", Escape(d.StartSoundData));
         if (d.WarningSoundData.Length > 0) Attr(sb, "WS", Escape(d.WarningSoundData));
+        if (d.Zone.Length > 0) Attr(sb, "Z", Escape(d.Zone));
         return sb.Append(" />").ToString();
     }
 

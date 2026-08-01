@@ -20,10 +20,11 @@ public enum TriggerSound
 /// </summary>
 public sealed class Trigger
 {
-    public Trigger(string regexText, string? category = null)
+    public Trigger(string regexText, string? category = null, string? zone = null)
     {
         RegexText = regexText;
         Category = string.IsNullOrWhiteSpace(category) ? "General" : category!;
+        Zone = string.IsNullOrWhiteSpace(zone) ? "" : zone!.Trim();
         Pattern = new Regex(regexText, RegexOptions.Compiled | RegexOptions.CultureInvariant);
         PrefilterLiteral = LiteralPrefilter.TryExtract(regexText);
     }
@@ -31,11 +32,24 @@ public sealed class Trigger
     public string RegexText { get; }
     public Regex Pattern { get; }
 
-    /// <summary>Doubles as the zone-restriction scope; default "General".</summary>
+    /// <summary>The mob (or folder) the trigger files under — Zone → Category
+    /// → triggers in the UI, like timers. For plain ACT imports this is also
+    /// the zone-gate text (see <see cref="ZoneScope"/>).</summary>
     public string Category { get; }
 
-    /// <summary>Identity for import/update-in-place, matching ACT's keying.</summary>
-    public string Key => $"{Category}|{RegexText}";
+    /// <summary>Display grouping AND the zone-gate text when set. Empty on
+    /// plain ACT imports, whose Category traditionally holds the zone.</summary>
+    public string Zone { get; }
+
+    /// <summary>What the zone restriction actually tests against the current
+    /// zone name: Zone when present, else Category (ACT back-compat — ACT
+    /// has no Zone field, its restricted triggers put the zone in Category).</summary>
+    public string ZoneScope => Zone.Length > 0 ? Zone : Category;
+
+    /// <summary>Identity for import/update-in-place — zone-qualified like
+    /// timers, so the same regex can exist per zone (a shared boss emote
+    /// with different callouts, or zone-gated copies).</summary>
+    public string Key => $"{Zone}|{Category}|{RegexText}";
 
     /// <summary>Cheap literal gate evaluated before the regex (null = none
     /// extractable, always run the regex). Never produces false negatives.</summary>
@@ -44,7 +58,7 @@ public sealed class Trigger
     public bool Enabled { get; init; } = true;
 
     /// <summary>When set, the trigger is only active while the current zone
-    /// contains <see cref="Category"/> (case-insensitive substring, instance
+    /// contains <see cref="ZoneScope"/> (case-insensitive substring, instance
     /// numbers stripped) — ACT semantics.</summary>
     public bool RestrictToCategoryZone { get; init; }
 

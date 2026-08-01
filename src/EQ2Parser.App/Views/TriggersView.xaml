@@ -55,11 +55,46 @@
                             </Style>
                         </ListBox.ItemContainerStyle>
                         <ListBox.Resources>
-                            <!-- Category header: click to expand/collapse, and
-                                 the drop target when dragging a trigger. -->
+                            <!-- Zone header: top level, grouping only (not a
+                                 drop target — drops land on mobs). -->
+                            <DataTemplate DataType="{x:Type vm:ZoneRow}">
+                                <Border CornerRadius="4" Margin="0,6,0,1" Padding="8,7" Cursor="Hand"
+                                        Background="#2E1C1F2E" BorderBrush="#33C8A96E" BorderThickness="1"
+                                        MouseLeftButtonUp="ZoneHeader_Click">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Width="16" FontSize="11" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource GoldBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="▸" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                            <Setter Property="Text" Value="▾" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="14"
+                                                   FontFamily="{StaticResource HeadingFont}"
+                                                   Foreground="{StaticResource GoldBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center">
+                                            <Run Text="{Binding EnabledCount, Mode=OneWay}" /><Run Text="/" /><Run Text="{Binding Count, Mode=OneWay}" /><Run Text=" on" />
+                                        </TextBlock>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+
+                            <!-- Mob/category header: click to expand/collapse,
+                                 and the drop target when dragging a trigger. -->
                             <DataTemplate DataType="{x:Type vm:CategoryRow}">
                                 <Border Background="{StaticResource SurfaceRaisedBrush}" CornerRadius="4"
-                                        Margin="0,3,0,1" Padding="8,6" AllowDrop="True" Cursor="Hand"
+                                        Margin="14,3,0,1" Padding="8,6" AllowDrop="True" Cursor="Hand"
                                         MouseLeftButtonUp="CategoryHeader_Click"
                                         DragOver="DropTarget_DragOver" DragLeave="DropTarget_DragLeave" Drop="DropTarget_Drop">
                                     <Border.Style>
@@ -109,7 +144,7 @@
                                  flashes after landing from a move. -->
                             <DataTemplate DataType="{x:Type vm:TriggerRow}">
                                 <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
-                                        Padding="4,8,8,8" Margin="16,0,0,0" AllowDrop="True"
+                                        Padding="4,8,8,8" Margin="30,0,0,0" AllowDrop="True"
                                         DragOver="DropTarget_DragOver" DragLeave="DropTarget_DragLeave" Drop="DropTarget_Drop">
                                     <Border.Style>
                                         <Style TargetType="Border">
@@ -194,17 +229,22 @@
                         <Grid Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock Text="Category / zone" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="Groups the trigger in the tree; with 'only in this zone' ticked it also becomes the zone gate." />
+                            <StackPanel Margin="0,0,5,0">
+                                <TextBlock Text="Zone" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="Files the trigger under this zone in the tree, and is the gate text for 'only in this zone'.&#10;Leave blank for anywhere-triggers (they file under General)." />
+                                <TextBox Text="{Binding ZoneText, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                                <TextBlock Text="Category (mob)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="The boss/mob the trigger belongs to — Zone → Mob → triggers in the tree, like timers." />
                                 <TextBox Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
                             </StackPanel>
-                            <CheckBox Grid.Column="1" Content="only in this zone" IsChecked="{Binding RestrictToZone}"
-                                      VerticalAlignment="Bottom" Margin="10,0,0,6" FontSize="12"
-                                      ToolTip="Fire only while the current zone's name contains the category text (ACT semantics).&#10;E.g. category 'Emerald Halls' keeps a Wuoshi call quiet everywhere else — so a same-worded emote on trash in another zone can't trip it." />
                         </Grid>
+
+                        <CheckBox Content="only in this zone" IsChecked="{Binding RestrictToZone}" Margin="0,8,0,0" FontSize="12"
+                                  ToolTip="Fire only while the current zone's name contains the Zone text (or the Category, for plain ACT imports with no Zone — ACT semantics).&#10;E.g. Zone 'Emerald Halls' keeps a Wuoshi call quiet everywhere else — a same-worded emote on trash in another zone can't trip it." />
 
                         <Grid Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>

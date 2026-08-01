@@ -9,22 +9,6 @@ using Trigger = EQ2Parser.Core.Triggers.Trigger;
 
 namespace EQ2Parser.App.ViewModels;
 
-/// <summary>Top-level zone header in the timer tree — grouping only,
-/// deliberately NOT a drop target (drops land on mobs or their rows).</summary>
-public sealed partial class TimerZoneRow(string name, bool expanded) : ObservableObject
-{
-    public string Name { get; } = name;
-
-    [ObservableProperty]
-    private int _count;
-
-    [ObservableProperty]
-    private int _enabledCount;
-
-    [ObservableProperty]
-    private bool _isExpanded = expanded;
-}
-
 /// <summary>One timer definition in the list. Enabled is live — the
 /// checkbox pushes straight through to the shared timer service.</summary>
 public sealed partial class TimerDefRow : ObservableObject, ICategoryDropTarget
@@ -170,7 +154,7 @@ public sealed partial class TimersViewModel : ObservableObject
                 continue;
             // Zones default OPEN (there are few); mobs default closed.
             var zoneExpanded = filtering || !_collapsedZones.Contains(zoneGroup.Key);
-            Rows.Add(new TimerZoneRow(zoneGroup.Key, zoneExpanded)
+            Rows.Add(new ZoneRow(zoneGroup.Key, zoneExpanded)
             {
                 Count = zoneMembers.Count,
                 EnabledCount = zoneMembers.Count(d => d.Enabled),
@@ -201,7 +185,7 @@ public sealed partial class TimersViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ToggleZone(TimerZoneRow? row)
+    private void ToggleZone(ZoneRow? row)
     {
         if (row is null)
             return;
@@ -270,7 +254,7 @@ public sealed partial class TimersViewModel : ObservableObject
                 && header.Name.Equals(row.Category, StringComparison.OrdinalIgnoreCase)
                 && string.Equals(header.Tag, zoneKey, StringComparison.OrdinalIgnoreCase))
                 header.EnabledCount += enabled ? 1 : -1;
-            else if (item is TimerZoneRow zone
+            else if (item is ZoneRow zone
                 && zone.Name.Equals(zoneKey, StringComparison.OrdinalIgnoreCase))
                 zone.EnabledCount += enabled ? 1 : -1;
         }

@@ -78,8 +78,8 @@ public sealed class TriggerEngine(string ownerName)
         _active = _all.Values
             .Where(t => t.Enabled &&
                         (!t.RestrictToCategoryZone
-                         || zone.Contains(t.Category, StringComparison.OrdinalIgnoreCase)
-                         || _zone.Contains(t.Category, StringComparison.OrdinalIgnoreCase)))
+                         || zone.Contains(t.ZoneScope, StringComparison.OrdinalIgnoreCase)
+                         || _zone.Contains(t.ZoneScope, StringComparison.OrdinalIgnoreCase)))
             .ToArray();
     }
 

@@ -79,6 +79,22 @@ public class ActShareFormatTests
     }
 
     [Fact]
+    public void Zone_Round_Trips_On_Both_Elements_Via_Z_Attribute()
+    {
+        // Z is our extension — ACT ignores unknown attributes, so exports
+        // stay ACT-pasteable while zone filing survives our own round-trip.
+        var trigger = new Trigger("Come forth my brethren", "Malkonis D'Morte", "Freethinker Hideout");
+        var back = Assert.IsType<Trigger>(ActShareFormat.TryImport(ActShareFormat.Export(trigger)));
+        Assert.Equal("Freethinker Hideout", back.Zone);
+        Assert.Equal(trigger.Key, back.Key);
+
+        var timer = new TimerDefinition { Name = "Rumbling of Earth", Category = "a bisected rumbler", Zone = "The Emerald Halls" };
+        var timerBack = Assert.IsType<TimerDefinition>(ActShareFormat.TryImport(ActShareFormat.Export(timer)));
+        Assert.Equal("The Emerald Halls", timerBack.Zone);
+        Assert.Equal(timer.Key, timerBack.Key);
+    }
+
+    [Fact]
     public void Spell_Export_Import_RoundTrips()
     {
         var original = new TimerDefinition

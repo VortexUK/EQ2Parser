@@ -49,7 +49,7 @@ public partial class TimersView
     private void ZoneHeader_Click(object sender, MouseButtonEventArgs e)
     {
         if (DataContext is TimersViewModel vm
-            && (sender as FrameworkElement)?.DataContext is TimerZoneRow row)
+            && (sender as FrameworkElement)?.DataContext is ZoneRow row)
             vm.ToggleZoneCommand.Execute(row);
     }
 }
