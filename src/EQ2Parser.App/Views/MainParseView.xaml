@@ -118,10 +118,15 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="288" />
+            <ColumnDefinition Width="330" MinWidth="240" />
             <ColumnDefinition Width="14" />
-            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" MinWidth="400" />
         </Grid.ColumnDefinitions>
+
+        <!-- The gap doubles as a drag handle: the tree column is resizable
+             (transparent splitter, cursor changes on hover). -->
+        <GridSplitter Grid.Column="1" Width="14" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                      Background="Transparent" ShowsPreview="False" />
 
         <!-- Zone / fight tree -->
         <Grid>
@@ -130,7 +135,7 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <!-- WrapPanel, not StackPanel: at higher text scaling the row can
-                 outgrow the fixed tree column — wrapping beats clipping. -->
+                 outgrow the tree column — wrapping beats clipping. -->
             <WrapPanel Margin="2,0,0,4">
                 <ToggleButton Content="Bosses only" Style="{StaticResource PillToggle}" Margin="0,0,6,4"
                               IsChecked="{Binding BossesOnly, Mode=TwoWay}" />
