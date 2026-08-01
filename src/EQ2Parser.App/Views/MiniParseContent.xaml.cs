@@ -58,6 +58,7 @@ public partial class MiniParseContent : IOverlayContent
         FightTitle.Text = data.Title;
         DurationText.Text = data.DurationLabel;
         MetricText.Text = data.MetricLabel;
+        RaidValueText.Text = data.RaidValue > 0 ? CombatantRow.Compact(data.RaidValue) : "";
 
         while (_rows.Count > data.Rows.Count)
             _rows.RemoveAt(_rows.Count - 1);

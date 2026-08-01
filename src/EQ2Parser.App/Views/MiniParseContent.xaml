@@ -20,10 +20,16 @@
                 </TextBlock.Effect>
             </TextBlock>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock x:Name="MetricText" FontSize="10" Foreground="#8B90AB" FontFamily="Segoe UI"
-                           VerticalAlignment="Center" Margin="8,1,0,0" />
+                <TextBlock x:Name="RaidValueText" FontSize="12" Foreground="#F0F2FA" FontFamily="Consolas"
+                           FontWeight="Bold" Margin="8,0,0,0" VerticalAlignment="Center">
+                    <TextBlock.Effect>
+                        <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                    </TextBlock.Effect>
+                </TextBlock>
+                <TextBlock x:Name="MetricText" FontSize="9" Foreground="#8B90AB" FontFamily="Segoe UI"
+                           VerticalAlignment="Center" Margin="3,1,0,0" />
                 <TextBlock x:Name="DurationText" FontSize="12" Foreground="#C8A96E" FontFamily="Consolas"
-                           FontWeight="Bold" Margin="8,0,0,0" />
+                           FontWeight="Bold" Margin="8,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
         <Rectangle Height="1" Fill="#3AC8A96E" Margin="0,0,0,4" />

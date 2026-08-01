@@ -7,9 +7,10 @@ namespace EQ2Parser.App.Services;
 public sealed record MiniParseRow(
     int Rank, string Name, string? ClassName, double Value, double Fraction, long Total);
 
-/// <summary>Header + rows for the mini parse window.</summary>
+/// <summary>Header + rows for the mini parse window. RaidValue is the
+/// whole raid's metric per second — every ally, not just visible rows.</summary>
 public sealed record MiniParseData(
-    string Title, string DurationLabel, string MetricLabel, IReadOnlyList<MiniParseRow> Rows);
+    string Title, string DurationLabel, string MetricLabel, double RaidValue, IReadOnlyList<MiniParseRow> Rows);
 
 /// <summary>
 /// Builds the mini parse view of the CURRENT fight (the newest correlated
@@ -29,7 +30,7 @@ public sealed class MiniParseSnapshot(SourceManager manager)
         {
             var fight = manager.Correlator.History.Count > 0 ? manager.Correlator.History[^1] : null;
             if (fight is null)
-                return new MiniParseData("Waiting for combat…", "", metric, []);
+                return new MiniParseData("Waiting for combat…", "", metric, 0, []);
 
             var now = DateTimeOffset.Now;
             if (!ReferenceEquals(fight, _cachedFight) || now - _classesRefreshed > TimeSpan.FromSeconds(2))
@@ -64,6 +65,9 @@ public sealed class MiniParseSnapshot(SourceManager manager)
             }
             totals.Sort((a, b) => b.Total.CompareTo(a.Total));
 
+            long raidTotal = 0;
+            foreach (var (_, total) in totals)
+                raidTotal += total;
             var top = totals.Count > 0 ? totals[0].Total : 1;
             List<MiniParseRow> rows = [];
             for (var i = 0; i < totals.Count && i < maxRows; i++)
@@ -78,6 +82,7 @@ public sealed class MiniParseSnapshot(SourceManager manager)
                 fight.Title,
                 fight.Duration.ToString(@"m\:ss"),
                 metric,
+                raidTotal / seconds,
                 rows);
         }
     }
