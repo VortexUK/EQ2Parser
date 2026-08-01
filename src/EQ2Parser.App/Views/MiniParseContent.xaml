@@ -1,6 +1,7 @@
 <UserControl x:Class="EQ2Parser.App.Views.MiniParseContent"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:v="clr-namespace:EQ2Parser.App.Views">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -41,14 +42,16 @@
                     <Grid Margin="0,1">
                         <Border Height="20" CornerRadius="4" Background="#3D141724" />
                         <Border Height="20" CornerRadius="4" Background="{Binding BarBrush}"
-                                Opacity="0.42" RenderTransformOrigin="0,0.5">
+                                Opacity="0.42" RenderTransformOrigin="0,0.5"
+                                v:BarAnimation.Fraction="{Binding Fraction}">
                             <Border.RenderTransform>
-                                <ScaleTransform ScaleX="{Binding Fraction}" />
+                                <ScaleTransform ScaleX="0" />
                             </Border.RenderTransform>
                         </Border>
                         <Grid Margin="6,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
@@ -59,13 +62,19 @@
                                     <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
                                 </TextBlock.Effect>
                             </TextBlock>
-                            <TextBlock Grid.Column="1" Text="{Binding ValueText}" FontSize="12" Foreground="#F0F2FA"
+                            <TextBlock Grid.Column="1" Text="{Binding DeathsText}" FontSize="10" Foreground="#F87171"
+                                       VerticalAlignment="Center" FontFamily="Segoe UI" Margin="0,0,7,0">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                                </TextBlock.Effect>
+                            </TextBlock>
+                            <TextBlock Grid.Column="2" Text="{Binding ValueText}" FontSize="12" Foreground="#F0F2FA"
                                        VerticalAlignment="Center" FontFamily="Consolas" FontWeight="Bold">
                                 <TextBlock.Effect>
                                     <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
                                 </TextBlock.Effect>
                             </TextBlock>
-                            <TextBlock Grid.Column="2" Text="{Binding ShareText}" FontSize="10" Foreground="#8B90AB"
+                            <TextBlock Grid.Column="3" Text="{Binding ShareText}" FontSize="10" Foreground="#8B90AB"
                                        VerticalAlignment="Center" FontFamily="Consolas" Margin="7,1,0,0" />
                         </Grid>
                     </Grid>

@@ -1,16 +1,60 @@
 <UserControl x:Class="EQ2Parser.App.Views.TimerPanelContent"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:v="clr-namespace:EQ2Parser.App.Views">
     <StackPanel>
+        <!-- Radial timers (RadialDisplay definitions) wrap above the bars. -->
+        <ItemsControl x:Name="Radials">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Width="56" Margin="2,2,2,4">
+                        <Grid Width="46" Height="46">
+                            <v:RadialDial Fraction="{Binding Fraction}" Stroke="{Binding BarBrush}"
+                                          IsWarning="{Binding IsWarning}" />
+                            <TextBlock Text="{Binding SecondsText}" FontSize="11" FontFamily="Consolas"
+                                       FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#F0F2FA" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                                <Setter Property="Foreground" Value="#F87171" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                                <TextBlock.Effect>
+                                    <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                                </TextBlock.Effect>
+                            </TextBlock>
+                        </Grid>
+                        <TextBlock Text="{Binding Label}" FontSize="9" Foreground="#C9CEDD" FontFamily="Segoe UI"
+                                   HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="54"
+                                   Margin="0,1,0,0">
+                            <TextBlock.Effect>
+                                <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                            </TextBlock.Effect>
+                        </TextBlock>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
         <ItemsControl x:Name="Bars">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Grid Margin="0,1.5">
                         <Border Height="21" CornerRadius="4" Background="#521A1D2C" />
                         <Border Height="21" CornerRadius="4" Background="{Binding BarBrush}"
-                                Opacity="0.6" RenderTransformOrigin="0,0.5">
+                                Opacity="0.6" RenderTransformOrigin="0,0.5"
+                                v:BarAnimation.Fraction="{Binding Fraction}">
                             <Border.RenderTransform>
-                                <ScaleTransform ScaleX="{Binding Fraction}" />
+                                <ScaleTransform ScaleX="0" />
                             </Border.RenderTransform>
                         </Border>
                         <!-- Warning shimmer: the bar pulses while inside the

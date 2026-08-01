@@ -10,6 +10,7 @@ public partial class TimerPanelContent : IOverlayContent
     private readonly SourceManager _manager;
     private readonly int _panel;
     private readonly ObservableCollection<TimerBarRow> _bars = [];
+    private readonly ObservableCollection<TimerBarRow> _radials = [];
 
     public TimerPanelContent(SourceManager manager, int panel)
     {
@@ -17,20 +18,28 @@ public partial class TimerPanelContent : IOverlayContent
         _panel = panel;
         InitializeComponent();
         Bars.ItemsSource = _bars;
+        Radials.ItemsSource = _radials;
     }
 
     public bool Refresh(OverlayWindowSettings settings)
     {
-        var bars = _manager.SpellTimers.Snapshot(DateTimeOffset.Now, _panel);
-        if (bars.Count > settings.MaxItems)
-            bars.RemoveRange(settings.MaxItems, bars.Count - settings.MaxItems);
-        while (_bars.Count > bars.Count)
-            _bars.RemoveAt(_bars.Count - 1);
-        while (_bars.Count < bars.Count)
-            _bars.Add(new TimerBarRow());
+        var snapshot = _manager.SpellTimers.Snapshot(DateTimeOffset.Now, _panel);
+        var radials = snapshot.Where(b => b.Radial).Take(settings.MaxItems).ToList();
+        var bars = snapshot.Where(b => !b.Radial).Take(settings.MaxItems).ToList();
+        Sync(_radials, radials);
+        Sync(_bars, bars);
+        var total = radials.Count + bars.Count;
+        EmptyHint.Visibility = total == 0 && !settings.Locked ? Visibility.Visible : Visibility.Collapsed;
+        return total > 0;
+    }
+
+    private static void Sync(ObservableCollection<TimerBarRow> rows, List<Services.TimerBarSnapshot> bars)
+    {
+        while (rows.Count > bars.Count)
+            rows.RemoveAt(rows.Count - 1);
+        while (rows.Count < bars.Count)
+            rows.Add(new TimerBarRow());
         for (var i = 0; i < bars.Count; i++)
-            TimersViewModel.ApplyBar(_bars[i], bars[i]);
-        EmptyHint.Visibility = bars.Count == 0 && !settings.Locked ? Visibility.Visible : Visibility.Collapsed;
-        return bars.Count > 0;
+            TimersViewModel.ApplyBar(rows[i], bars[i]);
     }
 }

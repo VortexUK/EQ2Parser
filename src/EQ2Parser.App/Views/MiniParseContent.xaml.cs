@@ -17,6 +17,9 @@ public sealed partial class MiniParseRowVm : ObservableObject
     private string _classText = "";
 
     [ObservableProperty]
+    private string _deathsText = "";
+
+    [ObservableProperty]
     private string _valueText = "";
 
     [ObservableProperty]
@@ -70,6 +73,7 @@ public partial class MiniParseContent : IOverlayContent
             var vm = _rows[i];
             vm.Name = row.Name;
             vm.ClassText = row.ClassName is { Length: > 0 } cls ? $" <{cls}>" : "";
+            vm.DeathsText = row.Deaths > 0 ? $"☠{row.Deaths}" : "";
             vm.ValueText = CombatantRow.Compact(row.Value);
             vm.ShareText = $"{row.Fraction:P0}";
             vm.Fraction = Math.Clamp(row.Fraction, 0, 1);

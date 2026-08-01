@@ -3,9 +3,9 @@ using EQ2Parser.Core.Correlation;
 namespace EQ2Parser.App.Services;
 
 /// <summary>One row of the mini parse: rank, name, metric value, share of
-/// the top row, and the detected class (for colouring).</summary>
+/// the top row, deaths, and the detected class (for colouring).</summary>
 public sealed record MiniParseRow(
-    int Rank, string Name, string? ClassName, double Value, double Fraction, long Total);
+    int Rank, string Name, string? ClassName, double Value, double Fraction, long Total, int Deaths);
 
 /// <summary>Header + rows for the mini parse window. RaidValue is the
 /// whole raid's metric per second — every ally, not just visible rows.</summary>
@@ -48,7 +48,7 @@ public sealed class MiniParseSnapshot(SourceManager manager)
 
             var seconds = Math.Max(1.0, fight.Duration.TotalSeconds);
             var allyKeys = fight.MergedAllyKeys;
-            List<(string Name, long Total)> totals = [];
+            List<(string Name, long Total, int Deaths)> totals = [];
             foreach (var (key, entry) in fight.MergedCombatants)
             {
                 if (!allyKeys.Contains(key))
@@ -61,21 +61,21 @@ public sealed class MiniParseSnapshot(SourceManager manager)
                     _ => combatant.Damage,
                 };
                 if (total > 0)
-                    totals.Add((combatant.Name, total));
+                    totals.Add((combatant.Name, total, combatant.Deaths));
             }
             totals.Sort((a, b) => b.Total.CompareTo(a.Total));
 
             long raidTotal = 0;
-            foreach (var (_, total) in totals)
+            foreach (var (_, total, _) in totals)
                 raidTotal += total;
             var top = totals.Count > 0 ? totals[0].Total : 1;
             List<MiniParseRow> rows = [];
             for (var i = 0; i < totals.Count && i < maxRows; i++)
             {
-                var (name, total) = totals[i];
+                var (name, total, deaths) = totals[i];
                 rows.Add(new MiniParseRow(
                     i + 1, name, _classNames.GetValueOrDefault(name),
-                    total / seconds, (double)total / top, total));
+                    total / seconds, (double)total / top, total, deaths));
             }
 
             return new MiniParseData(
