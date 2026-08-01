@@ -46,30 +46,33 @@ public class SpellTimerServiceTests
     }
 
     [Fact]
-    public void Retrigger_Dedupes_Then_Restarts_The_One_Bar()
+    public void Tick_Chains_Are_Absorbed_Then_Silence_Means_Recast()
     {
         var service = Service(Doom);
-        var timers = new List<ActiveTimer>();
-        service.TimerStarted += (_, t) => timers.Add(t);
 
         Assert.True(service.Notify("x", "Doom", true, "sofja", T0));
-        // <2s: ignored outright — one AoE wave is one start.
-        Assert.False(service.Notify("x", "Doom", true, "sofja", T0.AddSeconds(1)));
-        // Past the dedupe window: RESTARTS the single bar (no sub-timers).
-        Assert.True(service.Notify("x", "Doom", true, "sofja", T0.AddSeconds(5)));
-        Assert.True(timers[^1].IsMaster);
-        var frame = Assert.Single(service.Frames);
-        var only = Assert.Single(frame.Timers);
-        Assert.Equal(T0.AddSeconds(5), only.Start);
+        // A DoT re-ticking every 6s: each tick is inside the sliding absorb
+        // window — the countdown HOLDS, anchored to the cast's first hit.
+        Assert.False(service.Notify("x", "Doom", true, "sofja", T0.AddSeconds(6)));
+        Assert.False(service.Notify("x", "Doom", true, "sofja", T0.AddSeconds(12)));
+        Assert.False(service.Notify("x", "Doom", true, "sofja", T0.AddSeconds(18)));
+        var held = Assert.Single(Assert.Single(service.Frames).Timers);
+        Assert.Equal(T0, held.Start);
+
+        // >12s after the LAST tick: a genuine recast — replaces the bar.
+        Assert.True(service.Notify("x", "Doom", true, "sofja", T0.AddSeconds(35)));
+        var restarted = Assert.Single(Assert.Single(service.Frames).Timers);
+        Assert.Equal(T0.AddSeconds(35), restarted.Start);
     }
 
     [Fact]
-    public void The_Dedupe_Window_Is_Configurable()
+    public void The_Absorb_Window_Is_Configurable()
     {
-        var service = Service(Doom, new TimerOptions { RetriggerIgnore = TimeSpan.FromMilliseconds(100) });
+        var service = Service(Doom, new TimerOptions { SubTimerWindow = TimeSpan.FromMilliseconds(300) });
         Assert.True(service.Notify("x", "Doom", true, "v", T0));
-        Assert.True(service.Notify("x", "Doom", true, "v", T0.AddSeconds(0.5)));
-        Assert.Single(Assert.Single(service.Frames).Timers); // restarted, not stacked
+        Assert.False(service.Notify("x", "Doom", true, "v", T0.AddSeconds(0.2)));
+        Assert.True(service.Notify("x", "Doom", true, "v", T0.AddSeconds(1)));
+        Assert.Single(Assert.Single(service.Frames).Timers); // replaced, not stacked
     }
 
     [Fact]
@@ -190,10 +193,10 @@ public class SpellTimerServiceTests
         Assert.Equal(60, timer.BaseDurationSeconds);
 
         // Different names sum additively: 60 × (1 + 0.5 + 0.25) = 105.
-        // (+3s: past the dedupe window, lands as a sub-timer in the frame.)
+        // (+15s: past the absorb window — a genuine recast picks up both.)
         service.AddTimerMod("Bossmob", "Temporal Drag", 0.25, T0, TimeSpan.FromSeconds(30));
-        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(3)));
-        Assert.Contains(Assert.Single(service.Frames).Timers, t => t.DurationSeconds == 105);
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(15)));
+        Assert.Equal(105, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
     }
 
     [Fact]
@@ -223,9 +226,9 @@ public class SpellTimerServiceTests
         service.ClearTimerMods("Bossmob", T0.AddSeconds(1));
         Assert.Equal(60, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
 
-        // Mods are gone: the next timer is unmodified.
-        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(5)));
-        Assert.All(Assert.Single(service.Frames).Timers, t => Assert.Equal(60, t.DurationSeconds));
+        // Mods are gone: the next recast (past the absorb window) is unmodified.
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(15)));
+        Assert.Equal(60, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
     }
 
     [Fact]
@@ -251,9 +254,9 @@ public class SpellTimerServiceTests
         service.RemoveTimerMod("Bossmob", "Sluggish Recast", T0.AddSeconds(1.5));
         // 1.5 s > the 1 s dispel window — stays modified…
         Assert.Equal(90, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
-        // …but the mod itself is gone for future timers.
-        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(5)));
-        Assert.Contains(Assert.Single(service.Frames).Timers, t => t.DurationSeconds == 60);
+        // …but the mod itself is gone for the next recast.
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(15)));
+        Assert.Equal(60, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
     }
 
     [Fact]
@@ -287,8 +290,9 @@ public class SpellTimerServiceTests
         // A cure stripping Traumatic Swipe drops the mod (unrelated effects don't).
         service.NotifyDispel("Bossmob", "Some Other Effect", T0.AddSeconds(3));
         service.NotifyDispel("Bossmob", "Traumatic Swipe", T0.AddSeconds(3));
-        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(10)));
-        Assert.Contains(Assert.Single(service.Frames).Timers, t => t.DurationSeconds == 60);
+        // Next recast (past the absorb window) is unmodified.
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(20)));
+        Assert.Equal(60, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
     }
 
     [Fact]
@@ -306,9 +310,9 @@ public class SpellTimerServiceTests
         service.NotifyDeath("Teramo", T0.AddSeconds(30));
         Assert.Equal(70, timer.DurationSeconds);
 
-        // The pending mod is gone too — the next timer is unmodified.
-        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(35)));
-        Assert.Contains(Assert.Single(service.Frames).Timers, t => t.DurationSeconds == 60);
+        // The pending mod is gone too — the next recast is unmodified.
+        Assert.True(service.Notify("Bossmob", "Doom", self: false, "menludiir", T0.AddSeconds(45)));
+        Assert.Equal(60, Assert.Single(Assert.Single(service.Frames).Timers).DurationSeconds);
 
         // A second death is a no-op — the contribution was already removed.
         service.NotifyDeath("Teramo", T0.AddSeconds(40));

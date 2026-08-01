@@ -4,13 +4,15 @@ namespace EQ2Parser.Core.Triggers;
 /// (configurable per user decision).</summary>
 public sealed record TimerOptions
 {
-    /// <summary>A re-notify within this window of the frame's newest timer is
-    /// ignored outright (ACT: 2 s) — one AoE wave is one start.</summary>
+    /// <summary>Legacy (ACT's outright-ignore window). The absorb window
+    /// below covers it; kept so existing config round-trips.</summary>
     public TimeSpan RetriggerIgnore { get; init; } = TimeSpan.FromSeconds(2);
 
-    /// <summary>Legacy (ACT's sub-timer window) — sub-timers are gone: a
-    /// timer is the ability's recast clock, and every accepted notify
-    /// RESTARTS the one bar. Kept so existing config round-trips.</summary>
+    /// <summary>A re-notify within this window of the LAST notify is
+    /// absorbed: the countdown holds and the window slides. AoE waves and
+    /// DoT tick chains (Blanket re-ticks ~6s apart) are one cast — only a
+    /// hit after this much silence is a genuine recast. ACT's sub-timer
+    /// window, minus the sub-timer clutter.</summary>
     public TimeSpan SubTimerWindow { get; init; } = TimeSpan.FromSeconds(12);
 }
 
@@ -51,6 +53,10 @@ public sealed class TimerFrame(TimerDefinition definition, string combatant)
     public string Combatant { get; } = combatant;
     public List<ActiveTimer> Timers { get; } = [];
     public string Key => Definition.Key;
+
+    /// <summary>When the frame last saw ANY notify (started or absorbed) —
+    /// the sliding anchor of the absorb window.</summary>
+    public DateTimeOffset LastNotify { get; internal set; } = DateTimeOffset.MinValue;
 
     public DateTimeOffset NewestStart =>
         Timers.Count == 0 ? DateTimeOffset.MinValue : Timers.Max(t => t.Start);
@@ -203,13 +209,24 @@ public sealed class SpellTimerService(TimerOptions? options = null)
 
         var frame = GetOrCreateFrame(chosen, attacker);
 
+        // Absorb: while hits keep arriving within the window of the LAST
+        // one, they're the same cast — AoE stragglers and DoT re-ticks. The
+        // countdown holds (anchored to the cast's first hit) and the window
+        // slides, so a tick chain of any length stays one bar with one
+        // stable clock. Only a hit after real silence is a recast.
+        if (frame.Timers.Count > 0)
+        {
+            var sinceLast = time - frame.LastNotify;
+            if (sinceLast < _options.SubTimerWindow)
+            {
+                frame.LastNotify = time;
+                return false;
+            }
+        }
+
         // One-only: refuse while a master runs.
         if (chosen.AbsoluteTiming && frame.HasRunningMaster(time))
             return false;
-
-        var sinceNewest = time - frame.NewestStart;
-        if (frame.Timers.Count > 0 && sinceNewest < _options.RetriggerIgnore)
-            return false; // dedupe: one AoE wave is one start
 
         // Timer mods (ACT ApplyTimerMod): a Modable timer starting now is
         // scaled by the CASTER's active mods — final = base × (1 + Σ mods).
@@ -232,11 +249,11 @@ public sealed class SpellTimerService(TimerOptions? options = null)
             ModOwner = modOwner,
             AppliedMods = applied,
         };
-        // A timer is the ability's recast clock: every accepted notify
-        // RESTARTS the one bar. No sub-timers — an AoE straggler or a DoT
-        // tick re-anchors the countdown instead of spawning a sibling.
+        // A timer is the ability's recast clock: a genuine recast REPLACES
+        // the one bar. No sub-timers, ever.
         frame.Timers.Clear();
         frame.Timers.Add(timer);
+        frame.LastNotify = time;
         TimerStarted?.Invoke(frame, timer);
         return true;
     }
