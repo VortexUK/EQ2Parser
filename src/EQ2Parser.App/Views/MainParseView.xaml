@@ -118,7 +118,7 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="330" MinWidth="240" />
+            <ColumnDefinition x:Name="TreeColumn" Width="330" MinWidth="240" />
             <ColumnDefinition Width="14" />
             <ColumnDefinition Width="*" MinWidth="400" />
         </Grid.ColumnDefinitions>
@@ -126,7 +126,7 @@
         <!-- The gap doubles as a drag handle: the tree column is resizable
              (transparent splitter, cursor changes on hover). -->
         <GridSplitter Grid.Column="1" Width="14" HorizontalAlignment="Center" VerticalAlignment="Stretch"
-                      Background="Transparent" ShowsPreview="False" />
+                      Background="Transparent" ShowsPreview="False" DragCompleted="TreeSplitter_DragCompleted" />
 
         <!-- Zone / fight tree -->
         <Grid>

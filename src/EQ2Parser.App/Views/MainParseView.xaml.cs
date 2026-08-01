@@ -8,7 +8,25 @@ public partial class MainParseView : System.Windows.Controls.UserControl
     private ArchiveWindow? _archive;
     private CurationWindow? _curation;
 
-    public MainParseView() => InitializeComponent();
+    public MainParseView()
+    {
+        InitializeComponent();
+        // Loaded, not the ctor: the view is templated, so the DataContext
+        // (and the persisted width) is only available once loaded.
+        Loaded += (_, _) =>
+        {
+            if (DataContext is MainParseViewModel vm && vm.Manager.Settings.TreeColumnWidth is { } width)
+                TreeColumn.Width = new GridLength(Math.Max(TreeColumn.MinWidth, width));
+        };
+    }
+
+    private void TreeSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+    {
+        if (DataContext is not MainParseViewModel vm)
+            return;
+        vm.Manager.Settings = vm.Manager.Settings with { TreeColumnWidth = TreeColumn.ActualWidth };
+        vm.Manager.Settings.Save();
+    }
 
     private void Curation_Click(object sender, RoutedEventArgs e)
     {

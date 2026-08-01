@@ -66,17 +66,34 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         _manager.Audio.SpeakingRate = value;
         OnPropertyChanged(nameof(TtsRateLabel));
+        PersistAudio();
     }
 
     partial void OnAlertVolumeChanged(double value)
     {
         _manager.Audio.Volume = value;
         OnPropertyChanged(nameof(AlertVolumeLabel));
+        PersistAudio();
+    }
+
+    /// <summary>Audio prefs apply immediately, so they persist immediately
+    /// too — picking a voice and never touching Save used to lose it on
+    /// restart. The Save button remains for the validated parsing fields.</summary>
+    private void PersistAudio()
+    {
+        _manager.Settings = _manager.Settings with
+        {
+            TtsVoiceId = SelectedVoice?.Id,
+            TtsRate = TtsRate,
+            AlertVolume = AlertVolume,
+        };
+        _manager.Settings.Save();
     }
 
     partial void OnSelectedVoiceChanged(TtsVoice? value)
     {
         _manager.Audio.VoiceId = value?.Id;
+        PersistAudio();
         if (value is null || PiperVoiceCatalog.Find(value.Id) is not { } neural)
         {
             VoiceStatus = "";

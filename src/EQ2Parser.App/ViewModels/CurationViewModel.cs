@@ -190,7 +190,9 @@ public sealed partial class CurationViewModel : ObservableObject
             RestrictToCategory = !mined.SourceInferred,
             DurationSeconds = Math.Max(5, duration),
             WarningSeconds = Math.Clamp(duration / 4, 3, 10),
-            // ACT's convention: bare "tts" speaks "<name> soon" at warning.
+            // ACT's convention: bare "tts" speaks the timer name at start
+            // ("it just landed") and "<name> soon" at the warning mark.
+            StartSoundData = "tts",
             WarningSoundData = "tts",
         };
     }

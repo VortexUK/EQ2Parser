@@ -61,6 +61,10 @@ public sealed record AppSettings
     public double? OverlayLeft { get; init; }
     public double? OverlayTop { get; init; }
 
+    /// <summary>Main-page fight-tree column width (the splitter position).
+    /// Null = never dragged, use the XAML default.</summary>
+    public double? TreeColumnWidth { get; init; }
+
     // The overlay windows. Null = never configured (defaults apply; timer
     // panel A seeds from the legacy fields, the DPS meter from the old
     // single mini parse).
