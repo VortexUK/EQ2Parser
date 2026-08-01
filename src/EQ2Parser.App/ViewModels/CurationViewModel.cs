@@ -19,9 +19,26 @@ public sealed partial class CurationAbilityRow(MinedAbility mined) : ObservableO
     public string CastsLabel =>
         $"{Mined.Casts} cast{(Mined.Casts == 1 ? "" : "s")} / {Mined.Fights} fight{(Mined.Fights == 1 ? "" : "s")}";
 
-    public string RecastLabel => Mined.MedianIntervalSeconds is { } median
-        ? $"~{median:0}s  (min {Mined.MinIntervalSeconds:0}s)"
-        : "single cast";
+    /// <summary>Swipe-adjusted base recast leads when recast debuffs were
+    /// in play; the raw observed median stays visible beside it.</summary>
+    public string RecastLabel
+    {
+        get
+        {
+            if (Mined.MedianIntervalSeconds is not { } median)
+                return "single cast";
+            if (Mined.SwipeCoverage > 0.02 && Mined.BaseIntervalSeconds is { } baseline)
+                return $"~{baseline:0}s base  (raw {median:0}s · min {Mined.MinIntervalSeconds:0}s)";
+            return $"~{median:0}s  (min {Mined.MinIntervalSeconds:0}s)";
+        }
+    }
+
+    public string RecastToolTip =>
+        Mined.SwipeCoverage > 0.02
+            ? $"Swipe-adjusted: {Mined.SwipeCoverage:P0} of interval time was under a recast debuff " +
+              $"(counted at 1/1.5 rate). Base ≈ {Mined.BaseIntervalSeconds:0.#}s — the right duration to store, " +
+              "because the live timer re-stretches automatically when the mob gets swiped."
+            : "No recast debuffs observed on this mob — raw and base agree.";
 
     public string ProfileLabel
     {
@@ -106,7 +123,9 @@ public sealed partial class CurationViewModel : ObservableObject
 
     private TimerDefinition BuildDefinition(MinedAbility mined)
     {
-        var duration = (int)Math.Round(mined.MedianIntervalSeconds ?? 30);
+        // Base (swipe-adjusted) duration: the live engine re-applies the
+        // 1.5× stretch whenever the mob is actually swiped.
+        var duration = (int)Math.Round(mined.BaseIntervalSeconds ?? mined.MedianIntervalSeconds ?? 30);
         return new TimerDefinition
         {
             Name = mined.Ability,
@@ -121,9 +140,10 @@ public sealed partial class CurationViewModel : ObservableObject
     {
         if (row is null || row.HasTimer || !row.CanTime)
             return;
-        _manager.SpellTimers.AddOrUpdate(BuildDefinition(row.Mined));
+        var definition = BuildDefinition(row.Mined);
+        _manager.SpellTimers.AddOrUpdate(definition);
         row.HasTimer = true;
-        StatusLabel = $"Timer created: {row.Ability} ({(int)Math.Round(row.Mined.MedianIntervalSeconds!.Value)}s) — it's on the Timers page.";
+        StatusLabel = $"Timer created: {row.Ability} ({definition.DurationSeconds}s base) — it's on the Timers page.";
     }
 
     [RelayCommand]

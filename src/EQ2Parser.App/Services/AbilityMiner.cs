@@ -1,11 +1,15 @@
 using EQ2Parser.Core.Combat;
 using EQ2Parser.Core.History;
+using EQ2Parser.Core.Triggers;
 
 namespace EQ2Parser.App.Services;
 
 /// <summary>One enemy ability as observed across archived fights: how often
-/// it was cast, its measured recast rhythm, and what it did — the ground
-/// truth spell timers get calculated from.</summary>
+/// it was cast, its measured recast rhythm — raw and swipe-adjusted — and
+/// what it did. BaseIntervalSeconds normalizes each interval by its recast-
+/// debuff coverage (time under Traumatic Swipe counts at 1/1.5 rate), so it
+/// estimates the UNmodified recast: the right duration to store, because
+/// the live engine re-stretches Modable timers when a swipe lands.</summary>
 public sealed record MinedAbility(
     string Zone,
     string Mob,
@@ -14,6 +18,8 @@ public sealed record MinedAbility(
     int Fights,
     double? MedianIntervalSeconds,
     double? MinIntervalSeconds,
+    double? BaseIntervalSeconds,
+    double SwipeCoverage,
     long TotalDamage,
     double AvgTargets,
     bool IsMelee);
@@ -36,14 +42,31 @@ public static class AbilityMiner
 
     public static List<MinedMob> MineZone(HistoryService history, string zone)
     {
-        // ability key: (mob, ability) → per-fight cast start lists
-        Dictionary<(string Mob, string Ability), List<List<DateTimeOffset>>> castsPerFight =
+        // ability key: (mob, ability) → per-fight (cast starts, that mob's
+        // swiped windows) — windows travel with the fight for normalization.
+        Dictionary<(string Mob, string Ability), List<(List<DateTimeOffset> Casts, List<(DateTimeOffset Start, DateTimeOffset End)> Swiped, double Fraction)>> castsPerFight =
             new();
         Dictionary<(string Mob, string Ability), (long Damage, int Hits, int Casts, HashSet<long> FightIds, bool Melee)> stats =
             new();
 
         foreach (var (summary, swings, enemies) in history.EnumerateArchivedFights(zone))
         {
+            // Pre-scan: recast-debuff windows per mob (Traumatic Swipe hits
+            // on the mob, each refreshing its duration; overlaps merged).
+            Dictionary<string, (List<(DateTimeOffset, DateTimeOffset)> Windows, double Fraction)> swiped =
+                new(StringComparer.OrdinalIgnoreCase);
+            foreach (var swing in swings)
+            {
+                if (!SpellTimerService.RecastDebuffs.TryGetValue(swing.Ability, out var debuff))
+                    continue;
+                if (!enemies.Contains(swing.Victim))
+                    continue;
+                if (!swiped.TryGetValue(swing.Victim, out var entry))
+                    swiped[swing.Victim] = entry = ([], debuff.Fraction);
+                entry.Windows.Add((swing.Time, swing.Time + debuff.Duration));
+            }
+            foreach (var entry in swiped.Values)
+                MergeWindows(entry.Windows);
             // Group this fight's hostile swings by enemy attacker + ability.
             Dictionary<(string, string), List<Swing>> byAbility = new();
             foreach (var swing in swings)
@@ -86,7 +109,8 @@ public static class AbilityMiner
                 var key = (mob, ability);
                 if (!castsPerFight.TryGetValue(key, out var fights))
                     castsPerFight[key] = fights = [];
-                fights.Add(castStarts);
+                var mobSwipes = swiped.TryGetValue(mob, out var sw) ? sw : ([], 0.5);
+                fights.Add((castStarts, mobSwipes.Windows, mobSwipes.Fraction));
                 var s = stats.TryGetValue(key, out var existing)
                     ? existing
                     : (0, 0, 0, [], melee);
@@ -99,23 +123,39 @@ public static class AbilityMiner
             }
         }
 
-        // Shape into mobs, computing recast stats from within-fight intervals.
+        // Shape into mobs, computing recast stats from within-fight
+        // intervals — raw, and normalized to base time by discounting the
+        // swiped portions (rate 1/(1+f) while the debuff is on the mob).
         Dictionary<string, List<MinedAbility>> mobs = new(StringComparer.OrdinalIgnoreCase);
         foreach (var ((mob, ability), fights) in castsPerFight)
         {
             List<double> intervals = [];
-            foreach (var castStarts in fights)
+            List<double> baseIntervals = [];
+            double swipedTime = 0, totalTime = 0;
+            foreach (var (castStarts, windows, fraction) in fights)
             {
                 for (var i = 1; i < castStarts.Count; i++)
-                    intervals.Add((castStarts[i] - castStarts[i - 1]).TotalSeconds);
+                {
+                    var start = castStarts[i - 1];
+                    var end = castStarts[i];
+                    var interval = (end - start).TotalSeconds;
+                    intervals.Add(interval);
+                    var overlap = Overlap(start, end, windows);
+                    baseIntervals.Add(interval - overlap + overlap / (1 + fraction));
+                    swipedTime += overlap;
+                    totalTime += interval;
+                }
             }
             intervals.Sort();
+            baseIntervals.Sort();
             var s = stats[(mob, ability)];
             var mined = new MinedAbility(
                 zone, mob, ability,
                 s.Casts, s.FightIds.Count,
                 intervals.Count > 0 ? intervals[intervals.Count / 2] : null,
                 intervals.Count > 0 ? intervals[0] : null,
+                baseIntervals.Count > 0 ? baseIntervals[baseIntervals.Count / 2] : null,
+                totalTime > 0 ? swipedTime / totalTime : 0,
                 s.Damage,
                 s.Casts > 0 ? (double)s.Hits / s.Casts : 0,
                 s.Melee);
@@ -128,5 +168,37 @@ public static class AbilityMiner
             .Select(kv => new MinedMob(zone, kv.Key,
                 [.. kv.Value.OrderByDescending(a => a.TotalDamage).Take(10)]))
             .OrderBy(m => m.Mob, StringComparer.OrdinalIgnoreCase)];
+    }
+
+    /// <summary>Merge overlapping/adjacent windows in place (sorted).</summary>
+    private static void MergeWindows(List<(DateTimeOffset Start, DateTimeOffset End)> windows)
+    {
+        windows.Sort((a, b) => a.Start.CompareTo(b.Start));
+        var merged = 0;
+        for (var i = 1; i < windows.Count; i++)
+        {
+            if (windows[i].Start <= windows[merged].End)
+                windows[merged] = (windows[merged].Start,
+                    windows[i].End > windows[merged].End ? windows[i].End : windows[merged].End);
+            else
+                windows[++merged] = windows[i];
+        }
+        if (windows.Count > merged + 1)
+            windows.RemoveRange(merged + 1, windows.Count - merged - 1);
+    }
+
+    /// <summary>Seconds of [start, end] covered by the merged windows.</summary>
+    private static double Overlap(DateTimeOffset start, DateTimeOffset end,
+        List<(DateTimeOffset Start, DateTimeOffset End)> windows)
+    {
+        double covered = 0;
+        foreach (var (ws, we) in windows)
+        {
+            var s = ws > start ? ws : start;
+            var e = we < end ? we : end;
+            if (e > s)
+                covered += (e - s).TotalSeconds;
+        }
+        return covered;
     }
 }

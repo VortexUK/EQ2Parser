@@ -77,7 +77,8 @@
                                 </StackPanel>
                                 <TextBlock Grid.Column="1" Text="{Binding RecastLabel}" FontFamily="Consolas"
                                            FontSize="12" Foreground="{StaticResource TextBrush}"
-                                           VerticalAlignment="Center" Margin="0,0,12,0" />
+                                           VerticalAlignment="Center" Margin="0,0,12,0"
+                                           ToolTip="{Binding RecastToolTip}" />
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="timer ✓" FontSize="12" Foreground="{StaticResource SuccessBrush}"
                                                VerticalAlignment="Center" Margin="0,0,6,0"
