@@ -114,7 +114,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     private object? _pinnedFight;
     private (int HistoryCount, bool AnyActive) _treeSignature = (-1, false);
 
-    public ObservableCollection<ParseNode> TreeNodes { get; } = [];
+    public BulkObservableCollection<ParseNode> TreeNodes { get; } = [];
     public ObservableCollection<CombatantRow> AllyRows { get; } = [];
     public ObservableCollection<CombatantRow> PetRows { get; } = [];
     public ObservableCollection<CombatantRow> EnemyRows { get; } = [];
@@ -212,8 +212,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     partial void OnReportLevelChanged(bool value) => OnPropertyChanged(nameof(SwingTableVisible));
 
     public ObservableCollection<AbilityRow> DrillRows { get; } = [];
-    public ObservableCollection<SwingRow> SwingRows { get; } = [];
-    public ObservableCollection<LogRow> LogRows { get; } = [];
+    public BulkObservableCollection<SwingRow> SwingRows { get; } = [];
+    public BulkObservableCollection<LogRow> LogRows { get; } = [];
 
     /// <summary>Deepest drill: click a swing to see the raw log around it,
     /// with the matching line highlighted and tokens colourised.</summary>
@@ -222,7 +222,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     {
         if (row is null || string.IsNullOrEmpty(row.SourcePath))
             return;
-        LogRows.Clear();
+        List<LogRow> logRows = [];
         var focusFound = false;
         foreach (var raw in LogWindowReader.Read(row.SourcePath, row.Epoch, beforeSeconds: 5, afterSeconds: 5))
         {
@@ -235,8 +235,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 isFocus = true;
                 focusFound = true;
             }
-            LogRows.Add(new LogRow(LogLineHighlighter.Build(raw), isFocus));
+            logRows.Add(new LogRow(LogLineHighlighter.Build(raw), isFocus));
         }
+        LogRows.ReplaceAll(logRows);
         LogLevel = true;
         DrillChartVisible = false;
         ReportLevel = false;
@@ -360,12 +361,9 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     {
         if (node?.Fight is not CorrelatedEncounter fight)
             return;
-        LogRows.Clear();
-        foreach (var raw in LogWindowReader.Read(
-            fight.Primary.SourceId, fight.StartTime.ToUnixTimeSeconds(), beforeSeconds: 2, afterSeconds: 30))
-        {
-            LogRows.Add(new LogRow(LogLineHighlighter.Build(raw), IsFocus: false));
-        }
+        LogRows.ReplaceAll(LogWindowReader.Read(
+                fight.Primary.SourceId, fight.StartTime.ToUnixTimeSeconds(), beforeSeconds: 2, afterSeconds: 30)
+            .Select(raw => new LogRow(LogLineHighlighter.Build(raw), IsFocus: false)));
         _detailKey = null;
         _detailBucket = null;
         _detailAbility = null;
@@ -464,7 +462,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     // ── Reports (death / avoidance / specials / lookup) ─────────────────────
 
-    public ObservableCollection<LogRow> ReportRows { get; } = [];
+    public BulkObservableCollection<LogRow> ReportRows { get; } = [];
 
     [ObservableProperty]
     private bool _reportChartVisible;
@@ -515,9 +513,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     private void OpenReport(string title, bool keepDrill = false)
     {
-        ReportRows.Clear();
-        foreach (var line in _reportLines)
-            ReportRows.Add(line);
+        ReportRows.ReplaceAll(_reportLines);
         _reportText = _reportBuilder.ToString();
         _reportLines.Clear();
         _reportBuilder.Clear();
@@ -1868,9 +1864,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             }
         }
 
-        TreeNodes.Clear();
-        foreach (var node in nodes)
-            TreeNodes.Add(node);
+        TreeNodes.ReplaceAll(nodes);
     }
 
     /// <summary>Trash mobs are articled ("a bloom custodian"); named bosses
@@ -1964,11 +1958,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 ApplyAbilityRows(DrillRows, detail.Table, sort: detail.SortTable, bars: detail.Bars);
             // Swings == null at swing level means "unchanged — keep rows".
             if (detail.Swings is not null)
-            {
-                SwingRows.Clear();
-                foreach (var swing in detail.Swings)
-                    SwingRows.Add(swing);
-            }
+                SwingRows.ReplaceAll(detail.Swings);
             if (detail.Chart is { } drillChart && !LogLevel)
                 ApplyDrillChart(drillChart);
         }
