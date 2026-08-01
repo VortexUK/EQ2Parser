@@ -110,6 +110,10 @@ public sealed partial class TimersViewModel : ObservableObject
     {
         _manager = manager;
         RebuildRows();
+        // Definitions change from other windows too (Curation, future
+        // Lexicon sync) — stay current.
+        manager.SpellTimers.DefinitionsChanged += () =>
+            Application.Current?.Dispatcher.BeginInvoke(RebuildRows);
     }
 
     // ---- definition list ----

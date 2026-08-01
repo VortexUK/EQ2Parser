@@ -31,6 +31,11 @@ public sealed class TimerService
 
     public SpellTimerService Service { get; } = new();
 
+    /// <summary>Raised after any definition change — pages rebuild off
+    /// this, so edits from any window (Timers page, Curation, future
+    /// Lexicon sync) show everywhere.</summary>
+    public event Action? DefinitionsChanged;
+
     public TimerService(AlertAudioService audio, object sync)
     {
         _audio = audio;
@@ -85,15 +90,20 @@ public sealed class TimerService
             Service.AddOrUpdateDefinition(definition);
             Save();
         }
+        DefinitionsChanged?.Invoke();
     }
 
     public void Remove(string key)
     {
+        bool removed;
         lock (_sync)
         {
-            if (Service.RemoveDefinition(key))
+            removed = Service.RemoveDefinition(key);
+            if (removed)
                 Save();
         }
+        if (removed)
+            DefinitionsChanged?.Invoke();
     }
 
     public void SetEnabled(string key, bool enabled)
@@ -106,6 +116,7 @@ public sealed class TimerService
             Service.AddOrUpdateDefinition(current with { Enabled = enabled });
             Save();
         }
+        DefinitionsChanged?.Invoke();
     }
 
     public int ImportMany(IReadOnlyCollection<TimerDefinition> definitions)
@@ -118,6 +129,7 @@ public sealed class TimerService
                 Service.AddOrUpdateDefinition(definition);
             Save();
         }
+        DefinitionsChanged?.Invoke();
         return definitions.Count;
     }
 

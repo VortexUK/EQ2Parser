@@ -35,6 +35,10 @@ public sealed class TriggerService
     /// fires a trigger — the Triggers page shows a recent-fires feed off it.</summary>
     public event Action<TriggerFired>? AlertFired;
 
+    /// <summary>Raised after any definition change — pages rebuild off this
+    /// so edits from any window show everywhere.</summary>
+    public event Action? DefinitionsChanged;
+
     public TriggerService(AlertAudioService audio)
     {
         _audio = audio;
@@ -98,6 +102,7 @@ public sealed class TriggerService
                 engine.AddOrUpdate(trigger);
             Save();
         }
+        DefinitionsChanged?.Invoke();
     }
 
     /// <summary>Bulk upsert (imports): one save and one fan-out for the
@@ -123,22 +128,26 @@ public sealed class TriggerService
             }
             Save();
         }
+        DefinitionsChanged?.Invoke();
         return triggers.Count;
     }
 
     public bool Remove(string key)
     {
+        bool removed;
         lock (_gate)
         {
-            var removed = _definitions.RemoveAll(t => t.Key == key) > 0;
+            removed = _definitions.RemoveAll(t => t.Key == key) > 0;
             if (removed)
             {
                 foreach (var engine in _engines)
                     engine.Remove(key);
                 Save();
             }
-            return removed;
         }
+        if (removed)
+            DefinitionsChanged?.Invoke();
+        return removed;
     }
 
     public void SetEnabled(string key, bool enabled)
@@ -155,6 +164,7 @@ public sealed class TriggerService
                 engine.AddOrUpdate(updated);
             Save();
         }
+        DefinitionsChanged?.Invoke();
     }
 
     private static Trigger CloneWith(Trigger t, bool enabled) => new(t.RegexText, t.Category)

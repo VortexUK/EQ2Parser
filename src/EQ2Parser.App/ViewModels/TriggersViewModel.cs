@@ -79,6 +79,8 @@ public sealed partial class TriggersViewModel : ObservableObject
         _manager = manager;
         RebuildRows();
         manager.Triggers.AlertFired += OnAlertFired;
+        manager.Triggers.DefinitionsChanged += () =>
+            Application.Current?.Dispatcher.BeginInvoke(RebuildRows);
     }
 
     // ---- list ----
