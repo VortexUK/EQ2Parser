@@ -2322,7 +2322,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         public long Max;
         public long Total;
         public readonly SortedSet<string> Types = new(StringComparer.OrdinalIgnoreCase);
-        private readonly List<double> _times = [];
+        private readonly List<(double Time, string Victim)> _uses = [];
 
         public void AddSwing(Core.Combat.Swing swing)
         {
@@ -2336,7 +2336,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 Total += Math.Max(0, swing.Damage.Number);
             }
             AddType(swing.DamageType);
-            _times.Add(swing.Time.ToUnixTimeMilliseconds() / 1000.0);
+            _uses.Add((swing.Time.ToUnixTimeMilliseconds() / 1000.0, swing.Victim));
         }
 
         public void AddType(string type)
@@ -2345,28 +2345,30 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 Types.Add(type);
         }
 
-        /// <summary>Mean seconds between USES: swing times cluster into
-        /// volleys (an AoE's 24 hits are one use), then successive
-        /// volley-start gaps average — cross-fight gaps (>5 min, aggregate
-        /// views) are excluded. Null below two uses.</summary>
+        /// <summary>Mean seconds between USES. One use = hits on DISTINCT
+        /// victims within 2s (an AoE's 24 simultaneous hits); the same
+        /// victim hit again is a NEW use however fast — so a 2s item proc
+        /// on one target reads ~2s, not a merged blur. Successive use-start
+        /// gaps average; cross-fight gaps (>5 min, aggregate views) are
+        /// excluded. Null below two uses.</summary>
         private double? Frequency()
         {
-            if (_times.Count < 2)
+            if (_uses.Count < 2)
                 return null;
-            _times.Sort();
+            _uses.Sort((a, b) => a.Time.CompareTo(b.Time));
             List<double> gaps = [];
-            var volleyStart = _times[0];
-            var last = _times[0];
-            foreach (var t in _times)
+            var volleyStart = _uses[0].Time;
+            HashSet<string> volleyVictims = new(StringComparer.OrdinalIgnoreCase) { _uses[0].Victim };
+            foreach (var (time, victim) in _uses.Skip(1))
             {
-                if (t - last > 2)
-                {
-                    var gap = t - volleyStart;
-                    if (gap <= 300)
-                        gaps.Add(gap);
-                    volleyStart = t;
-                }
-                last = t;
+                if (time - volleyStart <= 2 && volleyVictims.Add(victim))
+                    continue; // same use, another target
+                var gap = time - volleyStart;
+                if (gap is > 0 and <= 300)
+                    gaps.Add(gap);
+                volleyStart = time;
+                volleyVictims.Clear();
+                volleyVictims.Add(victim);
             }
             return gaps.Count > 0 ? gaps.Average() : null;
         }
