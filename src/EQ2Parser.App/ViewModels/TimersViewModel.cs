@@ -342,6 +342,28 @@ public sealed partial class TimersViewModel : ObservableObject
     [ObservableProperty]
     private string _controlEffectText = "";
 
+    /// <summary>Editor dropdown choices — the Core closed vocabularies plus
+    /// blank, plus the row's current value when it's off-list (a mined
+    /// two-school combo like "poison, disease" must survive an edit).</summary>
+    public ObservableCollection<string> DamageTypeChoices { get; } = [];
+    public ObservableCollection<string> ControlEffectChoices { get; } = [];
+
+    private void RefreshTagChoices()
+    {
+        RebuildChoices(DamageTypeChoices, Vocabulary.DamageSchools, DamageTypeText);
+        RebuildChoices(ControlEffectChoices, Vocabulary.ControlEffects, ControlEffectText);
+    }
+
+    private static void RebuildChoices(ObservableCollection<string> target, IReadOnlyList<string> canonical, string current)
+    {
+        target.Clear();
+        target.Add("");
+        foreach (var choice in canonical)
+            target.Add(choice);
+        if (current.Length > 0 && !target.Any(c => string.Equals(c, current, StringComparison.OrdinalIgnoreCase)))
+            target.Add(current);
+    }
+
     [ObservableProperty]
     private string _durationSeconds = "30";
 
@@ -404,6 +426,7 @@ public sealed partial class TimersViewModel : ObservableObject
         ZoneText = "";
         DamageTypeText = "";
         ControlEffectText = "";
+        RefreshTagChoices();
         DurationSeconds = "30";
         WarningSeconds = "10";
         RemoveSeconds = "-15";
@@ -435,6 +458,7 @@ public sealed partial class TimersViewModel : ObservableObject
         ZoneText = d.Zone;
         DamageTypeText = d.DamageType;
         ControlEffectText = d.ControlEffect;
+        RefreshTagChoices();
         DurationSeconds = d.DurationSeconds.ToString();
         WarningSeconds = d.WarningSeconds.ToString();
         RemoveSeconds = d.RemoveSeconds.ToString();

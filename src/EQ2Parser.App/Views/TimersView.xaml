@@ -230,13 +230,13 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,5,0">
                                 <TextBlock Text="Damage type" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="What it deals — heat, poison, focus… (tag only; the timer windows will surface it)" />
-                                <TextBox Text="{Binding DamageTypeText, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="12" />
+                                           ToolTip="The school it deals (tag only; the timer windows will surface it)" />
+                                <ComboBox ItemsSource="{Binding DamageTypeChoices}" SelectedItem="{Binding DamageTypeText}" FontSize="12" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="5,0,0,0">
                                 <TextBlock Text="Control effect" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="stun / mez / fear / root / daze / stifle — surfaced on the bar so you know WHAT lands" />
-                                <TextBox Text="{Binding ControlEffectText, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="12" />
+                                           ToolTip="Surfaced on the bar so you know WHAT lands" />
+                                <ComboBox ItemsSource="{Binding ControlEffectChoices}" SelectedItem="{Binding ControlEffectText}" FontSize="12" />
                             </StackPanel>
                         </Grid>
 
