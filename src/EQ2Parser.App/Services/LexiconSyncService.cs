@@ -201,7 +201,12 @@ public sealed class LexiconSyncService
                         StartSoundData = startWav,
                         WarningSoundData = warningWav,
                         RadialDisplay = t.RadialDisplay,
-                        Modable = t.Modable,
+                        // The site's editor doesn't expose "allow timer
+                        // mods" and its saves default the column OFF — but
+                        // recast timers must stretch under Traumatic Swipe
+                        // (base × 1.5) or every bar runs long. Until the
+                        // site can express it, synced timers are modable.
+                        Modable = true,
                         Tooltip = t.Tooltip,
                         FillColorArgb = t.FillColor,
                         Panel1 = t.Panel1,
