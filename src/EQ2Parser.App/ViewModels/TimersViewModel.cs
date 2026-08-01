@@ -116,6 +116,11 @@ public sealed partial class TimerBarRow : ObservableObject
 
     [ObservableProperty]
     private string _controlText = "";
+
+    /// <summary>Name without the combatant suffix — radial cells are too
+    /// small for "Prone to Corruption · Othysis Muravian".</summary>
+    [ObservableProperty]
+    private string _nameOnly = "";
 }
 
 /// <summary>
@@ -631,6 +636,11 @@ public sealed partial class TimersViewModel : ObservableObject
         row.StyleKey = styleKey;
         var argb = unchecked((uint)bar.FillColorArgb);
         var fill = Color.FromArgb(0xFF, (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb);
+        // ACT's untouched default (pure #0000FF) is nobody's choice — show
+        // it as the app gold instead. Any deliberately picked colour,
+        // including a real blue that isn't exactly the default, is kept.
+        if (bar.FillColorArgb == unchecked((int)0xFF0000FF))
+            fill = Color.FromRgb(0xC8, 0xA9, 0x6E);
         var brush = new SolidColorBrush(fill);
         brush.Freeze();
         row.BarBrush = brush;
@@ -642,5 +652,6 @@ public sealed partial class TimersViewModel : ObservableObject
         row.SchoolBrush = schoolBrush;
         row.DamageText = bar.DamageType;
         row.ControlText = bar.ControlEffect.Length > 0 ? bar.ControlEffect.ToUpperInvariant() : "";
+        row.NameOnly = bar.Name;
     }
 }

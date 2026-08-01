@@ -38,15 +38,30 @@
                                 </TextBlock.Effect>
                             </TextBlock>
                         </Grid>
-                        <!-- DownOnly Viewbox: shrink, never ellipsise. -->
-                        <Viewbox StretchDirection="DownOnly" Stretch="Uniform" MaxWidth="54" MaxHeight="12"
-                                 HorizontalAlignment="Center" Margin="0,1,0,0">
-                            <TextBlock Text="{Binding Label}" FontSize="9" Foreground="#C9CEDD" FontFamily="Segoe UI">
-                                <TextBlock.Effect>
-                                    <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
-                                </TextBlock.Effect>
-                            </TextBlock>
-                        </Viewbox>
+                        <!-- Name only (no combatant), wrapping to two lines at
+                             full size — readable beats complete-but-microscopic. -->
+                        <TextBlock Text="{Binding NameOnly}" FontSize="9" Foreground="#C9CEDD" FontFamily="Segoe UI"
+                                   HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
+                                   MaxWidth="56" MaxHeight="26" Margin="0,1,0,0">
+                            <TextBlock.Effect>
+                                <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                            </TextBlock.Effect>
+                        </TextBlock>
+                        <TextBlock Text="{Binding ControlText}" FontSize="8.5" FontWeight="Bold" FontFamily="Segoe UI"
+                                   Foreground="#FFE9E2" HorizontalAlignment="Center" Margin="0,1,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ControlText}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                            <TextBlock.Effect>
+                                <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                            </TextBlock.Effect>
+                        </TextBlock>
                     </StackPanel>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -126,7 +141,7 @@
                             <!-- What's coming: damage school (school-tinted)
                                  and control effect, from the curator tags. -->
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,1,6,0">
-                                <TextBlock Text="{Binding DamageText}" FontSize="9.5" FontFamily="Segoe UI"
+                                <TextBlock Text="{Binding DamageText}" FontSize="10" FontFamily="Segoe UI"
                                            Foreground="{Binding SchoolBrush}" VerticalAlignment="Center">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
@@ -141,7 +156,7 @@
                                         <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
                                     </TextBlock.Effect>
                                 </TextBlock>
-                                <TextBlock Text="{Binding ControlText}" FontSize="9.5" FontWeight="Bold" FontFamily="Segoe UI"
+                                <TextBlock Text="{Binding ControlText}" FontSize="10" FontWeight="Bold" FontFamily="Segoe UI"
                                            Foreground="#FFE9E2" VerticalAlignment="Center" Margin="5,0,0,0">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">

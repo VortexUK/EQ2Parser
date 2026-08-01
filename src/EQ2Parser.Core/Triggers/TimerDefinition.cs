@@ -72,7 +72,11 @@ public sealed record TimerDefinition
     /// (ApplyTimerMod — final = base × (1 + mods)) scale this timer's
     /// duration at start. Off = always the base duration.</summary>
     public bool Modable { get; init; } = true;
-    public bool RadialDisplay { get; init; } = true;
+
+    /// <summary>Round dial instead of a bar. Default OFF (ACT's default) —
+    /// the dial row is for the two or three glance-constantly timers, and
+    /// bars carry the flame styling.</summary>
+    public bool RadialDisplay { get; init; }
 
     /// <summary>ACT's two spell-timer panels (the mini timer windows) — kept
     /// for lossless config import; our overlay maps A now, B later.</summary>
