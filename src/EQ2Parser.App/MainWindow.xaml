@@ -49,18 +49,9 @@
             </Style.Triggers>
         </Style>
     </Window.Resources>
+    <!-- Maximize sizing is handled in code-behind (WM_GETMINMAXINFO → the
+         monitor's work area), so no maximized margin compensation needed. -->
     <Grid>
-        <Grid.Style>
-            <!-- A borderless window maximizes past the screen edges by the
-                 (invisible) resize border — pad the content back in. -->
-            <Style TargetType="Grid">
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
-                        <Setter Property="Margin" Value="7" />
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
-        </Grid.Style>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
