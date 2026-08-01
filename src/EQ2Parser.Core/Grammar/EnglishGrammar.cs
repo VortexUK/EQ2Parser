@@ -165,6 +165,13 @@ public static partial class EnglishGrammar
     [GeneratedRegex(@"^(?<victim>.+?) is no longer affected by (?<effect>.+?)\.$")]
     private static partial Regex StatusAffectedReleased();
 
+    // Generic (unnamed) releases — close the victim's most recent open
+    // effect, whatever it was:
+    // A muck toad regains their wits.      (stun/daze/fear/confuse/…)
+    // A muck toad returns to normal.       (mez-break flavour)
+    [GeneratedRegex(@"^(?<victim>.+?) (?:regains (?:[Tt]heir wits|[Hh]is composure|[Hh]er composure|[Ii]ts composure|[Tt]heir composure)|returns to normal)\.$")]
+    private static partial Regex StatusGenericReleased();
+
     // ── Deaths ──────────────────────────────────────────────────────────────
     // You have killed a glacial tunneler.
     // Alas, a Thurgadin watcher has died from pain and suffering.
@@ -267,6 +274,11 @@ public static partial class EnglishGrammar
         if (message.Contains(" silences ", StringComparison.Ordinal)
             && (m = StatusSilences().Match(message)).Success)
             return Status(m.Groups["victim"].Value, "silenced", applied: true, m.Groups["attacker"].Value);
+        if ((message.Contains(" regains ", StringComparison.Ordinal)
+                || message.EndsWith(" returns to normal.", StringComparison.Ordinal))
+            && !message.StartsWith("Your ", StringComparison.Ordinal) // "Your health returns to normal."
+            && (m = StatusGenericReleased().Match(message)).Success)
+            return Status(m.Groups["victim"].Value, "any", applied: false);
         if ((m = YouKilled().Match(message)).Success)
             return new DeathEvent(You, m.Groups["victim"].Value);
         if ((m = AlasDied().Match(message)).Success)

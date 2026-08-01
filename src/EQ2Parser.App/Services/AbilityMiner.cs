@@ -107,10 +107,13 @@ public static class AbilityMiner
             {
                 if (!statusApplies.TryGetValue(victim, out var list))
                     continue;
+                // "any" = a generic release ("regains their wits") — it
+                // closes the victim's most recent open effect of any kind.
+                var wildcard = effect == "any";
                 for (var i = list.Count - 1; i >= 0; i--)
                 {
                     if (list[i].Duration is null
-                        && string.Equals(list[i].Effect, effect, StringComparison.OrdinalIgnoreCase)
+                        && (wildcard || string.Equals(list[i].Effect, effect, StringComparison.OrdinalIgnoreCase))
                         && list[i].Time <= time)
                     {
                         list[i] = (list[i].Time, list[i].Effect, (time - list[i].Time).TotalSeconds);

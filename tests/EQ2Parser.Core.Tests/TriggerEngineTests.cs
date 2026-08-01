@@ -261,6 +261,16 @@ public class TriggerEngineTests
             Grammar.EnglishGrammar.TryParse("Sofja is no longer affected by the darkness."));
         Assert.Equal("the darkness", darkness.Ability);
         Assert.Equal("released", darkness.DamageType);
+
+        // Generic releases close whatever the victim had ("any"), and the
+        // health-regen line must NOT read as one.
+        Assert.Equal("any", Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("A muck toad regains their wits.")).Ability);
+        Assert.Equal("any", Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("Breldig Guzzlesea regains His composure.")).Ability);
+        Assert.Equal("any", Assert.IsType<Grammar.SwingEvent>(
+            Grammar.EnglishGrammar.TryParse("King Itchhide returns to normal.")).Ability);
+        Assert.Null(Grammar.EnglishGrammar.TryParse("Your health returns to normal."));
     }
 
     [Fact]
