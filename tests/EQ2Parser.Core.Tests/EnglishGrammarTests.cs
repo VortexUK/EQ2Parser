@@ -24,6 +24,24 @@ public class EnglishGrammarTests
     }
 
     [Fact]
+    public void Abbreviated_Amounts_Expand()
+    {
+        // EQ2 logs six-digit-plus amounts K/M-abbreviated — these lines were
+        // silently DROPPED before (the Assassinate regression: two 100k+
+        // crits missing from the Malkonis fight while ACT counted them).
+        var s = Swing("Asame's Assassinate hits Malkonis D'Morte for a critical of 140.6K disease damage.");
+        Assert.Equal(("Asame", "Assassinate", "Malkonis D'Morte"), (s.Attacker, s.Ability, s.Victim));
+        Assert.Equal(140_600, s.Damage.Number);
+        Assert.True(s.Critical);
+
+        var heal = Swing("Sofja's Grim Sorcery heals Menludiir for a critical of 1.2M hit points.");
+        Assert.Equal(1_200_000, heal.Damage.Number);
+
+        var whole = Swing("Asame's Assassinate hits Malkonis D'Morte for 250K disease damage.");
+        Assert.Equal(250_000, whole.Damage.Number);
+    }
+
+    [Fact]
     public void You_AutoAttack_Is_Melee()
     {
         var s = Swing("YOU hit a lesser shadowbone skeleton for a critical of 5,529 crushing damage.");

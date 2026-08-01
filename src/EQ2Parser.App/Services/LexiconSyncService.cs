@@ -67,6 +67,7 @@ public sealed class LexiconSyncService
 
     private sealed record PackTimer(
         string Name,
+        bool Checked,
         int TimerDurationS,
         int WarningValue,
         int RemoveValue,
@@ -173,40 +174,26 @@ public sealed class LexiconSyncService
                 }
                 foreach (var t in encounter.SpellTimers)
                 {
-                    // The site's editor doesn't expose sounds yet, and its
-                    // saves write them empty — a curated timer with BOTH
-                    // blank gets the curator convention (speak the name at
-                    // start, "<name> soon" at warning) instead of silence.
-                    var startWav = t.StartWav;
-                    var warningWav = t.WarningWav;
-                    if (startWav.Length == 0 && warningWav.Length == 0)
-                    {
-                        startWav = "tts";
-                        warningWav = "tts";
-                    }
+                    // The site's editor expresses EVERY field since the
+                    // 2026-08 parity release (plus a one-time backfill of
+                    // the rows its older editor stripped) — curated values
+                    // flow through verbatim.
                     timers.Add(new TimerDefinition
                     {
                         Name = t.Name,
                         Category = t.Category ?? encounter.Mob,
                         Zone = zone.Zone,
-                        // Curators don't manage ACT's "checked" — lexicon
-                        // timers arrive enabled; the user's overrides rule.
-                        Enabled = true,
+                        Enabled = t.Checked,
                         DurationSeconds = t.TimerDurationS,
                         WarningSeconds = t.WarningValue,
                         RemoveSeconds = t.RemoveValue,
                         OnlyMasterTicks = t.OnlyMasterTicks,
                         RestrictToMe = t.Restrict,
                         AbsoluteTiming = t.Absolute,
-                        StartSoundData = startWav,
-                        WarningSoundData = warningWav,
+                        StartSoundData = t.StartWav,
+                        WarningSoundData = t.WarningWav,
                         RadialDisplay = t.RadialDisplay,
-                        // The site's editor doesn't expose "allow timer
-                        // mods" and its saves default the column OFF — but
-                        // recast timers must stretch under Traumatic Swipe
-                        // (base × 1.5) or every bar runs long. Until the
-                        // site can express it, synced timers are modable.
-                        Modable = true,
+                        Modable = t.Modable,
                         Tooltip = t.Tooltip,
                         FillColorArgb = t.FillColor,
                         Panel1 = t.Panel1,

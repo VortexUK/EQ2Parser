@@ -32,23 +32,23 @@ public static partial class EnglishGrammar
 
     private const string DamageVerbs = "hits|hit|multi attacks|double attacks|flurries|aoe attacks";
 
-    [GeneratedRegex($@"^YOUR (?<ability>.+?) (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) (?<school>\w+) damage\.$")]
+    [GeneratedRegex($@"^YOUR (?<ability>.+?) (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+(?:\.\d+)?[KMB]?) (?<school>\w+) damage\.$")]
     private static partial Regex YourAbilityDamage();
 
-    [GeneratedRegex($@"^YOU (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) (?<school>\w+) damage\.$")]
+    [GeneratedRegex($@"^YOU (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+(?:\.\d+)?[KMB]?) (?<school>\w+) damage\.$")]
     private static partial Regex YouAutoDamage();
 
-    [GeneratedRegex($@"^(?<attacker>.+?)'s? (?<ability>.+?) (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) (?<school>\w+) damage\.$")]
+    [GeneratedRegex($@"^(?<attacker>.+?)'s? (?<ability>.+?) (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+(?:\.\d+)?[KMB]?) (?<school>\w+) damage\.$")]
     private static partial Regex PossessiveAbilityDamage();
 
-    [GeneratedRegex($@"^(?<attacker>.+?) (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) (?<school>\w+) damage\.$")]
+    [GeneratedRegex($@"^(?<attacker>.+?) (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+(?:\.\d+)?[KMB]?) (?<school>\w+) damage\.$")]
     private static partial Regex PlainDamage();
 
     // a creepfern is hit by Acid Spray for 447 poison damage.  (anonymous
     // source — dumbfires/ground effects; attributed to "Unknown". Must be
     // tried before PlainDamage, which would split this into a phantom
     // attacker "a creepfern is" and victim "by Acid Spray".)
-    [GeneratedRegex(@"^(?<victim>.+?) is hit by (?<ability>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) (?<school>\w+) damage\.$")]
+    [GeneratedRegex(@"^(?<victim>.+?) is hit by (?<ability>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+(?:\.\d+)?[KMB]?) (?<school>\w+) damage\.$")]
     private static partial Regex AnonymousHit();
 
     // ── Avoids ──────────────────────────────────────────────────────────────
@@ -63,10 +63,10 @@ public static partial class EnglishGrammar
     // YOUR Reverence heals YOU for 13 hit points.
     // Sofja's Grim Sorcery heals Menludiir for a critical of 1,024 hit points.
 
-    [GeneratedRegex(@"^YOUR (?<ability>.+?) heals (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) hit points?\.$")]
+    [GeneratedRegex(@"^YOUR (?<ability>.+?) heals (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+(?:\.\d+)?[KMB]?) hit points?\.$")]
     private static partial Regex YourHeal();
 
-    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) heals (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+) hit points?\.$")]
+    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) heals (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+(?:\.\d+)?[KMB]?) hit points?\.$")]
     private static partial Regex PossessiveHeal();
 
     // ── Zero-damage hits ────────────────────────────────────────────────────
@@ -94,30 +94,30 @@ public static partial class EnglishGrammar
 
     public const string WardAbsorbType = "Ward (Absorb)";
 
-    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) absorbs (?<amount>[\d,]+) points? of damage from being done to (?<victim>.+?)\.(?: \((?<remaining>[\d,]+) points? remaining\))?$")]
+    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) absorbs (?<amount>[\d,]+(?:\.\d+)?[KMB]?) points? of damage from being done to (?<victim>.+?)\.(?: \((?<remaining>[\d,]+(?:\.\d+)?[KMB]?) points? remaining\))?$")]
     private static partial Regex WardAbsorb();
 
     // YOUR Stonewill absorbs 720 points of damage from being done to YOURSELF. (479 points remaining)
-    [GeneratedRegex(@"^YOUR (?<ability>.+?) absorbs (?<amount>[\d,]+) points? of damage from being done to (?<victim>.+?)\.(?: \((?<remaining>[\d,]+) points? remaining\))?$")]
+    [GeneratedRegex(@"^YOUR (?<ability>.+?) absorbs (?<amount>[\d,]+(?:\.\d+)?[KMB]?) points? of damage from being done to (?<victim>.+?)\.(?: \((?<remaining>[\d,]+(?:\.\d+)?[KMB]?) points? remaining\))?$")]
     private static partial Regex YourWardAbsorb();
 
     // ── Power ───────────────────────────────────────────────────────────────
     // Tsuna's Empower Servant refreshes Tsuna for 59 mana points.
 
-    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) refreshes (?<victim>.+?) for (?<amount>[\d,]+) (?:mana|power) points?\.$")]
+    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) refreshes (?<victim>.+?) for (?<amount>[\d,]+(?:\.\d+)?[KMB]?) (?:mana|power) points?\.$")]
     private static partial Regex PowerRefresh();
 
-    [GeneratedRegex(@"^YOUR (?<ability>.+?) refreshes (?<victim>.+?) for (?<amount>[\d,]+) (?:mana|power) points?\.$")]
+    [GeneratedRegex(@"^YOUR (?<ability>.+?) refreshes (?<victim>.+?) for (?<amount>[\d,]+(?:\.\d+)?[KMB]?) (?:mana|power) points?\.$")]
     private static partial Regex YourPowerRefresh();
 
     // ── Threat ──────────────────────────────────────────────────────────────
     // Badbang's Insolent Gibe increases THEIR hate with a dragonspawn whelp for 1,234 threat.
     // Noxyi's Dynamism reduces THEIR hate with a blood colossus for 567 threat.
 
-    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) (?<direction>increases|reduces) (?:THEIR|YOUR) hate with (?<victim>.+?) for (?<amount>[\d,]+) threat\.$")]
+    [GeneratedRegex(@"^(?<attacker>.+?)'s? (?<ability>.+?) (?<direction>increases|reduces) (?:THEIR|YOUR) hate with (?<victim>.+?) for (?<amount>[\d,]+(?:\.\d+)?[KMB]?) threat\.$")]
     private static partial Regex ThreatChange();
 
-    [GeneratedRegex(@"^YOUR (?<ability>.+?) (?<direction>increases|reduces) YOUR hate with (?<victim>.+?) for (?<amount>[\d,]+) threat\.$")]
+    [GeneratedRegex(@"^YOUR (?<ability>.+?) (?<direction>increases|reduces) YOUR hate with (?<victim>.+?) for (?<amount>[\d,]+(?:\.\d+)?[KMB]?) threat\.$")]
     private static partial Regex YourThreatChange();
 
     // ── Cures ───────────────────────────────────────────────────────────────
@@ -404,7 +404,7 @@ public static partial class EnglishGrammar
         SwingCategory.Healing, false, "None",
         attacker, m.Groups["ability"].Value,
         ParseAmount(m.Groups["amount"].Value), m.Groups["victim"].Value, WardAbsorbType,
-        Extra: m.Groups["remaining"].Success ? $"remaining={m.Groups["remaining"].Value.Replace(",", "")}" : null);
+        Extra: m.Groups["remaining"].Success ? $"remaining={ParseAmount(m.Groups["remaining"].Value).Number}" : null);
 
     private static SwingEvent Avoid(Match m) => AvoidFrom(m, m.Groups["attacker"].Value);
 
@@ -472,6 +472,23 @@ public static partial class EnglishGrammar
         _ => "None",
     };
 
-    private static DamageValue ParseAmount(string text) =>
-        new(long.Parse(text, NumberStyles.AllowThousands, CultureInfo.InvariantCulture));
+    /// <summary>EQ2 abbreviates six-digit-plus amounts in the log —
+    /// "140.6K disease damage", "1.2M" — so a plain integer parse silently
+    /// DROPPED every big crit (ACT expands the suffix; so do we).</summary>
+    private static DamageValue ParseAmount(string text)
+    {
+        var multiplier = text[^1] switch
+        {
+            'K' => 1_000L,
+            'M' => 1_000_000L,
+            'B' => 1_000_000_000L,
+            _ => 1L,
+        };
+        if (multiplier > 1)
+        {
+            var value = double.Parse(text[..^1].Replace(",", ""), CultureInfo.InvariantCulture);
+            return new((long)Math.Round(value * multiplier));
+        }
+        return new(long.Parse(text, NumberStyles.AllowThousands, CultureInfo.InvariantCulture));
+    }
 }
