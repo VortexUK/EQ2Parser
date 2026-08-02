@@ -15,6 +15,16 @@ public sealed class SourceManager : IDisposable
 {
     private readonly List<LogSource> _sources = [];
 
+    /// <summary>Serializes Add end-to-end — the folder-watch thread and a
+    /// UI add both used to check-then-act on the sources list, so the same
+    /// path could attach twice.</summary>
+    private readonly object _addGate = new();
+
+    /// <summary>Paths the user removed THIS session — the folder watcher
+    /// respects these instead of re-adding a growing log ~2s after its
+    /// removal, and PersistSources drops their saved entries.</summary>
+    private readonly HashSet<string> _removedPaths = new(StringComparer.OrdinalIgnoreCase);
+
     public object Sync { get; } = new();
     public EncounterCorrelator Correlator { get; } = new();
     public CombatantClassifier Classifier { get; } = new(new ClassIdentifier(SpellClassMap.LoadEmbedded()));
@@ -88,31 +98,51 @@ public sealed class SourceManager : IDisposable
 
     public LogSource Add(string path, bool parseFromStart, long? startOffset = null, bool autoDiscovered = false)
     {
-        var source = new LogSource(
-            path, parseFromStart, Sync,
-            new EngineOptions { IdleEndSeconds = Settings.IdleEndSeconds },
-            TimeSpan.FromMilliseconds(Settings.PollMilliseconds),
-            Triggers.CreateEngine(LogSource.DeriveOwner(path)),
-            SpellTimers.Service,
-            startOffset)
+        lock (_addGate)
         {
-            AutoDiscovered = autoDiscovered,
-        };
-        lock (Sync)
-        {
-            Correlator.Attach(source.Engine);
-            source.Engine.EncounterEnded += History.QueueSave;
-            source.Processor.StatusApplied += Callouts.OnStatusApplied;
-            _sources.Add(source);
+            lock (Sync)
+            {
+                // Path-unique, authoritative here (not at call sites).
+                var existing = _sources.FirstOrDefault(s =>
+                    string.Equals(s.Path, path, StringComparison.OrdinalIgnoreCase));
+                if (existing is not null)
+                    return existing;
+                _removedPaths.Remove(path); // an explicit re-add clears the tombstone
+            }
+            var source = new LogSource(
+                path, parseFromStart, Sync,
+                new EngineOptions { IdleEndSeconds = Settings.IdleEndSeconds },
+                TimeSpan.FromMilliseconds(Settings.PollMilliseconds),
+                Triggers.CreateEngine(LogSource.DeriveOwner(path)),
+                SpellTimers.Service,
+                startOffset)
+            {
+                AutoDiscovered = autoDiscovered,
+            };
+            lock (Sync)
+            {
+                Correlator.Attach(source.Engine);
+                source.Engine.EncounterEnded += History.QueueSave;
+                source.Processor.StatusApplied += Callouts.OnStatusApplied;
+                _sources.Add(source);
+            }
+            // Pump only once fully wired — starting in the LogSource
+            // constructor let a fast log's first lines process unattached.
+            source.Start();
+            return source;
         }
-        return source;
     }
 
+    /// <summary>Add's exact inverse: unwire everything Add wired.</summary>
     public void Remove(LogSource source)
     {
         lock (Sync)
         {
             _sources.Remove(source);
+            Correlator.Detach(source.Engine);
+            source.Engine.EncounterEnded -= History.QueueSave;
+            source.Processor.StatusApplied -= Callouts.OnStatusApplied;
+            _removedPaths.Add(source.Path);
         }
         if (source.TriggerEngine is { } engine)
             Triggers.RemoveEngine(engine);
@@ -163,6 +193,13 @@ public sealed class SourceManager : IDisposable
             return;
         Settings = Settings with { WatchedFolders = [.. Settings.WatchedFolders, folder] };
         Settings.Save();
+        // Watching (or re-watching) a folder is fresh consent for its logs —
+        // clear any session tombstones underneath it.
+        var prefix = folder.EndsWith(System.IO.Path.DirectorySeparatorChar) ? folder : folder + System.IO.Path.DirectorySeparatorChar;
+        lock (Sync)
+        {
+            _removedPaths.RemoveWhere(p => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     /// <summary>Stop watching a folder and detach the sources it added.</summary>
@@ -173,10 +210,12 @@ public sealed class SourceManager : IDisposable
             WatchedFolders = [.. Settings.WatchedFolders.Where(f => !string.Equals(f, folder, StringComparison.OrdinalIgnoreCase))],
         };
         Settings.Save();
+        // Trailing separator so "C:\logs" never matches a sibling "C:\logs2".
+        var prefix = folder.EndsWith(System.IO.Path.DirectorySeparatorChar) ? folder : folder + System.IO.Path.DirectorySeparatorChar;
         foreach (var source in Sources)
         {
             if (source.AutoDiscovered
-                && source.Path.StartsWith(folder, StringComparison.OrdinalIgnoreCase))
+                && source.Path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                 Remove(source);
         }
     }
@@ -208,6 +247,13 @@ public sealed class SourceManager : IDisposable
                 {
                     try
                     {
+                        lock (Sync)
+                        {
+                            // Explicitly removed this session — respect that
+                            // instead of re-adding the log within ~2s.
+                            if (_removedPaths.Contains(file))
+                                continue;
+                        }
                         if (Sources.Any(s => string.Equals(s.Path, file, StringComparison.OrdinalIgnoreCase)))
                             continue;
                         var length = new System.IO.FileInfo(file).Length;
@@ -215,10 +261,13 @@ public sealed class SourceManager : IDisposable
                             string.Equals(s.Path, file, StringComparison.OrdinalIgnoreCase));
                         if (saved?.LastPosition is { } position)
                         {
-                            // Known log: catch up when it grew; a shrink is
-                            // rotation (all-new content, read from the top).
+                            // Known log: catch up when it grew. Pass the RAW
+                            // saved position — the tail reader treats a stale
+                            // offset past the file's length as rotation and
+                            // restarts from 0; pre-clamping to the new length
+                            // silently skipped the rotated file's content.
                             if (length != position)
-                                Add(file, parseFromStart: false, Math.Min(position, length), autoDiscovered: true);
+                                Add(file, parseFromStart: false, position, autoDiscovered: true);
                         }
                         else if (!baselines.TryGetValue(file, out var baseline))
                         {
@@ -253,24 +302,41 @@ public sealed class SourceManager : IDisposable
 
     public void PersistSources()
     {
-        // Live sources with fresh positions, plus dormant auto-discovered
-        // entries from earlier sessions — their resume positions must
-        // survive sessions where the log never woke up.
+        // Live sources with fresh positions, plus every dormant entry from
+        // earlier sessions — auto-discovered logs that never woke up AND
+        // manual sources whose file is missing right now (unmounted or
+        // network drive: dropping them lost the resume position forever).
+        // Only explicitly-removed paths are actually forgotten.
         List<SourceSetting> persisted =
             [.. Sources.Select(s => new SourceSetting(s.Path, s.ParseFromStart, s.LastPosition, s.AutoDiscovered))];
         var livePaths = new HashSet<string>(persisted.Select(s => s.Path), StringComparer.OrdinalIgnoreCase);
-        persisted.AddRange(Settings.Sources.Where(s => s.AutoDiscovered && !livePaths.Contains(s.Path)));
+        lock (Sync)
+        {
+            persisted.AddRange(Settings.Sources.Where(s =>
+                !livePaths.Contains(s.Path) && !_removedPaths.Contains(s.Path)));
+        }
         Settings = Settings with { Sources = persisted };
         Settings.Save();
     }
 
     public void Dispose()
     {
+        // Stop the folder watcher FIRST and join it — it could otherwise
+        // Add a source concurrently with (or after) this teardown.
         _watchCts.Cancel();
+        try
+        {
+            _watchTask?.Wait(TimeSpan.FromSeconds(3));
+        }
+        catch (AggregateException)
+        {
+            // Cancellation surfacing on shutdown — nothing to report.
+        }
         foreach (var source in Sources)
             source.Dispose();
         History.Dispose();
         Audio.Dispose();
         _watchCts.Dispose();
     }
+
 }

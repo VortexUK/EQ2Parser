@@ -53,6 +53,11 @@ public sealed class EncounterCorrelator(CorrelatorOptions? options = null)
     public void RegisterOwner(string ownerName) =>
         _ownerKeys.Add(ownerName.ToUpperInvariant());
 
+    /// <summary>Source removal: stop accepting this engine's encounters.
+    /// The owner key stays registered — history from that owner still needs
+    /// the owner rule for future merges.</summary>
+    public void Detach(ParserEngine engine) => engine.EncounterEnded -= Accept;
+
     /// <summary>User deletion of a correlated fight. Returns false when the
     /// fight was not (or no longer) in history.</summary>
     public bool Remove(CorrelatedEncounter fight)

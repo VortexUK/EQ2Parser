@@ -14,7 +14,7 @@ namespace EQ2Parser.App.Services;
 public sealed class LogSource : IDisposable
 {
     private readonly CancellationTokenSource _cts = new();
-    private readonly Task _task;
+    private Task? _task;
     private readonly object _sync;
 
     private readonly LogTailReader _reader;
@@ -54,7 +54,6 @@ public sealed class LogSource : IDisposable
 
     /// <summary>Set when the tail loop dies (file unreadable etc.).</summary>
     public Exception? Error { get; private set; }
-    public bool Completed => _task.IsCompleted;
 
     public LogSource(string path, bool parseFromStart, object sync, EngineOptions engineOptions, TimeSpan pollInterval, TriggerEngine? triggers = null, SpellTimerService? timers = null, long? startOffset = null)
     {
@@ -71,8 +70,13 @@ public sealed class LogSource : IDisposable
             StartOffset = parseFromStart ? null : startOffset,
             PollInterval = pollInterval,
         });
-        _task = Task.Run(() => PumpAsync(_reader, _cts.Token));
     }
+
+    /// <summary>Begin pumping. The manager calls this AFTER attaching the
+    /// engine to the correlator and wiring the history/callout handlers —
+    /// the constructor used to start the pump itself, so a fast log's first
+    /// lines could be processed with none of that wired.</summary>
+    public void Start() => _task ??= Task.Run(() => PumpAsync(_reader, _cts.Token));
 
     /// <summary>eq2log_Charname.[…].txt → Charname.</summary>
     public static string DeriveOwner(string path) =>
@@ -108,7 +112,7 @@ public sealed class LogSource : IDisposable
         _cts.Cancel();
         try
         {
-            _task.Wait(TimeSpan.FromSeconds(2));
+            _task?.Wait(TimeSpan.FromSeconds(2));
         }
         catch (AggregateException)
         {
