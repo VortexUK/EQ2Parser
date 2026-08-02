@@ -329,9 +329,28 @@
                                    FontFamily="{StaticResource BodySemiBoldFont}" />
                     </Border>
                 </StackPanel>
-                <ToggleButton x:Name="ColumnsToggle" Style="{StaticResource PillToggle}"
+                <ToggleButton x:Name="ColumnsToggle"
                               Content="☰ COLUMNS" HorizontalAlignment="Right" VerticalAlignment="Center"
-                              PreviewMouseLeftButtonDown="ColumnsToggle_PreviewMouseLeftButtonDown" />
+                              PreviewMouseLeftButtonDown="ColumnsToggle_PreviewMouseLeftButtonDown">
+                    <ToggleButton.Style>
+                        <!-- Configures the combatant grid — hidden while the
+                             drill overlay (which has its own picker) or the
+                             zone summary covers that grid, so only one
+                             COLUMNS button ever shows. -->
+                        <Style TargetType="ToggleButton" BasedOn="{StaticResource PillToggle}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding DetailOpen}" Value="False" />
+                                        <Condition Binding="{Binding ZoneSummaryOpen}" Value="False" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToggleButton.Style>
+                </ToggleButton>
                 <Popup x:Name="ColumnsPopup" PlacementTarget="{Binding ElementName=ColumnsToggle}"
                        Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
                        HorizontalOffset="-160" VerticalOffset="6"
