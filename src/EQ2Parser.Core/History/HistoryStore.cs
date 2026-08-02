@@ -220,12 +220,22 @@ public sealed class HistoryStore : IDisposable
     }
 
     /// <summary>Every swing exactly once: each combatant's outgoing reference
-    /// bucket holds all their actions (buckets otherwise duplicate).</summary>
-    private static IEnumerable<Swing> UniqueSwings(Encounter encounter) =>
-        encounter.Combatants.Values
+    /// bucket holds all their actions (buckets otherwise duplicate). Except
+    /// self-damage — Encounter.AddSwing records it on the TAKEN side only,
+    /// so it must be harvested from the incoming reference or archived
+    /// fights silently lose that DamageTaken on restore.</summary>
+    private static IEnumerable<Swing> UniqueSwings(Encounter encounter)
+    {
+        var outgoing = encounter.Combatants.Values
             .Where(c => c.OutgoingBuckets.ContainsKey(BucketConfig.AllOutgoingRef))
-            .SelectMany(c => c.OutgoingBuckets[BucketConfig.AllOutgoingRef].All.Swings)
-            .OrderBy(s => s.TimeSorter);
+            .SelectMany(c => c.OutgoingBuckets[BucketConfig.AllOutgoingRef].All.Swings);
+        var selfDamage = encounter.Combatants.Values
+            .Where(c => c.IncomingBuckets.ContainsKey(BucketConfig.AllIncomingRef))
+            .SelectMany(c => c.IncomingBuckets[BucketConfig.AllIncomingRef].All.Swings)
+            .Where(s => s.Category is SwingCategory.Melee or SwingCategory.NonMelee
+                && string.Equals(s.Attacker, s.Victim, StringComparison.OrdinalIgnoreCase));
+        return outgoing.Concat(selfDamage).OrderBy(s => s.TimeSorter);
+    }
 
     public IReadOnlyList<EncounterSummary> QueryEncounters(string? zone = null, int limit = 100) =>
         SearchEncounters(zone: zone, limit: limit);

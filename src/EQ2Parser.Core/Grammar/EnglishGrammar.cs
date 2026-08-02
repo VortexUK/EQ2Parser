@@ -225,12 +225,16 @@ public static partial class EnglishGrammar
             return Damage(m, You, m.Groups["ability"].Value);
         if ((m = YouAutoDamage().Match(message)).Success)
             return Damage(m, You, AutoAttackAbility);
+        // Anonymous before possessive: "Bob's pet is hit by Acid Spray for
+        // 447 poison damage." otherwise phantom-parses as attacker "Bob",
+        // ability "pet is", victim "by Acid Spray". The " is hit by "
+        // literal is specific enough that no possessive line matches it.
+        if ((m = AnonymousHit().Match(message)).Success)
+            return Damage(m, "Unknown", m.Groups["ability"].Value);
         if ((m = PossessiveAbilityDamage().Match(message)).Success)
             return Damage(m, m.Groups["attacker"].Value, m.Groups["ability"].Value);
         if ((m = AvoidLine().Match(message)).Success)
             return Avoid(m);
-        if ((m = AnonymousHit().Match(message)).Success)
-            return Damage(m, "Unknown", m.Groups["ability"].Value);
         if ((m = PlainDamage().Match(message)).Success)
             return Damage(m, m.Groups["attacker"].Value, AutoAttackAbility);
         if ((m = YourHeal().Match(message)).Success)

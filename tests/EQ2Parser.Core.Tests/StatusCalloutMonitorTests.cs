@@ -111,4 +111,23 @@ public class StatusCalloutMonitorTests
         foreach (var effect in Vocabulary.ControlEffects)
             Assert.False(string.IsNullOrWhiteSpace(Vocabulary.CalloutWord(effect)));
     }
+
+    [Fact]
+    public void Processor_Raises_StatusApplied_Even_Out_Of_Combat()
+    {
+        // Pre-pull stuns and no-damage script phases produce status lines
+        // with NO running encounter — the callout pipeline used to lose
+        // them because the invoke sat behind the encounter gate.
+        var engine = new EQ2Parser.Core.Engine.ParserEngine("log-a", "Menludiir");
+        var processor = new EQ2Parser.Core.Engine.LogLineProcessor(engine);
+        var applied = new List<(string Victim, string Effect)>();
+        processor.StatusApplied += (victim, effect, _) => applied.Add((victim, effect));
+
+        Assert.True(EQ2Parser.Core.Logs.LogLine.TryParse(
+            $"({T0.ToUnixTimeSeconds()})[s] Sofja is stunned!", out var line));
+        processor.Process(line);
+
+        Assert.False(engine.InCombat);
+        Assert.Equal(("Sofja", "stunned"), Assert.Single(applied));
+    }
 }

@@ -76,6 +76,20 @@ public class SpellTimerServiceTests
     }
 
     [Fact]
+    public void Recast_After_Expiry_Starts_A_New_Bar_Even_Inside_The_Window()
+    {
+        // A timer SHORTER than the absorb window: once its countdown has
+        // expired, the next hit is a genuine recast. The old check let a
+        // continuous tick chain swallow every recast forever.
+        var service = Service(Doom with { DurationSeconds = 8 });
+        Assert.True(service.Notify("x", "Doom", true, "v", T0));
+        Assert.False(service.Notify("x", "Doom", true, "v", T0.AddSeconds(6))); // running: absorbed
+        Assert.True(service.Notify("x", "Doom", true, "v", T0.AddSeconds(12))); // expired: recast
+        var timer = Assert.Single(Assert.Single(service.Frames).Timers);
+        Assert.Equal(T0.AddSeconds(12), timer.Start);
+    }
+
+    [Fact]
     public void OneOnly_Refuses_While_A_Master_Runs()
     {
         var service = Service(Doom with { AbsoluteTiming = true });

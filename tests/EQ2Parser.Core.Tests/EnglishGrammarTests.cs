@@ -52,6 +52,16 @@ public class EnglishGrammarTests
     }
 
     [Fact]
+    public void Anonymous_Hit_On_Possessively_Named_Victim_Is_Not_A_Phantom_Row()
+    {
+        // "Bob's pet is hit by …" used to phantom-parse via the possessive
+        // pattern as attacker "Bob", ability "pet is", victim "by Acid Spray".
+        var s = Swing("Bob's pet is hit by Acid Spray for 447 poison damage.");
+        Assert.Equal(("Unknown", "Acid Spray", "Bob's pet"), (s.Attacker, s.Ability, s.Victim));
+        Assert.Equal(447, s.Damage.Number);
+    }
+
+    [Fact]
     public void FirstPerson_Counter_Is_Parsed()
     {
         // Third-person avoids include counters; the first-person pattern

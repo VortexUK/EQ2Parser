@@ -139,6 +139,29 @@ public sealed class HistoryStoreTests : IDisposable
     }
 
     [Fact]
+    public void SelfDamage_Survives_The_Archive_RoundTrip()
+    {
+        // Self-damage (lifetap procs) records on the TAKEN side only — the
+        // outgoing-reference sweep used to miss it, so restored fights
+        // silently lost that DamageTaken.
+        var engine = new ParserEngine("log-a", "Menludiir");
+        engine.ChangeZone("Deathtoll");
+        Assert.True(engine.SetEncounter(T0, "Menludiir", "Lord Bob"));
+        engine.AddSwing(SwingCategory.Melee, false, "None", "Menludiir", "Strike", 1500, T0, "Lord Bob", "crushing");
+        engine.AddSwing(SwingCategory.NonMelee, false, "None", "Menludiir", "Vampiric Requiem", 320, T0.AddSeconds(1), "Menludiir", "magic");
+        engine.EndCombat();
+        var original = engine.History[^1];
+        Assert.Equal(320, original.Combatants["MENLUDIIR"].DamageTaken);
+
+        using var store = Store();
+        store.SaveEncounter(original);
+        var restored = store.RestoreEncounter(Assert.Single(store.QueryEncounters()));
+
+        Assert.Equal(320, restored.Combatants["MENLUDIIR"].DamageTaken);
+        Assert.Equal(original.Damage, restored.Damage); // self-damage still not credited as outgoing
+    }
+
+    [Fact]
     public void PruneTrash_Never_Touches_Bosses()
     {
         using var store = Store();

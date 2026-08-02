@@ -213,8 +213,11 @@ public sealed class SpellTimerService(TimerOptions? options = null)
         // one, they're the same cast — AoE stragglers and DoT re-ticks. The
         // countdown holds (anchored to the cast's first hit) and the window
         // slides, so a tick chain of any length stays one bar with one
-        // stable clock. Only a hit after real silence is a recast.
-        if (frame.Timers.Count > 0)
+        // stable clock. Only a hit after real silence is a recast — OR any
+        // hit once the resident countdown has expired: absorb protects a
+        // RUNNING bar's anchor, and without the expiry check a timer shorter
+        // than the window could be swallowed forever by its own tick chain.
+        if (frame.Timers.Count > 0 && frame.HasRunningMaster(time))
         {
             var sinceLast = time - frame.LastNotify;
             if (sinceLast < _options.SubTimerWindow)

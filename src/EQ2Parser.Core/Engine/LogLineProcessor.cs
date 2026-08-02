@@ -88,6 +88,11 @@ public sealed class LogLineProcessor
             {
                 var attacker = Resolve(swing.Attacker);
                 var victim = Resolve(swing.Victim);
+                // Mass-detriment callouts must see status lines even when no
+                // fight is running (pre-pull stuns, no-damage script phases) —
+                // fire BEFORE the encounter gate below can break.
+                if (live && swing.Category == SwingCategory.StatusEffect && swing.DamageType == "applied")
+                    StatusApplied?.Invoke(victim, swing.Ability, anchor);
                 // Self-damage procs are not hostile action — they must not
                 // start a fight or keep one alive.
                 var hostile = swing.Category is SwingCategory.Melee or SwingCategory.NonMelee
@@ -103,8 +108,6 @@ public sealed class LogLineProcessor
                     swing.Category, swing.Critical, swing.Special,
                     attacker, swing.Ability, swing.Damage,
                     line.Timestamp, victim, swing.DamageType, extra, line.ObservedAt);
-                if (live && swing.Category == SwingCategory.StatusEffect && swing.DamageType == "applied")
-                    StatusApplied?.Invoke(victim, swing.Ability, anchor);
                 // Every combat action notifies the spell timers by ability
                 // name (ACT semantics) — how cast-driven timers start. Timers
                 // anchor to the arrival stamp so bars start the instant the

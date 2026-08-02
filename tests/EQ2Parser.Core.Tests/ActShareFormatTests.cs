@@ -113,4 +113,23 @@ public class ActShareFormatTests
         var back = Assert.IsType<TimerDefinition>(ActShareFormat.TryImport(ActShareFormat.Export(original)));
         Assert.Equal(original with { }, back with { });
     }
+
+    [Fact]
+    public void Spell_Export_Preserves_Enabled_And_Panel_Routing()
+    {
+        // Export used to drop Checked/Panel1/Panel2 (which import honours):
+        // export→import re-enabled disabled timers and reset panel routing.
+        var original = new TimerDefinition
+        {
+            Name = "Disabled One",
+            Category = "test",
+            Enabled = false,
+            Panel1 = false,
+            Panel2 = true,
+        };
+        var back = Assert.IsType<TimerDefinition>(ActShareFormat.TryImport(ActShareFormat.Export(original)));
+        Assert.False(back.Enabled);
+        Assert.False(back.Panel1);
+        Assert.True(back.Panel2);
+    }
 }

@@ -166,6 +166,12 @@ public static class ActShareFormat
         Attr(sb, "RV", d.RemoveSeconds.ToString());
         Attr(sb, "C", Escape(d.Category));
         Attr(sb, "RC", d.RestrictToCategory ? "T" : "F");
+        // Import honours these (ACT config-file names) — omitting them
+        // meant export→import re-enabled disabled timers and reset the
+        // panel routing to defaults.
+        Attr(sb, "Checked", d.Enabled ? "T" : "F");
+        Attr(sb, "Panel1", d.Panel1 ? "T" : "F");
+        Attr(sb, "Panel2", d.Panel2 ? "T" : "F");
         if (d.StartSoundData.Length > 0) Attr(sb, "SS", Escape(d.StartSoundData));
         if (d.WarningSoundData.Length > 0) Attr(sb, "WS", Escape(d.WarningSoundData));
         if (d.Zone.Length > 0) Attr(sb, "Z", Escape(d.Zone));
