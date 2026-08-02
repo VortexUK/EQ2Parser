@@ -449,6 +449,144 @@ public sealed partial class MainParseViewModel
         }
     }
 
+    /// <summary>The shared avoidance accumulation state: enemy attacks only,
+    /// ward pairing by log adjacency, stoneskin as an avoid, per-kind
+    /// auto/skill splits with optional actor attribution, and the ACT-style
+    /// per-type damage-avoided estimate. Was duplicated (~90 lines) between
+    /// the raid and per-combatant reports and already drifting.</summary>
+    private sealed class AvoidanceTally
+    {
+        public int Attempts;
+        public int Hits;
+        public int Warded;
+        public long WardedTotal;
+        public int StoneskinAuto;
+        public int StoneskinSkill;
+        public long LandedAutoTotal;
+        public long LandedSkillTotal;
+        public int LandedAutoCount;
+        public int LandedSkillCount;
+
+        /// <summary>kind → actor → (auto, skill). Actor is "" when the
+        /// caller doesn't attribute (the raid summary).</summary>
+        public readonly Dictionary<string, Dictionary<string, (int Auto, int Skill)>> Avoids = new(StringComparer.Ordinal);
+
+        private static readonly Dictionary<string, (int Auto, int Skill)> EmptyActors = [];
+
+        public int Stoneskin => StoneskinAuto + StoneskinSkill;
+        public int Avoided => Attempts - Hits - Warded;
+
+        /// <summary>ACT-style per-type averages (fall back to the other
+        /// type's average when one never landed).</summary>
+        public double AvgAuto => LandedAutoCount > 0 ? (double)LandedAutoTotal / LandedAutoCount
+            : LandedSkillCount > 0 ? (double)LandedSkillTotal / LandedSkillCount : 0;
+
+        public double AvgSkill => LandedSkillCount > 0 ? (double)LandedSkillTotal / LandedSkillCount : AvgAuto;
+
+        public double Est(int auto, int skill) => auto * AvgAuto + skill * AvgSkill;
+
+        public Dictionary<string, (int Auto, int Skill)> AvoidsFor(string kind) =>
+            Avoids.GetValueOrDefault(kind, EmptyActors);
+
+        public int KindCount(string kind) => AvoidsFor(kind).Values.Sum(n => n.Auto + n.Skill);
+
+        public double EstimatedAvoided => Est(StoneskinAuto, StoneskinSkill)
+            + Avoids.Values.Sum(actors => actors.Values.Sum(n => Est(n.Auto, n.Skill)));
+    }
+
+    private static void AccumulateAvoidance(
+        AvoidanceTally tally, Combatant combatant, HashSet<string> enemies,
+        Func<Core.Combat.Swing, string>? actorOf = null)
+    {
+        if (combatant.IncomingBuckets.GetValueOrDefault(BucketConfig.IncomingDamage) is not { } bucket)
+            return;
+        // A fully warded hit logs its absorb line(s) IMMEDIATELY BEFORE the
+        // "fails to inflict any damage" line — pair by log adjacency
+        // (TimeSorter, same second ±1).
+        List<(int Sorter, long Second, long Amount)> absorbs = [];
+        if (combatant.IncomingBuckets.GetValueOrDefault(BucketConfig.HealedInc) is { } healedInc)
+        {
+            foreach (var heal in healedInc.All.Swings)
+            {
+                if (heal.DamageType == Core.Grammar.EnglishGrammar.WardAbsorbType && heal.Damage.Number > 0)
+                    absorbs.Add((heal.TimeSorter, heal.Time.ToUnixTimeSeconds(), heal.Damage.Number));
+            }
+        }
+        absorbs.Sort((a, b) => a.Sorter.CompareTo(b.Sorter));
+        var absorbUsed = new bool[absorbs.Count];
+
+        foreach (var sw in bucket.All.Swings)
+        {
+            if (sw.Ability == Combatant.KillingAbility || !enemies.Contains(sw.Attacker.ToUpperInvariant()))
+                continue;
+            tally.Attempts++;
+            var isAuto = sw.Category == SwingCategory.Melee;
+            switch (sw.Damage.Number)
+            {
+                case > 0:
+                    tally.Hits++;
+                    if (isAuto)
+                    {
+                        tally.LandedAutoCount++;
+                        tally.LandedAutoTotal += sw.Damage.Number;
+                    }
+                    else
+                    {
+                        tally.LandedSkillCount++;
+                        tally.LandedSkillTotal += sw.Damage.Number;
+                    }
+                    break;
+                case 0:
+                {
+                    long claimed = 0;
+                    var second = sw.Time.ToUnixTimeSeconds();
+                    for (var a = 0; a < absorbs.Count; a++)
+                    {
+                        if (absorbUsed[a])
+                            continue;
+                        var gap = sw.TimeSorter - absorbs[a].Sorter;
+                        if (gap is <= 0 or > 6 || Math.Abs(absorbs[a].Second - second) > 1)
+                            continue;
+                        absorbUsed[a] = true;
+                        claimed += absorbs[a].Amount;
+                    }
+                    if (claimed > 0)
+                    {
+                        tally.Warded++;
+                        tally.WardedTotal += claimed;
+                    }
+                    else if (isAuto)
+                    {
+                        tally.StoneskinAuto++;
+                    }
+                    else
+                    {
+                        tally.StoneskinSkill++;
+                    }
+                    break;
+                }
+                default:
+                {
+                    var kind = sw.Damage.Number switch
+                    {
+                        Core.Combat.DamageValue.MissNumber => "Miss",
+                        Core.Combat.DamageValue.ResistNumber => "Resist",
+                        Core.Combat.DamageValue.ParryNumber => "Parry",
+                        Core.Combat.DamageValue.RiposteNumber => "Riposte",
+                        Core.Combat.DamageValue.BlockNumber => "Block",
+                        _ => sw.Damage.ToString() == "Counter" ? "Counter" : "Dodge",
+                    };
+                    var actor = actorOf?.Invoke(sw) ?? "";
+                    if (!tally.Avoids.TryGetValue(kind, out var actors))
+                        tally.Avoids[kind] = actors = new(StringComparer.OrdinalIgnoreCase);
+                    actors.TryGetValue(actor, out var n);
+                    actors[actor] = isAuto ? (n.Auto + 1, n.Skill) : (n.Auto, n.Skill + 1);
+                    break;
+                }
+            }
+        }
+    }
+
     /// <summary>Incoming avoidance: fight nodes get the per-ally summary
     /// table; a combatant row gets the detailed view (outcome doughnut +
     /// per-kind rows with WHO defeated each attack + avoided-damage eHPS).</summary>
@@ -477,85 +615,15 @@ public sealed partial class MainParseViewModel
                 .GroupBy(t => t.Name)
                 .Select(g => (g.Key, g.Select(t => t.C).ToList())))
             {
-                int attempts = 0, hits = 0, warded = 0, ssAuto = 0, ssSkill = 0;
-                int block = 0, parry = 0, riposte = 0, miss = 0, dodge = 0, resist = 0, counter = 0;
-                int blockA = 0, parryA = 0, riposteA = 0, missA = 0, dodgeA = 0, resistA = 0, counterA = 0;
-                long wardedTotal = 0, landedAutoTotal = 0, landedSkillTotal = 0;
-                int landedAutoCount = 0, landedSkillCount = 0;
-
+                var tally = new AvoidanceTally();
                 foreach (var c in combatants)
-                {
-                    if (c.IncomingBuckets.GetValueOrDefault(BucketConfig.IncomingDamage) is not { } bucket)
-                        continue;
-                    List<(int Sorter, long Second, long Amount)> absorbs = [];
-                    if (c.IncomingBuckets.GetValueOrDefault(BucketConfig.HealedInc) is { } healedInc)
-                    {
-                        foreach (var heal in healedInc.All.Swings)
-                        {
-                            if (heal.DamageType == Core.Grammar.EnglishGrammar.WardAbsorbType && heal.Damage.Number > 0)
-                                absorbs.Add((heal.TimeSorter, heal.Time.ToUnixTimeSeconds(), heal.Damage.Number));
-                        }
-                    }
-                    absorbs.Sort((a, b) => a.Sorter.CompareTo(b.Sorter));
-                    var absorbUsed = new bool[absorbs.Count];
-
-                    foreach (var sw in bucket.All.Swings)
-                    {
-                        if (sw.Ability == Combatant.KillingAbility || !enemies.Contains(sw.Attacker.ToUpperInvariant()))
-                            continue;
-                        attempts++;
-                        var isAuto = sw.Category == SwingCategory.Melee;
-                        switch (sw.Damage.Number)
-                        {
-                            case > 0:
-                                hits++;
-                                if (isAuto) { landedAutoCount++; landedAutoTotal += sw.Damage.Number; }
-                                else { landedSkillCount++; landedSkillTotal += sw.Damage.Number; }
-                                break;
-                            case 0:
-                            {
-                                long claimed = 0;
-                                var second = sw.Time.ToUnixTimeSeconds();
-                                for (var a = 0; a < absorbs.Count; a++)
-                                {
-                                    if (absorbUsed[a])
-                                        continue;
-                                    var gap = sw.TimeSorter - absorbs[a].Sorter;
-                                    if (gap is <= 0 or > 6 || Math.Abs(absorbs[a].Second - second) > 1)
-                                        continue;
-                                    absorbUsed[a] = true;
-                                    claimed += absorbs[a].Amount;
-                                }
-                                if (claimed > 0) { warded++; wardedTotal += claimed; }
-                                else if (isAuto) ssAuto++;
-                                else ssSkill++;
-                                break;
-                            }
-                            case Core.Combat.DamageValue.MissNumber: miss++; if (isAuto) missA++; break;
-                            case Core.Combat.DamageValue.ResistNumber: resist++; if (isAuto) resistA++; break;
-                            case Core.Combat.DamageValue.ParryNumber: parry++; if (isAuto) parryA++; break;
-                            case Core.Combat.DamageValue.RiposteNumber: riposte++; if (isAuto) riposteA++; break;
-                            case Core.Combat.DamageValue.BlockNumber: block++; if (isAuto) blockA++; break;
-                            default:
-                                if (sw.Damage.ToString() == "Counter") { counter++; if (isAuto) counterA++; }
-                                else { dodge++; if (isAuto) dodgeA++; }
-                                break;
-                        }
-                    }
-                }
-                if (attempts == 0)
+                    AccumulateAvoidance(tally, c, enemies);
+                if (tally.Attempts == 0)
                     continue;
-
-                var avgAuto = landedAutoCount > 0 ? (double)landedAutoTotal / landedAutoCount
-                    : landedSkillCount > 0 ? (double)landedSkillTotal / landedSkillCount : 0;
-                var avgSkill = landedSkillCount > 0 ? (double)landedSkillTotal / landedSkillCount : avgAuto;
-                double Est(int auto, int total) => auto * avgAuto + (total - auto) * avgSkill;
-                var ss = ssAuto + ssSkill;
-                var avoided = attempts - hits - warded;
-                var est = Est(ssAuto, ss) + Est(blockA, block) + Est(parryA, parry) + Est(riposteA, riposte)
-                    + Est(missA, miss) + Est(dodgeA, dodge) + Est(resistA, resist) + Est(counterA, counter);
-                rows.Add((targetName, attempts, hits, warded, wardedTotal,
-                    ss, block, parry, riposte, miss, dodge, resist, counter, avoided, est));
+                rows.Add((targetName, tally.Attempts, tally.Hits, tally.Warded, tally.WardedTotal,
+                    tally.Stoneskin, tally.KindCount("Block"), tally.KindCount("Parry"), tally.KindCount("Riposte"),
+                    tally.KindCount("Miss"), tally.KindCount("Dodge"), tally.KindCount("Resist"), tally.KindCount("Counter"),
+                    tally.Avoided, tally.EstimatedAvoided));
             }
 
             ReportLine(
@@ -591,7 +659,9 @@ public sealed partial class MainParseViewModel
                     ($"{tAtt,7}  ", ClassColors.TreeText),
                     ($"{100.0 * tHit / tAtt,6:F1}%  ", ClassColors.OutcomeLoss),
                     (Cell(tWard, 6) + "  ", ClassColors.SourceRaid),
-                    (Cell(tSs, 4).PadRight(46), ClassColors.Neutral),
+                    // 44 = the data rows' kind-column width (4+7+7+5+6+5+5+5)
+                    // — 46 shifted the AVOID%/EST columns two chars right.
+                    (Cell(tSs, 4).PadRight(44), ClassColors.Neutral),
                     ($"{100.0 * tAvoid / tAtt,8:F1}%  ", ClassColors.OutcomeWin),
                     (CombatantRow.Compact(tEst).PadLeft(13), ClassColors.OutcomeWin));
                 ReportLine(
@@ -650,114 +720,15 @@ public sealed partial class MainParseViewModel
                 ("Resist", new SKColor(0xE8, 0xBB, 0xFF)),
                 ("Counter", new SKColor(0xFF, 0x9E, 0xC7)),
             ];
-            // Per (kind, actor): avoided counts split by attack category so
-            // estimates use the right average (autos hit far softer than
-            // skills — a blended average roughly doubled the totals vs ACT).
-            var avoidCounts = kindPalette.ToDictionary(
-                k => k.Label,
-                _ => new Dictionary<string, (int Auto, int Skill)>(StringComparer.OrdinalIgnoreCase),
-                StringComparer.Ordinal);
-            var attempts = 0;
-            var hitCount = 0;
-            var warded = 0;
-            var ssAuto = 0;
-            var ssSkill = 0;
-            long landedAutoTotal = 0, landedSkillTotal = 0;
-            int landedAutoCount = 0, landedSkillCount = 0;
-            long wardedTotal = 0;
+            // Shared accumulation, with per-(kind, actor) attribution — the
+            // auto/skill split matters because autos hit far softer than
+            // skills (a blended average roughly doubled the totals vs ACT).
+            var tally = new AvoidanceTally();
             var enemies = EnemyAttackerKeys(ResolveFight());
-
             foreach (var (targetName, combatant) in targets)
-            {
-                if (combatant.IncomingBuckets.GetValueOrDefault(BucketConfig.IncomingDamage) is not { } bucket)
-                    continue;
+                AccumulateAvoidance(tally, combatant, enemies, sw => ActorLabel(sw.Extra, targetName));
 
-                // A fully warded hit logs its absorb line(s) IMMEDIATELY
-                // BEFORE the "fails to inflict any damage" line — pair by
-                // log adjacency (TimeSorter).
-                List<(int Sorter, long Second, long Amount)> absorbs = [];
-                if (combatant.IncomingBuckets.GetValueOrDefault(BucketConfig.HealedInc) is { } healedInc)
-                {
-                    foreach (var heal in healedInc.All.Swings)
-                    {
-                        if (heal.DamageType != Core.Grammar.EnglishGrammar.WardAbsorbType || heal.Damage.Number <= 0)
-                            continue;
-                        absorbs.Add((heal.TimeSorter, heal.Time.ToUnixTimeSeconds(), heal.Damage.Number));
-                    }
-                }
-                absorbs.Sort((a, b) => a.Sorter.CompareTo(b.Sorter));
-                var absorbUsed = new bool[absorbs.Count];
-
-                foreach (var sw in bucket.All.Swings)
-                {
-                    if (sw.Ability == Combatant.KillingAbility || !enemies.Contains(sw.Attacker.ToUpperInvariant()))
-                        continue;
-                    attempts++;
-                    var isAuto = sw.Category == SwingCategory.Melee;
-                    switch (sw.Damage.Number)
-                    {
-                        case > 0:
-                            hitCount++;
-                            if (isAuto)
-                            {
-                                landedAutoCount++;
-                                landedAutoTotal += sw.Damage.Number;
-                            }
-                            else
-                            {
-                                landedSkillCount++;
-                                landedSkillTotal += sw.Damage.Number;
-                            }
-                            break;
-                        case 0:
-                        {
-                            long claimed = 0;
-                            var second = sw.Time.ToUnixTimeSeconds();
-                            for (var a = 0; a < absorbs.Count; a++)
-                            {
-                                if (absorbUsed[a])
-                                    continue;
-                                var gap = sw.TimeSorter - absorbs[a].Sorter;
-                                if (gap is <= 0 or > 6 || Math.Abs(absorbs[a].Second - second) > 1)
-                                    continue;
-                                absorbUsed[a] = true;
-                                claimed += absorbs[a].Amount;
-                            }
-                            if (claimed > 0)
-                            {
-                                warded++;
-                                wardedTotal += claimed;
-                            }
-                            else if (isAuto)
-                            {
-                                ssAuto++;
-                            }
-                            else
-                            {
-                                ssSkill++;
-                            }
-                            break;
-                        }
-                        default:
-                        {
-                            var kind = sw.Damage.Number switch
-                            {
-                                Core.Combat.DamageValue.MissNumber => "Miss",
-                                Core.Combat.DamageValue.ResistNumber => "Resist",
-                                Core.Combat.DamageValue.ParryNumber => "Parry",
-                                Core.Combat.DamageValue.RiposteNumber => "Riposte",
-                                Core.Combat.DamageValue.BlockNumber => "Block",
-                                _ => sw.Damage.ToString() == "Counter" ? "Counter" : "Dodge",
-                            };
-                            var actor = ActorLabel(sw.Extra, targetName);
-                            avoidCounts[kind].TryGetValue(actor, out var n);
-                            avoidCounts[kind][actor] = isAuto ? (n.Auto + 1, n.Skill) : (n.Auto, n.Skill + 1);
-                            break;
-                        }
-                    }
-                }
-            }
-
+            var attempts = tally.Attempts;
             if (attempts == 0)
             {
                 ReportLine(("No incoming attacks.", ClassColors.Neutral));
@@ -765,17 +736,14 @@ public sealed partial class MainParseViewModel
                 return;
             }
 
-            // ACT-style per-type averages (fall back to the other type's
-            // average when one never landed).
-            var avgAuto = landedAutoCount > 0 ? (double)landedAutoTotal / landedAutoCount
-                : landedSkillCount > 0 ? (double)landedSkillTotal / landedSkillCount : 0;
-            var avgSkill = landedSkillCount > 0 ? (double)landedSkillTotal / landedSkillCount : avgAuto;
-            double Est(int auto, int skill) => auto * avgAuto + skill * avgSkill;
-
-            var stoneskin = ssAuto + ssSkill;
-            var avoided = attempts - hitCount - warded;
-            var avoidedEst = Est(ssAuto, ssSkill)
-                + avoidCounts.Values.Sum(actors => actors.Values.Sum(n => Est(n.Auto, n.Skill)));
+            var hitCount = tally.Hits;
+            var warded = tally.Warded;
+            var wardedTotal = tally.WardedTotal;
+            var avgAuto = tally.AvgAuto;
+            var avgSkill = tally.AvgSkill;
+            var stoneskin = tally.Stoneskin;
+            var avoided = tally.Avoided;
+            var avoidedEst = tally.EstimatedAvoided;
 
             ReportLine(
                 ($"{attempts} incoming attacks", ClassColors.TreeText),
@@ -807,10 +775,10 @@ public sealed partial class MainParseViewModel
             Row("Warded", "—", warded, "—", CombatantRow.Compact(wardedTotal), new SKColor(0x93, 0xD9, 0xFF));
             Row("Stoneskin", "—", stoneskin,
                 $"{100.0 * stoneskin / Math.Max(1, avoided):F1}%",
-                CombatantRow.Compact(Est(ssAuto, ssSkill)), new SKColor(0xC8, 0xA9, 0x6E));
+                CombatantRow.Compact(tally.Est(tally.StoneskinAuto, tally.StoneskinSkill)), new SKColor(0xC8, 0xA9, 0x6E));
             foreach (var (label, color) in kindPalette)
             {
-                var actors = avoidCounts[label];
+                var actors = tally.AvoidsFor(label);
                 if (actors.Count == 0)
                     continue;
                 var first = true;
@@ -819,7 +787,7 @@ public sealed partial class MainParseViewModel
                     var count = n.Auto + n.Skill;
                     Row(first ? label : "", actor, count,
                         $"{100.0 * count / Math.Max(1, avoided):F1}%",
-                        CombatantRow.Compact(Est(n.Auto, n.Skill)), color);
+                        CombatantRow.Compact(tally.Est(n.Auto, n.Skill)), color);
                     first = false;
                 }
             }
@@ -848,7 +816,7 @@ public sealed partial class MainParseViewModel
                 breakdown.Add(Ring("Stoneskin", stoneskin, new SKColor(0xC8, 0xA9, 0x6E), avoided, 44));
             foreach (var (label, color) in kindPalette)
             {
-                var count = avoidCounts[label].Values.Sum(n => n.Auto + n.Skill);
+                var count = tally.KindCount(label);
                 if (count > 0)
                     breakdown.Add(Ring(label, count, color, avoided, 44));
             }
