@@ -41,6 +41,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Fail fast + loud if the signing secret isn't reaching the job. A
+      # misnamed or Environment-scoped secret arrives as "" and SignPath then
+      # reports the same generic "Could not authorize" as a bad token would —
+      # this separates a wiring problem from a SignPath-side permission one.
+      # Prints only the length, never the value.
+      - name: Preflight — signing secret is present
+        shell: pwsh
+        env:
+          SP_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SP_TOKEN)) {
+            throw 'SIGNPATH_API_TOKEN is empty or not visible here. It must be a Repository secret (Settings > Secrets and variables > Actions), spelled exactly SIGNPATH_API_TOKEN, not an Environment secret.'
+          }
+          Write-Host ('SIGNPATH_API_TOKEN present (length {0}).' -f $env:SP_TOKEN.Length)
+
       - name: Resolve version
         id: ver
         shell: pwsh
