@@ -11,6 +11,7 @@
              inside the row template) so header + rows collapse columns together. -->
         <views:BindingProxy x:Key="ColsProxy" Data="{Binding Columns}" />
         <views:BindingProxy x:Key="DrillColsProxy" Data="{Binding DrillColumns}" />
+        <views:BindingProxy x:Key="SwingColsProxy" Data="{Binding SwingColumns}" />
 
         <!-- Column widths shared by header + rows. Name stretches. -->
         <Style x:Key="HeaderButton" TargetType="Button">
@@ -620,6 +621,38 @@
                                   Content="☰ COLUMNS" HorizontalAlignment="Right" VerticalAlignment="Center"
                                   Visibility="{Binding SwingLevel, Converter={StaticResource InverseBoolToVis}}"
                                   PreviewMouseLeftButtonDown="DrillColumnsToggle_PreviewMouseLeftButtonDown" />
+                    <ToggleButton x:Name="SwingColumnsToggle" Style="{StaticResource PillToggle}"
+                                  Content="☰ COLUMNS" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                  Visibility="{Binding SwingLevel, Converter={StaticResource BoolToVis}}"
+                                  PreviewMouseLeftButtonDown="SwingColumnsToggle_PreviewMouseLeftButtonDown" />
+                    <Popup x:Name="SwingColumnsPopup" PlacementTarget="{Binding ElementName=SwingColumnsToggle}"
+                           Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
+                           HorizontalOffset="-100" VerticalOffset="6"
+                           IsOpen="{Binding IsChecked, ElementName=SwingColumnsToggle, Mode=TwoWay}">
+                        <Border Background="{StaticResource SurfaceRaisedBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="8" Padding="14,12">
+                            <StackPanel>
+                                <TextBlock Text="SWING LOG COLUMNS" Style="{StaticResource SectionLabel}" Margin="0,0,0,8" />
+                                <ItemsControl ItemsSource="{Binding SwingColumns.Toggles}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="2" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Content="{Binding Label}" IsChecked="{Binding Visible}"
+                                                      Margin="0,3,16,3" Foreground="{StaticResource TextBrush}"
+                                                      FontFamily="{StaticResource BodyFont}" FontSize="12.5" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button Content="Reset to default" Style="{StaticResource GoldButton}"
+                                        Margin="0,10,0,0" HorizontalAlignment="Left"
+                                        Command="{Binding SwingColumns.ResetCommand}" />
+                            </StackPanel>
+                        </Border>
+                    </Popup>
                     <Popup x:Name="DrillColumnsPopup" PlacementTarget="{Binding ElementName=DrillColumnsToggle}"
                            Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
                            HorizontalOffset="-100" VerticalOffset="6"
@@ -831,18 +864,23 @@
                     </Grid.RowDefinitions>
                     <Grid Margin="14,0,14,4">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="80" />
-                            <ColumnDefinition Width="100" />
-                            <ColumnDefinition Width="48" />
-                            <ColumnDefinition Width="110" />
-                            <ColumnDefinition Width="100" />
+                            <ColumnDefinition Width="{Binding Data.ByKey[Time].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=80}" />
+                            <ColumnDefinition Width="{Binding Data.ByKey[Result].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=100}" />
+                            <ColumnDefinition Width="{Binding Data.ByKey[Crit].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=48}" />
+                            <ColumnDefinition Width="{Binding Data.ByKey[Special].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=110}" />
+                            <ColumnDefinition Width="{Binding Data.ByKey[Type].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=100}" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="TIME" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" />
-                        <TextBlock Grid.Column="1" Text="RESULT" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right" />
-                        <TextBlock Grid.Column="2" Text="CRIT" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" Margin="12,0,0,0" />
-                        <TextBlock Grid.Column="3" Text="SPECIAL" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" />
-                        <TextBlock Grid.Column="4" Text="TYPE" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" />
+                        <TextBlock Text="TIME" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5"
+                                   Visibility="{Binding Data.ByKey[Time].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Grid.Column="1" Text="RESULT" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
+                                   Visibility="{Binding Data.ByKey[Result].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Grid.Column="2" Text="CRIT" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" Margin="12,0,0,0"
+                                   Visibility="{Binding Data.ByKey[Crit].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Grid.Column="3" Text="SPECIAL" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5"
+                                   Visibility="{Binding Data.ByKey[Special].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Grid.Column="4" Text="TYPE" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5"
+                                   Visibility="{Binding Data.ByKey[Type].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
                         <TextBlock Grid.Column="5" Text="TARGET" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" />
                     </Grid>
                     <Border Grid.Row="1" Style="{StaticResource Card}" Padding="6">
@@ -884,23 +922,28 @@
                                                           CommandParameter="{Binding}" />
                                         </Grid.InputBindings>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="80" />
-                                            <ColumnDefinition Width="100" />
-                                            <ColumnDefinition Width="48" />
-                                            <ColumnDefinition Width="110" />
-                                            <ColumnDefinition Width="100" />
+                                            <ColumnDefinition Width="{Binding Data.ByKey[Time].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=80}" />
+                                            <ColumnDefinition Width="{Binding Data.ByKey[Result].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=100}" />
+                                            <ColumnDefinition Width="{Binding Data.ByKey[Crit].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=48}" />
+                                            <ColumnDefinition Width="{Binding Data.ByKey[Special].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=110}" />
+                                            <ColumnDefinition Width="{Binding Data.ByKey[Type].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=100}" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="{Binding Time}" Foreground="{StaticResource TextMutedBrush}"
-                                                   FontFamily="{StaticResource BodyFont}" FontSize="12" />
+                                                   FontFamily="{StaticResource BodyFont}" FontSize="12"
+                                                   Visibility="{Binding Data.ByKey[Time].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
                                         <TextBlock Grid.Column="1" Text="{Binding Result}" Foreground="{StaticResource GoldBrightBrush}"
-                                                   FontFamily="{StaticResource BodySemiBoldFont}" FontSize="12.5" TextAlignment="Right" />
+                                                   FontFamily="{StaticResource BodySemiBoldFont}" FontSize="12.5" TextAlignment="Right"
+                                                   Visibility="{Binding Data.ByKey[Result].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
                                         <TextBlock Grid.Column="2" Text="{Binding Crit}" Foreground="{StaticResource WarningBrush}"
-                                                   FontFamily="{StaticResource BodyFont}" FontSize="11.5" Margin="12,0,0,0" />
+                                                   FontFamily="{StaticResource BodyFont}" FontSize="11.5" Margin="12,0,0,0"
+                                                   Visibility="{Binding Data.ByKey[Crit].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
                                         <TextBlock Grid.Column="3" Text="{Binding Special}" Foreground="{StaticResource TextMutedBrush}"
-                                                   FontFamily="{StaticResource BodyFont}" FontSize="11.5" />
+                                                   FontFamily="{StaticResource BodyFont}" FontSize="11.5"
+                                                   Visibility="{Binding Data.ByKey[Special].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
                                         <TextBlock Grid.Column="4" Text="{Binding Type}" Foreground="{StaticResource TextMutedBrush}"
-                                                   FontFamily="{StaticResource BodyFont}" FontSize="11.5" />
+                                                   FontFamily="{StaticResource BodyFont}" FontSize="11.5"
+                                                   Visibility="{Binding Data.ByKey[Type].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
                                         <TextBlock Grid.Column="5" Text="{Binding Other}" Foreground="{StaticResource TextBrush}"
                                                    FontFamily="{StaticResource BodyFont}" FontSize="12" TextTrimming="CharacterEllipsis" />
                                     </Grid>

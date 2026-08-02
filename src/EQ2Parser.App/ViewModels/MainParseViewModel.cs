@@ -134,6 +134,8 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     public ColumnSetVm DrillColumns { get; } = ColumnSets.Drill(manager);
 
+    public ColumnSetVm SwingColumns { get; } = ColumnSets.Swing(manager);
+
     private object? _pinnedFight;
     private (int HistoryCount, bool AnyActive) _treeSignature = (-1, false);
 

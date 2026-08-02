@@ -128,6 +128,29 @@ public static class ColumnSets
             manager.Settings.Save();
         });
 
+    /// <summary>AttackType view: the swing log (drill depth 3). The target
+    /// column is the stretch column and always on.</summary>
+    public static ColumnSetVm Swing(SourceManager manager)
+    {
+        List<ColumnToggle> toggles =
+        [
+            new("Time", "Time", true),
+            new("Result", "Result", true),
+            new("Crit", "Crit", true),
+            new("Special", "Special", true),
+            new("Type", "Type", true),
+        ];
+        return new(
+            toggles,
+            [.. toggles.Select(t => t.Key)],
+            manager.Settings.AttackTypeColumns,
+            keys =>
+            {
+                manager.Settings = manager.Settings with { AttackTypeColumns = keys };
+                manager.Settings.Save();
+            });
+    }
+
     /// <summary>Combatant view: the drill-down bucket/ability table. Every
     /// stat is already accumulated, so all columns are core.</summary>
     public static ColumnSetVm Drill(SourceManager manager)
