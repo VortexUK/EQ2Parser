@@ -1,0 +1,258 @@
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using EQ2Parser.App.Services;
+using EQ2Parser.Core.Analysis;
+using EQ2Parser.Core.Combat;
+using EQ2Parser.Core.Correlation;
+using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting;
+using SkiaSharp;
+
+namespace EQ2Parser.App.ViewModels;
+
+/// <summary>Context-menu commands: copy/export, view log, death and
+/// avoidance entry points, combatant lookup.</summary>
+public sealed partial class MainParseViewModel
+{
+    // ── Context-menu commands ───────────────────────────────────────────────
+
+    private static void SetClipboard(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return;
+        try
+        {
+            System.Windows.Clipboard.SetText(text);
+        }
+        catch (Exception)
+        {
+            // Clipboard briefly owned by another process — non-fatal.
+        }
+    }
+
+    /// <summary>Chat-friendly summary of a fight / rollup / zone / live combat.</summary>
+    [RelayCommand]
+    private void CopyNode(ParseNode? node)
+    {
+        if (node is null)
+            return;
+        string? text;
+        lock (manager.Sync)
+        {
+            text = node switch
+            {
+                { GroupFights: { Count: > 0 } group } => AggregateSummary(node.Title, group),
+                { Fight: CorrelatedEncounter fight } => FightSummary(fight),
+                { Fight: AggregateFights aggregate } => AggregateSummary($"{aggregate.Zone} — {aggregate.Label}", aggregate.Fights),
+                { Fight: LiveFollow } => LiveSummary(),
+                _ => null,
+            };
+        }
+        SetClipboard(text);
+    }
+
+    private string FightSummary(CorrelatedEncounter fight)
+    {
+        var tags = manager.Classifier.Classify(fight.Primary);
+        var seconds = Math.Max(1, fight.Duration.TotalSeconds);
+        var parts = fight.MergedCombatants
+            .Where(kv => fight.MergedAllyKeys.Contains(kv.Key)
+                && tags.TryGetValue(kv.Key, out var tag) && tag.Kind == CombatantKind.Player
+                && kv.Value.Combatant.Damage > 0)
+            .Select(kv => (kv.Value.Combatant.Name, Dps: kv.Value.Combatant.Damage / seconds))
+            .OrderByDescending(t => t.Dps)
+            .Select(t => $"{t.Name} {CombatantRow.Compact(t.Dps)}");
+        return $"{fight.Title} ({FmtSpan(fight.Duration)}, raid {CombatantRow.Compact(fight.EncDps)} dps): {string.Join(", ", parts)}";
+    }
+
+    private string AggregateSummary(string label, IReadOnlyList<CorrelatedEncounter> fights)
+    {
+        var lines = fights.Select(FightSummary);
+        return $"{label} — {fights.Count} fights, {FmtSpan(SumDuration(fights))}\n{string.Join("\n", lines)}";
+    }
+
+    private string? LiveSummary()
+    {
+        foreach (var source in manager.Sources)
+        {
+            if (source.Engine.ActiveEncounter is not { } encounter)
+                continue;
+            var parts = encounter.GetAllies()
+                .Where(a => a.Damage > 0)
+                .OrderByDescending(a => a.Damage)
+                .Select(a => $"{a.Name} {CombatantRow.Compact(encounter.EncDpsOf(a))}");
+            return $"{encounter.Title} ({FmtSpan(encounter.Duration)}, raid {CombatantRow.Compact(encounter.EncDps)} dps): {string.Join(", ", parts)}";
+        }
+        return null;
+    }
+
+    /// <summary>Delete a fight (or a whole zone group) from history — the
+    /// fights stay in the archive, and Ctrl+Z brings them straight back.</summary>
+    [RelayCommand]
+    private void DeleteNode(ParseNode? node)
+    {
+        if (node is null)
+            return;
+        List<CorrelatedEncounter> deleted = [];
+        lock (manager.Sync)
+        {
+            if (node.GroupFights is { } group)
+            {
+                foreach (var fight in group)
+                {
+                    if (manager.Correlator.Remove(fight))
+                        deleted.Add(fight);
+                    manager.History.MarkUnloaded(fight);
+                    if (ReferenceEquals(_pinnedFight, fight))
+                        _pinnedFight = null;
+                }
+            }
+            else if (node.Fight is CorrelatedEncounter fight)
+            {
+                if (manager.Correlator.Remove(fight))
+                    deleted.Add(fight);
+                manager.History.MarkUnloaded(fight);
+                if (ReferenceEquals(_pinnedFight, fight))
+                    _pinnedFight = null;
+            }
+        }
+        if (deleted.Count > 0)
+        {
+            manager.Undo.Push(() =>
+            {
+                lock (manager.Sync)
+                {
+                    foreach (var fight in deleted)
+                    {
+                        manager.Correlator.Restore(fight);
+                        manager.History.MarkLoaded(fight);
+                    }
+                }
+                _treeSignature = (-1, false);
+                Refresh();
+            });
+        }
+        if (_pinnedFight is null)
+            FollowLive = true;
+        _treeSignature = (-1, false);
+        Refresh();
+    }
+
+    /// <summary>Mouse-back / Esc navigation: pop one drill level if an
+    /// overlay is open. False when there is nothing to go back from.</summary>
+    public bool TryNavigateBack()
+    {
+        if (!DetailOpen)
+            return false;
+        CloseDetail();
+        return true;
+    }
+
+    /// <summary>Fight context menu: open the raw log at the fight's start.</summary>
+    [RelayCommand]
+    private void ViewFightLog(ParseNode? node)
+    {
+        if (node?.Fight is not CorrelatedEncounter fight)
+            return;
+        LogRows.ReplaceAll(LogWindowReader.Read(
+                fight.Primary.SourceId, fight.StartTime.ToUnixTimeSeconds(), beforeSeconds: 2, afterSeconds: 30)
+            .Select(raw => new LogRow(LogLineHighlighter.Build(raw), IsFocus: false)));
+        _detailKey = null;
+        _detailBucket = null;
+        _detailAbility = null;
+        DetailTitle = $"{fight.Title} › log";
+        SwingLevel = true;
+        LogLevel = true;
+        // A report may be open underneath — clear its panel and chart.
+        ReportLevel = false;
+        ReportChartVisible = false;
+        _reportScope = 0;
+        DrillChartVisible = false;
+        DetailOpen = true;
+    }
+
+    [RelayCommand]
+    private void CopyCombatant(CombatantRow? row)
+    {
+        if (row is null)
+            return;
+        var cls = string.IsNullOrEmpty(row.ClassName) ? "" : $" ({row.ClassName})";
+        List<string> parts = [$"{row.Damage} dmg", $"{row.Dps} dps"];
+        if (row.Hps.Length > 0)
+            parts.Add($"{row.Hps} hps");
+        if (row.Taken.Length > 0)
+            parts.Add($"{row.Taken} taken");
+        if (row.Deaths.Length > 0)
+            parts.Add($"{row.Deaths} deaths");
+        SetClipboard($"{row.Name}{cls}: {string.Join(", ", parts)}");
+    }
+
+    /// <summary>Per-ability damage breakdown of one combatant as text.</summary>
+    [RelayCommand]
+    private void CopyBreakdown(CombatantRow? row)
+    {
+        if (row is null)
+            return;
+        string? text = null;
+        lock (manager.Sync)
+        {
+            if (ResolveFight() is not { } fight)
+                return;
+            List<Combatant> instances = fight switch
+            {
+                Encounter e => e.Combatants.TryGetValue(row.Key, out var c) ? [c] : [],
+                CorrelatedEncounter m => m.MergedCombatants.TryGetValue(row.Key, out var mc) ? [mc.Combatant] : [],
+                AggregateFights a =>
+                    [.. a.Fights
+                        .Select(f => f.MergedCombatants.TryGetValue(row.Key, out var mc) ? mc.Combatant : null)
+                        .Where(c => c is not null)
+                        .Select(c => c!)],
+                _ => [],
+            };
+            if (instances.Count == 0)
+                return;
+            var abilities = new Dictionary<string, AbilityAcc>(StringComparer.Ordinal);
+            long total = 0;
+            foreach (var combatant in instances)
+            {
+                total += combatant.Damage;
+                if (!combatant.OutgoingBuckets.TryGetValue(BucketConfig.OutgoingDamage, out var bucket))
+                    continue;
+                foreach (var (abilityName, stats) in bucket.Abilities)
+                {
+                    if (abilityName is Bucket.AllAbility or Combatant.KillingAbility)
+                        continue;
+                    var acc = GetOrAdd(abilities, abilityName);
+                    foreach (var swing in stats.Swings)
+                        acc.AddSwing(swing);
+                }
+            }
+            var cls = string.IsNullOrEmpty(row.ClassName) ? "" : $" · {row.ClassName}";
+            var lines = abilities
+                .OrderByDescending(kv => kv.Value.Total)
+                .Where(kv => kv.Value.Total > 0)
+                .Select(kv => $"  {kv.Key} — {CombatantRow.Compact(kv.Value.Total)} ({100.0 * kv.Value.Total / Math.Max(1, total):F0}%), {kv.Value.Hits} hits, {(kv.Value.Hits > 0 ? 100.0 * kv.Value.Crits / kv.Value.Hits : 0):F0}% crit, max {CombatantRow.Compact(kv.Value.Max)}");
+            text = $"{row.Name}{cls} — {CombatantRow.Compact(total)} dmg\n{string.Join("\n", lines)}";
+        }
+        SetClipboard(text);
+    }
+
+    [RelayCommand]
+    private void CopyAbility(AbilityRow? row)
+    {
+        if (row is null || row.IsGroupLabel)
+            return;
+        SetClipboard($"{row.Name}: {row.Total} total ({row.Percent}), {row.Dps} encdps, {row.Casts} swings, {row.Hits} hits, {row.CritPct} crit, avg {row.Avg}, max {row.Max}{(row.Types.Length > 0 ? $" [{row.Types}]" : "")}");
+    }
+
+    [RelayCommand]
+    private void CopySwing(SwingRow? row)
+    {
+        if (row is null)
+            return;
+        SetClipboard($"[{row.Time}] {row.Ability} {row.Result}{(row.Crit.Length > 0 ? " crit" : "")}{(row.Special.Length > 0 ? $" {row.Special}" : "")} {row.Type} → {row.Other}");
+    }
+
+}
