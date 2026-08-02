@@ -79,15 +79,26 @@ public partial class MiniParseContent : IOverlayContent
             vm.Fraction = Math.Clamp(row.Fraction, 0, 1);
             var archetype = (SolidColorBrush)ClassColors.For(row.ClassName);
             vm.BarBrush = archetype;
-            // Name in a lightened archetype tone so it stays readable on the
-            // dark glass while still reading as the class.
-            var c = archetype.Color;
-            var name = new SolidColorBrush(Color.FromRgb(
-                (byte)(c.R + (255 - c.R) * 0.35), (byte)(c.G + (255 - c.G) * 0.35), (byte)(c.B + (255 - c.B) * 0.35)));
-            name.Freeze();
-            vm.NameBrush = name;
+            vm.NameBrush = NameBrushFor(archetype);
         }
         EmptyHint.Visibility = data.Rows.Count == 0 && !settings.Locked ? Visibility.Visible : Visibility.Collapsed;
         return data.Rows.Count > 0;
+    }
+
+    /// <summary>Name in a lightened archetype tone so it stays readable on
+    /// the dark glass while still reading as the class. Cached per colour —
+    /// a fresh brush per row per 150ms tick forced PropertyChanged + effect
+    /// re-renders even when nothing changed.</summary>
+    private static readonly Dictionary<Color, SolidColorBrush> NameBrushes = [];
+
+    private static SolidColorBrush NameBrushFor(SolidColorBrush archetype)
+    {
+        var c = archetype.Color;
+        if (NameBrushes.TryGetValue(c, out var cached))
+            return cached;
+        var brush = new SolidColorBrush(Color.FromRgb(
+            (byte)(c.R + (255 - c.R) * 0.35), (byte)(c.G + (255 - c.G) * 0.35), (byte)(c.B + (255 - c.B) * 0.35)));
+        brush.Freeze();
+        return NameBrushes[c] = brush;
     }
 }

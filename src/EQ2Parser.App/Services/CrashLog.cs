@@ -55,7 +55,10 @@ public static class CrashLog
         try
         {
             var now = DateTime.Now;
-            if (now - _lastWrite < TimeSpan.FromSeconds(5))
+            // The rate limit tames exception storms — but the FATAL report
+            // is the process's last words and must always land, even when a
+            // storm preceded the crash.
+            if (kind != "fatal" && now - _lastWrite < TimeSpan.FromSeconds(5))
                 return null;
             _lastWrite = now;
             System.IO.Directory.CreateDirectory(Directory);

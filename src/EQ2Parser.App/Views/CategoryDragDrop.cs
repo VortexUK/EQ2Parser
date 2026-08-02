@@ -52,10 +52,13 @@ public sealed class CategoryDragDrop(Action<ICategoryDropTarget, ICategoryDropTa
     // ---- drop targets (headers and rows alike) ----
 
     /// <summary>The category a drop on this element would file into, or null
-    /// when it isn't a move (not a target / same category / onto itself).</summary>
+    /// when it isn't a move (not a target / same category+zone / onto
+    /// itself). Identity is the (scope, name) pair — a same-named category
+    /// in a DIFFERENT zone is a real move.</summary>
     private static string? EffectiveTarget(ICategoryDropTarget? context, ICategoryDropTarget dragged) =>
         context is not null
-        && !string.Equals(context.CategoryName, dragged.CategoryName, StringComparison.OrdinalIgnoreCase)
+        && !(string.Equals(context.CategoryName, dragged.CategoryName, StringComparison.OrdinalIgnoreCase)
+             && string.Equals(context.CategoryScope, dragged.CategoryScope, StringComparison.OrdinalIgnoreCase))
             ? context.CategoryName
             : null;
 

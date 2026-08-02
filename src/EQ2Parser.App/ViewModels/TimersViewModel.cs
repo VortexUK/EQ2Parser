@@ -26,6 +26,9 @@ public sealed partial class TimerDefRow : ObservableObject, ICategoryDropTarget
     public string Name => Definition.Name;
     public string Category => Definition.Category;
     public string CategoryName => Definition.Category;
+    public string CategoryScope => Definition.Source.Length > 0
+        ? $"lex|{(Definition.Zone.Length > 0 ? Definition.Zone : "General")}"
+        : Definition.Zone.Length > 0 ? Definition.Zone : "General";
     public string Key => Definition.Key;
 
     /// <summary>Synced from EQ2Lexicon — read-only (no edit/delete/drag);
@@ -485,6 +488,11 @@ public sealed partial class TimersViewModel : ObservableObject
     [ObservableProperty]
     private int _colorChoice;
 
+    /// <summary>Any user palette selection drops the off-palette colour an
+    /// edit loaded — without this, "Blue" (slot 0) was unselectable on a
+    /// timer that came in with a custom colour.</summary>
+    partial void OnColorChoiceChanged(int value) => _hasCustomColor = false;
+
     [ObservableProperty]
     private bool _restrictToMe;
 
@@ -568,9 +576,11 @@ public sealed partial class TimersViewModel : ObservableObject
         WarningSeconds = d.WarningSeconds.ToString();
         RemoveSeconds = d.RemoveSeconds.ToString();
         var index = Array.IndexOf(ColorValues, d.FillColorArgb);
-        _hasCustomColor = index < 0;
         _customColor = d.FillColorArgb;
+        // Set ColorChoice FIRST — its change handler clears the custom
+        // flag (a user selection always means "use the palette entry").
         ColorChoice = index >= 0 ? index : 0;
+        _hasCustomColor = index < 0;
         RestrictToMe = d.RestrictToMe;
         AbsoluteTiming = d.AbsoluteTiming;
         RestrictToCategory = d.RestrictToCategory;
@@ -717,6 +727,9 @@ public sealed partial class TimersViewModel : ObservableObject
             : $"{bar.SecondsLeft:0}";
         row.Fraction = Math.Clamp(bar.SecondsLeft / Math.Max(1, bar.DurationSeconds), 0, 1);
         row.IsWarning = bar.SecondsLeft <= bar.WarningSeconds;
+        // Above the style short-circuit: the key doesn't include the name,
+        // so a recycled radial row kept showing the previous timer's name.
+        row.NameOnly = bar.Name;
         var styleKey = $"{bar.FillColorArgb}|{bar.DamageType}|{bar.ControlEffect}";
         if (row.StyleKey == styleKey)
             return;
@@ -739,6 +752,5 @@ public sealed partial class TimersViewModel : ObservableObject
         row.SchoolBrush = schoolBrush;
         row.DamageText = bar.DamageType;
         row.ControlText = bar.ControlEffect.Length > 0 ? bar.ControlEffect.ToUpperInvariant() : "";
-        row.NameOnly = bar.Name;
     }
 }

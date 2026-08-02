@@ -26,6 +26,9 @@ public sealed partial class TriggerRow : ObservableObject, ICategoryDropTarget
     public string RegexText => Trigger.RegexText;
     public string Category => Trigger.Category;
     public string CategoryName => Trigger.Category;
+    public string CategoryScope => Trigger.Source.Length > 0
+        ? $"lex|{(Trigger.Zone.Length > 0 ? Trigger.Zone : "General")}"
+        : Trigger.Zone.Length > 0 ? Trigger.Zone : "General";
     public string Zone => Trigger.Zone;
     public bool ZoneRestricted => Trigger.RestrictToCategoryZone;
 

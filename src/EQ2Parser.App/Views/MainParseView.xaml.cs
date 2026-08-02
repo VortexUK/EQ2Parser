@@ -5,9 +5,6 @@ namespace EQ2Parser.App.Views;
 
 public partial class MainParseView : System.Windows.Controls.UserControl
 {
-    private ArchiveWindow? _archive;
-    private CurationWindow? _curation;
-
     public MainParseView()
     {
         InitializeComponent();
@@ -61,31 +58,41 @@ public partial class MainParseView : System.Windows.Controls.UserControl
         vm.Manager.Settings.Save();
     }
 
+    // Singleton-per-type via the live window list, NOT view fields — the
+    // view is recreated on every tab switch, so fields forgot the open
+    // window and a second click spawned a duplicate.
+
     private void Curation_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainParseViewModel vm)
             return;
-        if (_curation is { IsLoaded: true })
+        if (FindOpen<CurationWindow>() is { } open)
         {
-            _curation.Activate();
+            open.Activate();
             return;
         }
-        _curation = new CurationWindow(vm.Manager) { Owner = Window.GetWindow(this) };
-        _curation.Closed += (_, _) => _curation = null;
-        _curation.Show();
+        new CurationWindow(vm.Manager) { Owner = Window.GetWindow(this) }.Show();
     }
 
     private void Archive_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainParseViewModel vm)
             return;
-        if (_archive is { IsLoaded: true })
+        if (FindOpen<ArchiveWindow>() is { } open)
         {
-            _archive.Activate();
+            open.Activate();
             return;
         }
-        _archive = new ArchiveWindow(vm.Manager) { Owner = Window.GetWindow(this) };
-        _archive.Closed += (_, _) => _archive = null;
-        _archive.Show();
+        new ArchiveWindow(vm.Manager) { Owner = Window.GetWindow(this) }.Show();
+    }
+
+    private static T? FindOpen<T>() where T : Window
+    {
+        foreach (Window window in Application.Current.Windows)
+        {
+            if (window is T match && match.IsLoaded)
+                return match;
+        }
+        return null;
     }
 }

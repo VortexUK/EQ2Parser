@@ -8,6 +8,13 @@ namespace EQ2Parser.App.ViewModels;
 public interface ICategoryDropTarget
 {
     string CategoryName { get; }
+
+    /// <summary>Zone/section discriminator: the same category name exists
+    /// per zone (and per Custom/Lexicon section), so drop identity is the
+    /// (scope, name) PAIR — comparing names alone wrongly rejected drops
+    /// onto a same-named category in a different zone.</summary>
+    string CategoryScope { get; }
+
     bool IsDropTarget { get; set; }
 }
 
@@ -41,6 +48,7 @@ public sealed partial class CategoryRow(string name, bool expanded) : Observable
 {
     public string Name { get; } = name;
     public string CategoryName => Name;
+    public string CategoryScope => Tag ?? "";
 
     /// <summary>Optional parent-group marker (the timer tree stores the
     /// zone here) — lets composite trees key expansion and drops.</summary>
