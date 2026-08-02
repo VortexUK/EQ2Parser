@@ -200,17 +200,7 @@ public sealed partial class MainParseViewModel
         {
             if (ResolveFight() is not { } fight)
                 return;
-            List<Combatant> instances = fight switch
-            {
-                Encounter e => e.Combatants.TryGetValue(row.Key, out var c) ? [c] : [],
-                CorrelatedEncounter m => m.MergedCombatants.TryGetValue(row.Key, out var mc) ? [mc.Combatant] : [],
-                AggregateFights a =>
-                    [.. a.Fights
-                        .Select(f => f.MergedCombatants.TryGetValue(row.Key, out var mc) ? mc.Combatant : null)
-                        .Where(c => c is not null)
-                        .Select(c => c!)],
-                _ => [],
-            };
+            var instances = FightCombatantInstances(fight, row.Key);
             if (instances.Count == 0)
                 return;
             var abilities = new Dictionary<string, AbilityAcc>(StringComparer.Ordinal);

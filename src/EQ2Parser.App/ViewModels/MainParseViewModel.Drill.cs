@@ -146,13 +146,7 @@ public sealed partial class MainParseViewModel
         var chartVersion = instances.Sum(t =>
             (long)(t.C.OutgoingBuckets.GetValueOrDefault(BucketConfig.AllOutgoingRef)?.All.Swings.Count ?? 0)
             + (t.C.IncomingBuckets.GetValueOrDefault(BucketConfig.AllIncomingRef)?.All.Swings.Count ?? 0));
-        var seconds = Math.Max(1, fight switch
-        {
-            Encounter e => e.Duration.TotalSeconds,
-            CorrelatedEncounter m => m.Duration.TotalSeconds,
-            AggregateFights a => SumDuration(a.Fights).TotalSeconds,
-            _ => 0,
-        });
+        var seconds = FightSeconds(fight);
         var isAutoBucket = _detailBucket == BucketConfig.AutoAttackOut;
 
         // Depth 1 — the combatant's buckets, canonical ACT order, with

@@ -107,17 +107,7 @@ public sealed partial class MainParseViewModel
             var isAutoBucket = bucketName == BucketConfig.AutoAttackOut;
             var incoming = IsIncomingBucket(bucketName);
 
-            List<Combatant> instances = fight switch
-            {
-                Encounter e => e.Combatants.TryGetValue(_detailKey, out var c) ? [c] : [],
-                CorrelatedEncounter m => m.MergedCombatants.TryGetValue(_detailKey, out var mc) ? [mc.Combatant] : [],
-                AggregateFights a =>
-                    [.. a.Fights
-                        .Select(f => f.MergedCombatants.TryGetValue(_detailKey, out var mc) ? mc.Combatant : null)
-                        .Where(c => c is not null)
-                        .Select(c => c!)],
-                _ => [],
-            };
+            var instances = FightCombatantInstances(fight, _detailKey);
             if (instances.Count == 0)
                 return;
             var selfName = instances[0].Name;
@@ -151,13 +141,7 @@ public sealed partial class MainParseViewModel
             var classMap = ClassMapFor(fight);
             var total = Math.Max(1, perOther.Values.Sum(a => a.Total));
             var suffix = abilityFilter is not null ? $" › {abilityFilter}" : "";
-            var seconds = Math.Max(1, fight switch
-            {
-                Encounter e => e.Duration.TotalSeconds,
-                CorrelatedEncounter m => m.Duration.TotalSeconds,
-                AggregateFights a => SumDuration(a.Fights).TotalSeconds,
-                _ => 1,
-            });
+            var seconds = FightSeconds(fight);
 
             ReportLine(
                 ("NAME".PadRight(20), ClassColors.TreeHeader),
@@ -287,22 +271,8 @@ public sealed partial class MainParseViewModel
             case CombatantRow row when ResolveFight() is { } fight:
             {
                 context = row.Name;
-                switch (fight)
-                {
-                    case Encounter e when e.Combatants.TryGetValue(row.Key, out var c):
-                        targets.Add((c.Name, c));
-                        break;
-                    case CorrelatedEncounter m when m.MergedCombatants.TryGetValue(row.Key, out var mc):
-                        targets.Add((mc.Combatant.Name, mc.Combatant));
-                        break;
-                    case AggregateFights a:
-                        foreach (var f in a.Fights)
-                        {
-                            if (f.MergedCombatants.TryGetValue(row.Key, out var mc2))
-                                targets.Add((mc2.Combatant.Name, mc2.Combatant));
-                        }
-                        break;
-                }
+                foreach (var combatant in FightCombatantInstances(fight, row.Key))
+                    targets.Add((combatant.Name, combatant));
                 break;
             }
         }
@@ -327,16 +297,33 @@ public sealed partial class MainParseViewModel
                 _ => (DateTimeOffset.MinValue, 1.0),
             };
 
-            Dictionary<string, string?> classByName = new(StringComparer.OrdinalIgnoreCase);
-            if (fightObj is CorrelatedEncounter cf)
+            // Aggregate rollups plot on a CUMULATIVE fight-time axis —
+            // wall-clock offsets from the first fight's start piled every
+            // later fight's deaths at the right edge of the summed axis.
+            double ToAxis(DateTimeOffset t)
             {
-                var tags = manager.Classifier.Classify(cf.Primary);
-                foreach (var (key, entry) in cf.MergedCombatants)
+                if (fightObj is AggregateFights agg)
                 {
-                    if (tags.TryGetValue(key, out var tag))
-                        classByName[entry.Combatant.Name] = tag.Class.ClassName;
+                    double acc = 0;
+                    foreach (var f in agg.Fights)
+                    {
+                        var dur = Math.Max(0, f.Duration.TotalSeconds);
+                        if (t < f.StartTime)
+                            return acc;
+                        if (t <= f.EndTime)
+                            return acc + Math.Min(dur, (t - f.StartTime).TotalSeconds);
+                        acc += dur;
+                    }
+                    return acc;
                 }
+                return Math.Clamp((t - fightStart).TotalSeconds, 0, fightSeconds);
             }
+
+            // The shared all-shapes map — the local CorrelatedEncounter-only
+            // version left live and aggregate deaths uncoloured.
+            var classByName = fightObj is null
+                ? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                : ClassMapFor(fightObj);
 
             // Collect every death with its lead-up, ordered by time.
             List<(DateTimeOffset Time, string Victim, string Killer, List<Core.Combat.Swing> Lead)> deaths = [];
@@ -365,7 +352,7 @@ public sealed partial class MainParseViewModel
             }
 
             string Rel(DateTimeOffset t) =>
-                TimeSpan.FromSeconds(Math.Max(0, (t - fightStart).TotalSeconds)).ToString(@"m\:ss");
+                TimeSpan.FromSeconds(ToAxis(t)).ToString(@"m\:ss");
 
             ReportLine(
                 ($"{deaths.Count} death{(deaths.Count == 1 ? "" : "s")}", ClassColors.OutcomeLoss),
@@ -400,7 +387,7 @@ public sealed partial class MainParseViewModel
             foreach (var (time, victim, killer, _) in deaths)
             {
                 index++;
-                var sec = Math.Clamp((time - fightStart).TotalSeconds, 0, fightSeconds);
+                var sec = ToAxis(time);
                 stepped.Add(new(sec, index - 1));
                 stepped.Add(new(sec, index));
                 var media = ((System.Windows.Media.SolidColorBrush)ClassColors.For(
@@ -651,13 +638,7 @@ public sealed partial class MainParseViewModel
         lock (manager.Sync)
         {
             var targets = ReportTargets(row, out var context);
-            var seconds = Math.Max(1, ResolveFight() switch
-            {
-                Encounter e => e.Duration.TotalSeconds,
-                CorrelatedEncounter m => m.Duration.TotalSeconds,
-                AggregateFights a => SumDuration(a.Fights).TotalSeconds,
-                _ => 1,
-            });
+            var seconds = FightSeconds(ResolveFight());
 
             (string Label, SKColor Color)[] kindPalette =
             [
@@ -947,18 +928,13 @@ public sealed partial class MainParseViewModel
         {
             var targets = ReportTargets(parameter, out var context);
 
-            // Class colours for the per-ally doughnut.
-            Dictionary<string, string?> classByName = new(StringComparer.OrdinalIgnoreCase);
+            // Class colours for the per-ally doughnut — the shared all-shapes
+            // map (the CorrelatedEncounter-only version left live and
+            // aggregate selections uncoloured).
             var fightObj = parameter is ParseNode { Fight: { } nodeFight } ? nodeFight : ResolveFight();
-            if (fightObj is CorrelatedEncounter cf)
-            {
-                var tags = manager.Classifier.Classify(cf.Primary);
-                foreach (var (key, entry) in cf.MergedCombatants)
-                {
-                    if (tags.TryGetValue(key, out var tag))
-                        classByName[entry.Combatant.Name] = tag.Class.ClassName;
-                }
-            }
+            var classByName = fightObj is null
+                ? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                : ClassMapFor(fightObj);
 
             List<(string Name, int Swings, int Normal, int Multi, int Flurry, int Aoe, int Hits, int Crits)> rows = [];
             foreach (var (targetName, combatants) in targets
@@ -1246,7 +1222,22 @@ public sealed partial class MainParseViewModel
             return;
         }
         if (!ReportLevel)
+        {
+            // A plain drill follows the new fight — but when that fight
+            // doesn't contain the drilled combatant at all, the panel used
+            // to freeze on the previous fight's data. Close it instead.
+            if (DetailOpen && _detailKey is not null)
+            {
+                bool inFight;
+                lock (manager.Sync)
+                {
+                    inFight = FightContains(ResolveFight(), _detailKey);
+                }
+                if (!inFight)
+                    CloseOverlay();
+            }
             return;
+        }
         if (_reportScope == -1)
         {
             CloseOverlay();

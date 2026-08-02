@@ -544,6 +544,32 @@ public sealed partial class MainParseViewModel : ObservableObject
         return rows;
     }
 
+    /// <summary>Every per-fight instance of one combatant across the three
+    /// fight shapes (an aggregate yields one instance per member fight) —
+    /// another shape-switch that was re-implemented per call site.</summary>
+    private static List<Combatant> FightCombatantInstances(object fight, string key) => fight switch
+    {
+        Encounter e => e.Combatants.TryGetValue(key, out var c) ? [c] : [],
+        CorrelatedEncounter m => m.MergedCombatants.TryGetValue(key, out var mc) ? [mc.Combatant] : [],
+        AggregateFights a =>
+            [.. a.Fights
+                .Select(f => f.MergedCombatants.TryGetValue(key, out var mc) ? mc.Combatant : null)
+                .Where(c => c is not null)
+                .Select(c => c!)],
+        _ => [],
+    };
+
+    /// <summary>Canonical fight duration in seconds (≥1) for rate maths —
+    /// this shape-switch used to be re-implemented at every call site, and
+    /// forgotten arms were a recurring bug class.</summary>
+    private static double FightSeconds(object? fight) => Math.Max(1, fight switch
+    {
+        Encounter e => e.Duration.TotalSeconds,
+        CorrelatedEncounter m => m.Duration.TotalSeconds,
+        AggregateFights a => SumDuration(a.Fights).TotalSeconds,
+        _ => 1.0,
+    });
+
     private static TimeSpan SumDuration(IReadOnlyList<CorrelatedEncounter> fights)
     {
         var total = TimeSpan.Zero;
