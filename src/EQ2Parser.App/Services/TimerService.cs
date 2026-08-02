@@ -135,20 +135,22 @@ public sealed class TimerService
     /// <summary>Replace the synced Lexicon set wholesale: every old
     /// lexicon-sourced definition goes, the new pack's come in — except
     /// where the user has their OWN definition with the same identity
-    /// (their copy/fork wins). Disabled overrides re-apply.</summary>
-    public void ApplyLexicon(IReadOnlyCollection<TimerDefinition> definitions, IReadOnlySet<string> disabledKeys)
+    /// (their copy/fork wins; timer keys are pre-lowercased so Ordinal is
+    /// exact). Enable/disable overrides re-apply in BOTH directions.</summary>
+    public void ApplyLexicon(IReadOnlyCollection<TimerDefinition> definitions, IReadOnlySet<string> disabledKeys, IReadOnlySet<string> enabledKeys)
     {
         lock (_sync)
         {
             foreach (var key in Service.Definitions.Where(d => d.Source.Length > 0).Select(d => d.Key).ToList())
                 Service.RemoveDefinition(key);
-            var customKeys = Service.Definitions.Select(d => d.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var customKeys = Service.Definitions.Select(d => d.Key).ToHashSet(StringComparer.Ordinal);
             foreach (var definition in definitions)
             {
                 if (customKeys.Contains(definition.Key))
                     continue;
-                Service.AddOrUpdateDefinition(
-                    definition with { Enabled = definition.Enabled && !disabledKeys.Contains(definition.Key) });
+                var enabled = !disabledKeys.Contains(definition.Key)
+                    && (definition.Enabled || enabledKeys.Contains(definition.Key));
+                Service.AddOrUpdateDefinition(definition with { Enabled = enabled });
             }
         }
         DefinitionsChanged?.Invoke();

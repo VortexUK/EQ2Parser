@@ -171,9 +171,11 @@ public static class PiperVoiceCatalog
                 if (Directory.Exists(staging))
                     Directory.Delete(staging, recursive: true);
             }
-            catch (IOException)
+            catch (Exception)
             {
-                // Leftover staging is re-cleaned on the next attempt.
+                // Leftover staging is re-cleaned on the next attempt. Catch
+                // everything: an UnauthorizedAccessException here used to
+                // turn a SUCCESSFUL install into a reported failure.
             }
         }
     }

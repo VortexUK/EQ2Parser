@@ -15,6 +15,9 @@ public sealed class BulkObservableCollection<T> : ObservableCollection<T>
 {
     public void ReplaceAll(IEnumerable<T> items)
     {
+        // Same guard the base mutators have — reentrant mutation during the
+        // Reset callback used to corrupt silently instead of throwing.
+        CheckReentrancy();
         Items.Clear();
         foreach (var item in items)
             Items.Add(item);

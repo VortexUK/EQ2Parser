@@ -321,7 +321,7 @@ public sealed partial class MainParseViewModel : ObservableObject
         {
             var isFocus = false;
             if (!focusFound && LineEpoch(raw) == row.Epoch
-                && (row.Amount <= 0 || raw.Contains(row.Amount.ToString("N0"), StringComparison.Ordinal))
+                && (row.Amount <= 0 || LogLineHighlighter.ContainsAmount(raw, row.Amount))
                 && (row.Ability == Core.Grammar.EnglishGrammar.AutoAttackAbility
                     || raw.Contains(row.Ability, StringComparison.Ordinal)))
             {

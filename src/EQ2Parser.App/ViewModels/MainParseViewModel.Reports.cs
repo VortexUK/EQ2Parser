@@ -174,7 +174,7 @@ public sealed partial class MainParseViewModel
                 .OrderByDescending(kv => kv.Value.Total)
                 .Where(kv => kv.Value.Total > 0)
                 .Take(12)
-                .Select(ISeries (kv) => Ring(kv.Key, (int)Math.Min(int.MaxValue, kv.Value.Total), ColorOf(kv.Key), (int)Math.Min(int.MaxValue, total), 44))];
+                .Select(ISeries (kv) => Ring(kv.Key, kv.Value.Total, ColorOf(kv.Key), total, 44))];
             var byArch = perOther
                 .Where(kv => kv.Value.Total > 0)
                 .GroupBy(kv => classMap.GetValueOrDefault(kv.Key) is { } cls
@@ -197,7 +197,7 @@ public sealed partial class MainParseViewModel
                     "Mages" => ClassColors.Mage,
                     _ => ClassColors.Neutral,
                 };
-                return Ring(t.Label, (int)Math.Min(int.MaxValue, t.Total), new SKColor(color.Color.R, color.Color.G, color.Color.B), (int)Math.Min(int.MaxValue, total), 44);
+                return Ring(t.Label, t.Total, new SKColor(color.Color.R, color.Color.G, color.Color.B), total, 44);
             })];
             ReportDonutsVisible = true;
             ReportCartesianVisible = false;
@@ -825,7 +825,7 @@ public sealed partial class MainParseViewModel
         }
     }
 
-    private static PieSeries<double> Ring(string label, int count, SKColor color, int total, double innerRadius) => new()
+    private static PieSeries<double> Ring(string label, long count, SKColor color, long total, double innerRadius) => new()
     {
         Values = new double[] { count },
         Name = $"{100.0 * count / Math.Max(1, total):F1}%  {label}",

@@ -120,7 +120,20 @@ public sealed partial class CurationViewModel : ObservableObject
     {
         if (value is null)
             return;
-        _mined = AbilityMiner.MineZone(_manager.History, value);
+        _ = MineAsync(value);
+    }
+
+    /// <summary>Off-thread — mining loads full swing lists for up to 500
+    /// archived fights from SQLite, which used to freeze the UI for the
+    /// whole load. A stale result (user already picked another zone) is
+    /// dropped.</summary>
+    private async Task MineAsync(string zone)
+    {
+        StatusLabel = $"Mining {zone}…";
+        var mined = await Task.Run(() => AbilityMiner.MineZone(_manager.History, zone));
+        if (SelectedZone != zone)
+            return;
+        _mined = mined;
         RebuildRows();
     }
 

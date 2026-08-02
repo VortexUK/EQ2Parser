@@ -74,10 +74,13 @@ public sealed class StatusCalloutMonitor
                 if (state.PendingSince is not { } since || now - since < CollectDelay)
                     continue;
                 state.PendingSince = null;
-                state.LastCallout = now;
                 Prune(state, now);
-                if (state.Recent.Count >= MinVictims)
-                    (fire ??= []).Add((effect, state.Recent.Count));
+                if (state.Recent.Count < MinVictims)
+                    continue; // evaporated below threshold — no callout, and
+                              // the cooldown must NOT charge (it used to mute
+                              // the next genuine wave)
+                state.LastCallout = now;
+                (fire ??= []).Add((effect, state.Recent.Count));
             }
         }
         if (fire is null)

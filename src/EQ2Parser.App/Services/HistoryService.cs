@@ -30,6 +30,11 @@ public sealed class HistoryService : IDisposable
     private readonly ConditionalWeakTable<Encounter, StrongBox<long>> _storedIds = [];
     private readonly HashSet<long> _inParser = [];
 
+    /// <summary>Encounters deleted from the tree BEFORE their background
+    /// save landed — the save must then archive them as NOT loaded, or the
+    /// phantom "loaded" id made the archive refuse to pull them back.</summary>
+    private readonly HashSet<Encounter> _unloadedBeforeSave = [];
+
     public HistoryService()
     {
         Directory.CreateDirectory(AppSettings.Directory);
@@ -43,6 +48,7 @@ public sealed class HistoryService : IDisposable
                     long id;
                     lock (_gate)
                     {
+                        var unloaded = _unloadedBeforeSave.Remove(encounter);
                         // A re-parse of an already-archived fight maps to
                         // its existing row instead of saving a duplicate —
                         // UNLESS the re-parse captured MORE swings (newer
@@ -59,7 +65,8 @@ public sealed class HistoryService : IDisposable
                             existing = null;
                         }
                         id = existing ?? _store.SaveEncounter(encounter);
-                        _inParser.Add(id);
+                        if (!unloaded)
+                            _inParser.Add(id);
                     }
                     _storedIds.Add(encounter, new StrongBox<long>(id));
                 }
@@ -202,6 +209,8 @@ public sealed class HistoryService : IDisposable
             {
                 if (_storedIds.TryGetValue(encounter, out var box))
                     _inParser.Remove(box.Value);
+                else
+                    _unloadedBeforeSave.Add(encounter); // save hasn't landed yet
             }
         }
     }
@@ -216,6 +225,8 @@ public sealed class HistoryService : IDisposable
             {
                 if (_storedIds.TryGetValue(encounter, out var box))
                     _inParser.Add(box.Value);
+                else
+                    _unloadedBeforeSave.Remove(encounter); // undo of a pre-save delete
             }
         }
     }

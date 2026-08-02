@@ -347,6 +347,7 @@ public sealed partial class TriggersViewModel : ObservableObject
         TimerName = "";
         RebuildTimerChoices();
         EditorError = "";
+        EditorInfo = "";
     }
 
     [RelayCommand]
@@ -368,6 +369,9 @@ public sealed partial class TriggersViewModel : ObservableObject
         TimerName = t.TimerName;
         RebuildTimerChoices();
         EditorError = "";
+        // The "Also created spell timer …" banner belongs to the previous
+        // save — it used to linger over unrelated edits.
+        EditorInfo = "";
     }
 
     [RelayCommand]
@@ -409,11 +413,12 @@ public sealed partial class TriggersViewModel : ObservableObject
         }
         _manager.Triggers.AddOrUpdate(trigger, _editingKey);
         _editingKey = null;
-        EditorInfo = _manager.SpellTimers.EnsureLinkedTimers([trigger]) > 0
+        var linked = _manager.SpellTimers.EnsureLinkedTimers([trigger]);
+        _tree.Reveal(trigger.Zone, category);
+        NewTrigger(); // clears the banner — set THIS save's message after
+        EditorInfo = linked > 0
             ? $"Also created spell timer “{trigger.TimerName}” (30s default) — set its real length on the Timers page."
             : "";
-        _tree.Reveal(trigger.Zone, category);
-        NewTrigger();
         RebuildRows();
     }
 

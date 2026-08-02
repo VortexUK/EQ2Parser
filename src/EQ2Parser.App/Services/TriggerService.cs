@@ -212,8 +212,9 @@ public sealed class TriggerService
     /// <summary>Replace the synced Lexicon set wholesale: old lexicon
     /// triggers out of the list and every engine, the new pack's in —
     /// except where the user's OWN trigger has the same identity (their
-    /// copy/fork wins). Disabled overrides re-apply.</summary>
-    public void ApplyLexicon(IReadOnlyCollection<Trigger> triggers, IReadOnlySet<string> disabledKeys)
+    /// copy/fork wins, compared Ordinal like every other key test).
+    /// Enable/disable overrides re-apply in BOTH directions.</summary>
+    public void ApplyLexicon(IReadOnlyCollection<Trigger> triggers, IReadOnlySet<string> disabledKeys, IReadOnlySet<string> enabledKeys)
     {
         List<string> removedKeys = [];
         List<Trigger> added = [];
@@ -225,14 +226,14 @@ public sealed class TriggerService
                 _definitions.Remove(old);
                 removedKeys.Add(old.Key);
             }
-            var customKeys = _definitions.Select(t => t.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var customKeys = _definitions.Select(t => t.Key).ToHashSet(StringComparer.Ordinal);
             foreach (var trigger in triggers)
             {
                 if (customKeys.Contains(trigger.Key))
                     continue;
-                var effective = disabledKeys.Contains(trigger.Key) && trigger.Enabled
-                    ? CloneWith(trigger, enabled: false)
-                    : trigger;
+                var enabled = !disabledKeys.Contains(trigger.Key)
+                    && (trigger.Enabled || enabledKeys.Contains(trigger.Key));
+                var effective = enabled == trigger.Enabled ? trigger : CloneWith(trigger, enabled);
                 _definitions.Add(effective);
                 added.Add(effective);
             }

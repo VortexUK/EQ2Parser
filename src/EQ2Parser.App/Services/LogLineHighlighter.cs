@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Windows.Media;
 using EQ2Parser.Core.Grammar;
 using EQ2Parser.Core.Logs;
@@ -29,6 +30,28 @@ public static class LogLineHighlighter
     private static readonly SolidColorBrush Victim = Frozen("#E2E4F0");
     private static readonly SolidColorBrush Death = Frozen("#F87171");
 
+    /// <summary>The textual forms a damage amount takes in a raw log line:
+    /// invariant thousands grouping ("140,600") and the K/M/B abbreviations
+    /// the client uses for six-digit-plus amounts ("140.6K", "250K",
+    /// "1.2M"). Culture-invariant — the old current-culture "N0" search
+    /// broke on non-English locales and never matched abbreviated amounts,
+    /// so the amount went unhighlighted and swing-log focus rows missed.</summary>
+    public static IEnumerable<string> AmountTexts(long amount)
+    {
+        yield return amount.ToString("N0", CultureInfo.InvariantCulture);
+        if (amount < 100_000)
+            yield break;
+        if (amount >= 1_000_000_000)
+            yield return ((double)amount / 1_000_000_000).ToString("0.#", CultureInfo.InvariantCulture) + "B";
+        if (amount >= 1_000_000)
+            yield return ((double)amount / 1_000_000).ToString("0.#", CultureInfo.InvariantCulture) + "M";
+        yield return ((double)amount / 1_000).ToString("0.#", CultureInfo.InvariantCulture) + "K";
+    }
+
+    /// <summary>True when the raw line contains the amount in any form.</summary>
+    public static bool ContainsAmount(string raw, long amount) =>
+        AmountTexts(amount).Any(t => raw.Contains(t, StringComparison.Ordinal));
+
     public static IReadOnlyList<LogSegment> Build(string raw)
     {
         if (!LogLine.TryParse(raw, out var line))
@@ -48,7 +71,15 @@ public static class LogLineHighlighter
                     AddSpan(spans, message, swing.Ability, Ability);
                 AddSpan(spans, message, swing.Victim is EnglishGrammar.You ? "YOU" : swing.Victim, Victim);
                 if (swing.Damage.Number > 0)
-                    AddSpan(spans, message, swing.Damage.Number.ToString("N0"), Amount);
+                {
+                    foreach (var text in AmountTexts(swing.Damage.Number))
+                    {
+                        if (!message.Contains(text, StringComparison.Ordinal))
+                            continue;
+                        AddSpan(spans, message, text, Amount);
+                        break;
+                    }
+                }
                 break;
             case DeathEvent death:
                 AddSpan(spans, message, death.Victim is EnglishGrammar.You ? "You" : death.Victim, Death);

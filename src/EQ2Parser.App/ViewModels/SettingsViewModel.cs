@@ -125,10 +125,16 @@ public sealed partial class SettingsViewModel : ObservableObject
             return;
         }
         // Remove: unload the engine first so the model file isn't mapped.
+        // Off-thread — Unload waits on the synth gate, and a Synthesize
+        // mid-model-load holds it for seconds (this froze the UI).
+        row.Busy = true;
         try
         {
-            _manager.Audio.UnloadNeuralModel();
-            PiperVoiceCatalog.RemovePack(row.Pack);
+            await Task.Run(() =>
+            {
+                _manager.Audio.UnloadNeuralModel();
+                PiperVoiceCatalog.RemovePack(row.Pack);
+            });
             RefreshPackRows();
             if (PiperVoiceCatalog.Find(SelectedVoice?.Id) is { } current && current.Archive == row.Pack.Archive)
                 VoiceStatus = "Pack removed — alerts fall back to a Windows voice until it's downloaded again.";
@@ -136,6 +142,10 @@ public sealed partial class SettingsViewModel : ObservableObject
         catch (Exception ex)
         {
             row.Status = $"Couldn't remove ({ex.Message}) — try again in a moment.";
+        }
+        finally
+        {
+            row.Busy = false;
         }
     }
 
@@ -243,8 +253,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         if (_loadingCallouts)
             return;
-        var minPlayers = int.TryParse(CalloutMinPlayers, out var mp) ? Math.Clamp(mp, 1, 24) : 3;
-        var cooldown = int.TryParse(CalloutCooldown, out var cd) ? Math.Clamp(cd, 3, 120) : 12;
+        // Unparseable (mid-typing, cleared box) keeps the CURRENT value —
+        // substituting the hardcoded defaults silently reset user settings.
+        var minPlayers = int.TryParse(CalloutMinPlayers, out var mp)
+            ? Math.Clamp(mp, 1, 24) : _manager.Settings.CalloutMinPlayers;
+        var cooldown = int.TryParse(CalloutCooldown, out var cd)
+            ? Math.Clamp(cd, 3, 120) : _manager.Settings.CalloutCooldownSeconds;
         _manager.Callouts.MinVictims = minPlayers;
         _manager.Callouts.Cooldown = TimeSpan.FromSeconds(cooldown);
         _manager.Settings = _manager.Settings with

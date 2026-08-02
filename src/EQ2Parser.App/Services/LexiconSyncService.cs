@@ -33,7 +33,10 @@ public sealed class LexiconSyncService
     private readonly object _gate = new();
     private readonly HashSet<string> _disabledTriggers = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _disabledTimers = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _enabledTriggers = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _enabledTimers = new(StringComparer.OrdinalIgnoreCase);
     private string _appliedVersion = "";
+    private string _appliedSummary = "";
 
     public string BaseUrl { get; }
 
@@ -48,15 +51,19 @@ public sealed class LexiconSyncService
         _timers = timers;
         BaseUrl = baseUrl.TrimEnd('/');
         LoadOverrides();
-        triggers.LexiconEnabledChanged += (key, enabled) => SetOverride(_disabledTriggers, key, enabled);
-        timers.LexiconEnabledChanged += (key, enabled) => SetOverride(_disabledTimers, key, enabled);
+        triggers.LexiconEnabledChanged += (key, enabled) => SetOverride(_disabledTriggers, _enabledTriggers, key, enabled);
+        timers.LexiconEnabledChanged += (key, enabled) => SetOverride(_disabledTimers, _enabledTimers, key, enabled);
     }
 
     // ---- pack DTOs (snake_case JSON from the FastAPI models) ----
 
+    // Every string is nullable: System.Text.Json binds an explicit null
+    // into a non-nullable string without complaint, and the NRE then fired
+    // LATER on the log pump thread (killing that tail loop). Nulls are
+    // coalesced or skipped at the mapping instead.
     private sealed record PackTrigger(
-        string Regex,
-        string SoundData,
+        string? Regex,
+        string? SoundData,
         int SoundType,
         bool CategoryRestrict,
         string? Category,
@@ -66,7 +73,7 @@ public sealed class LexiconSyncService
         double CooldownSeconds);
 
     private sealed record PackTimer(
-        string Name,
+        string? Name,
         bool Checked,
         int TimerDurationS,
         int WarningValue,
@@ -74,18 +81,18 @@ public sealed class LexiconSyncService
         bool OnlyMasterTicks,
         bool Restrict,
         bool Absolute,
-        string StartWav,
-        string WarningWav,
+        string? StartWav,
+        string? WarningWav,
         bool RadialDisplay,
         bool Modable,
-        string Tooltip,
+        string? Tooltip,
         int FillColor,
         bool Panel1,
         bool Panel2,
         string? Category,
         bool RestrictCategory,
-        string DamageType,
-        string ControlEffect);
+        string? DamageType,
+        string? ControlEffect);
 
     private sealed record PackEncounter(string Mob, int Position, List<PackTrigger> Triggers, List<PackTimer> SpellTimers);
 
@@ -125,10 +132,11 @@ public sealed class LexiconSyncService
                 SetStatus("Sync failed: empty response.");
                 return;
             }
-            if (pack.Version == _appliedVersion)
+            if (_appliedVersion.Length > 0 && pack.Version == _appliedVersion)
             {
-                SetStatus($"{Status.Replace("(cached)", "").TrimEnd()} — up to date.".TrimStart('—', ' '));
-                Apply(pack, cached: false); // refresh status text with counts
+                // Already applied (from cache or a prior sync) — a full
+                // re-apply here was pure churn through every engine.
+                SetStatus($"{_appliedSummary} · up to date (v{pack.Version})");
                 return;
             }
             Directory.CreateDirectory(AppSettings.Directory);
@@ -153,13 +161,15 @@ public sealed class LexiconSyncService
             {
                 foreach (var t in encounter.Triggers)
                 {
+                    if (string.IsNullOrEmpty(t.Regex))
+                        continue; // a null/empty regex would match EVERY line
                     try
                     {
                         triggers.Add(new Trigger(t.Regex, t.Category ?? encounter.Mob, zone.Zone)
                         {
                             Enabled = t.Active,
                             SoundType = Enum.IsDefined((TriggerSound)t.SoundType) ? (TriggerSound)t.SoundType : TriggerSound.None,
-                            SoundData = t.SoundData,
+                            SoundData = t.SoundData ?? "",
                             RestrictToCategoryZone = t.CategoryRestrict,
                             StartsTimer = t.Timer && !string.IsNullOrEmpty(t.TimerName),
                             TimerName = t.TimerName ?? "",
@@ -174,6 +184,8 @@ public sealed class LexiconSyncService
                 }
                 foreach (var t in encounter.SpellTimers)
                 {
+                    if (string.IsNullOrEmpty(t.Name))
+                        continue;
                     // The site's editor expresses EVERY field since the
                     // 2026-08 parity release (plus a one-time backfill of
                     // the rows its older editor stripped) — curated values
@@ -190,17 +202,17 @@ public sealed class LexiconSyncService
                         OnlyMasterTicks = t.OnlyMasterTicks,
                         RestrictToMe = t.Restrict,
                         AbsoluteTiming = t.Absolute,
-                        StartSoundData = t.StartWav,
-                        WarningSoundData = t.WarningWav,
+                        StartSoundData = t.StartWav ?? "",
+                        WarningSoundData = t.WarningWav ?? "",
                         RadialDisplay = t.RadialDisplay,
                         Modable = t.Modable,
-                        Tooltip = t.Tooltip,
+                        Tooltip = t.Tooltip ?? "",
                         FillColorArgb = t.FillColor,
                         Panel1 = t.Panel1,
                         Panel2 = t.Panel2,
                         RestrictToCategory = t.RestrictCategory,
-                        DamageType = t.DamageType,
-                        ControlEffect = t.ControlEffect,
+                        DamageType = t.DamageType ?? "",
+                        ControlEffect = t.ControlEffect ?? "",
                         Source = SourceTag,
                     });
                 }
@@ -209,11 +221,16 @@ public sealed class LexiconSyncService
 
         lock (_gate)
         {
-            _timers.ApplyLexicon(timers, _disabledTimers.ToHashSet(StringComparer.OrdinalIgnoreCase));
-            _triggers.ApplyLexicon(triggers, _disabledTriggers.ToHashSet(StringComparer.OrdinalIgnoreCase));
+            _timers.ApplyLexicon(timers,
+                _disabledTimers.ToHashSet(StringComparer.OrdinalIgnoreCase),
+                _enabledTimers.ToHashSet(StringComparer.OrdinalIgnoreCase));
+            _triggers.ApplyLexicon(triggers,
+                _disabledTriggers.ToHashSet(StringComparer.OrdinalIgnoreCase),
+                _enabledTriggers.ToHashSet(StringComparer.OrdinalIgnoreCase));
             _appliedVersion = pack.Version;
+            _appliedSummary = $"{triggers.Count} triggers · {timers.Count} timers from {pack.Zones.Count} zones";
         }
-        SetStatus($"{triggers.Count} triggers · {timers.Count} timers from {pack.Zones.Count} zones"
+        SetStatus(_appliedSummary
             + (cached ? " (cached — checking for updates…)" : $" · synced (v{pack.Version})"));
     }
 
@@ -223,21 +240,35 @@ public sealed class LexiconSyncService
         StatusChanged?.Invoke();
     }
 
-    // ---- disabled-key overrides ----
+    // ---- enable/disable overrides ----
 
-    private void SetOverride(HashSet<string> set, string key, bool enabled)
+    /// <summary>Record the user's explicit choice in BOTH directions — the
+    /// class contract says flips re-apply across syncs, but only disables
+    /// used to be stored, so enabling a curator-disabled row reverted on
+    /// the next sync or restart.</summary>
+    private void SetOverride(HashSet<string> disabled, HashSet<string> enabled, string key, bool nowEnabled)
     {
         lock (_gate)
         {
-            if (enabled)
-                set.Remove(key);
+            if (nowEnabled)
+            {
+                disabled.Remove(key);
+                enabled.Add(key);
+            }
             else
-                set.Add(key);
+            {
+                enabled.Remove(key);
+                disabled.Add(key);
+            }
             SaveOverrides();
         }
     }
 
-    private sealed record Overrides(List<string> DisabledTriggers, List<string> DisabledTimers);
+    /// <summary>The enabled lists are nullable so pre-existing override
+    /// files (disables only) still deserialize.</summary>
+    private sealed record Overrides(
+        List<string> DisabledTriggers, List<string> DisabledTimers,
+        List<string>? EnabledTriggers = null, List<string>? EnabledTimers = null);
 
     private static string PackPath => Path.Combine(AppSettings.Directory, "lexicon_pack.json");
 
@@ -254,6 +285,10 @@ public sealed class LexiconSyncService
                 _disabledTriggers.Add(key);
             foreach (var key in overrides?.DisabledTimers ?? [])
                 _disabledTimers.Add(key);
+            foreach (var key in overrides?.EnabledTriggers ?? [])
+                _enabledTriggers.Add(key);
+            foreach (var key in overrides?.EnabledTimers ?? [])
+                _enabledTimers.Add(key);
         }
         catch (Exception)
         {
@@ -266,8 +301,9 @@ public sealed class LexiconSyncService
         try
         {
             Directory.CreateDirectory(AppSettings.Directory);
-            File.WriteAllText(OverridesPath, JsonSerializer.Serialize(
-                new Overrides([.. _disabledTriggers], [.. _disabledTimers])));
+            File.WriteAllText(OverridesPath, JsonSerializer.Serialize(new Overrides(
+                [.. _disabledTriggers], [.. _disabledTimers],
+                [.. _enabledTriggers], [.. _enabledTimers])));
         }
         catch (Exception)
         {

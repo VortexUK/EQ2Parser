@@ -73,7 +73,12 @@ public sealed class ClassIdentifier(SpellClassMap map)
         // a confident wrong verdict, because pre-Sentinel's-Fate eras name
         // each spell tier uniquely and census never carries those names.
         // Require the winner to be corroborated by a second ability.
-        var winner = votes.MaxBy(kv => kv.Value);
+        // Deterministic tie-break (alphabetical) — dictionary insertion
+        // order made equal-vote results flap between runs.
+        var winner = votes
+            .OrderByDescending(kv => kv.Value)
+            .ThenBy(kv => kv.Key, StringComparer.Ordinal)
+            .First();
         if (winner.Value < 2)
             return new ClassDetection(null, 0, mapped, abilities.Count);
 
