@@ -122,14 +122,7 @@ public sealed class Combatant(string name)
             if (_incoming.TryGetValue(BucketConfig.AllIncomingRef, out var reference)
                 && reference.Abilities.TryGetValue(KillingAbility, out var killing))
                 return killing.Swings.Count;
-            var all = AllOf(_incoming, BucketConfig.AllIncomingRef);
-            if (all is null)
-                return 0;
-            var count = 0;
-            foreach (var s in all.Swings)
-                if (s.Damage.IsDeath)
-                    count++;
-            return count;
+            return AllOf(_incoming, BucketConfig.AllIncomingRef)?.DeathCount ?? 0;
         }
     }
 

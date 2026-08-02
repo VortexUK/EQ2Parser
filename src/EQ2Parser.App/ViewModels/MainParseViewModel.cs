@@ -137,7 +137,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     public ColumnSetVm SwingColumns { get; } = ColumnSets.Swing(manager);
 
     private object? _pinnedFight;
-    private (int HistoryCount, bool AnyActive) _treeSignature = (-1, false);
+    private (long Version, bool AnyActive) _treeSignature = (-1, false);
 
     public BulkObservableCollection<ParseNode> TreeNodes { get; } = [];
     public ObservableCollection<CombatantRow> AllyRows { get; } = [];
@@ -153,7 +153,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     /// <summary>Rows only rebuild when the group's identity or fight count
     /// changes — walking every fight's combatants at 10 Hz would not fly.</summary>
-    private (string GroupKey, int Count, CorrelatedEncounter? Last) _zoneSummarySig;
+    private (string GroupKey, int Count, long Version) _zoneSummarySig;
 
     /// <summary>Summary row click: jump to that fight's combatant grid.</summary>
     [RelayCommand]
@@ -252,11 +252,28 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     /// <summary>The swing table shows at swing depth unless a log/report view is open.</summary>
     public bool SwingTableVisible => SwingLevel && !LogLevel && !ReportLevel;
 
-    partial void OnSwingLevelChanged(bool value) => OnPropertyChanged(nameof(SwingTableVisible));
+    /// <summary>The bucket/ability drill table is on screen — the drill
+    /// COLUMNS picker binds here, not to !SwingLevel, which left a stray
+    /// no-op button on report and raw-log views.</summary>
+    public bool DrillTableVisible => !SwingLevel && !LogLevel && !ReportLevel;
 
-    partial void OnLogLevelChanged(bool value) => OnPropertyChanged(nameof(SwingTableVisible));
+    partial void OnSwingLevelChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SwingTableVisible));
+        OnPropertyChanged(nameof(DrillTableVisible));
+    }
 
-    partial void OnReportLevelChanged(bool value) => OnPropertyChanged(nameof(SwingTableVisible));
+    partial void OnLogLevelChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SwingTableVisible));
+        OnPropertyChanged(nameof(DrillTableVisible));
+    }
+
+    partial void OnReportLevelChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SwingTableVisible));
+        OnPropertyChanged(nameof(DrillTableVisible));
+    }
 
     public ObservableCollection<AbilityRow> DrillRows { get; } = [];
     public BulkObservableCollection<SwingRow> SwingRows { get; } = [];
@@ -1851,16 +1868,19 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     private void RebuildTreeIfChanged()
     {
-        int historyCount;
+        long version;
         bool anyActive;
         lock (manager.Sync)
         {
-            historyCount = manager.Correlator.History.Count;
+            // Correlator.Version covers create/merge/delete/restore — a
+            // History.Count signature was blind to in-place merges, leaving
+            // stale tree labels after a second log joined a fight.
+            version = manager.Correlator.Version;
             anyActive = manager.Sources.Any(s => s.Engine.InCombat);
         }
-        if ((historyCount, anyActive) == _treeSignature)
+        if ((version, anyActive) == _treeSignature)
             return;
-        _treeSignature = (historyCount, anyActive);
+        _treeSignature = (version, anyActive);
         RebuildTree();
     }
 
@@ -1978,17 +1998,29 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     /// <summary>The zone group's current fights (respecting Bosses only) —
     /// re-resolved so a live zone's summary gains new fights as they end.
-    /// Falls back to the click-time snapshot if the group re-shaped.</summary>
+    /// Exact key match first; else membership (the key embeds the FIRST
+    /// fight's start time, so deleting that fight drifts the key while the
+    /// group lives on). A fully-deleted group resolves EMPTY — the old
+    /// snapshot fallback resurrected deleted fights.</summary>
     private List<CorrelatedEncounter> ResolveZoneFights(ZoneFights zone)
     {
+        List<CorrelatedEncounter>? match = null;
         foreach (var (z, items) in GroupHistoryZones())
         {
             var zoneName = string.IsNullOrEmpty(z) ? "Unknown zone" : z;
-            if (!string.Equals($"{zoneName}|{items[0].StartTime.Ticks}", zone.GroupKey, StringComparison.Ordinal))
-                continue;
-            return BossesOnly ? [.. items.Where(f => IsBossTitle(f.Title))] : items;
+            if (string.Equals($"{zoneName}|{items[0].StartTime.Ticks}", zone.GroupKey, StringComparison.Ordinal))
+            {
+                match = items;
+                break;
+            }
+            if (match is null
+                && string.Equals(zoneName, zone.Zone, StringComparison.OrdinalIgnoreCase)
+                && items.Any(zone.Snapshot.Contains))
+                match = items;
         }
-        return [.. zone.Snapshot];
+        if (match is null)
+            return [];
+        return BossesOnly ? [.. match.Where(f => IsBossTitle(f.Title))] : match;
     }
 
     /// <summary>One row per encounter: ally damage + deaths, enemy-side
@@ -2133,7 +2165,10 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
                 {
                     var zoneFights = ResolveZoneFights(zone);
                     breadcrumb = $"{zone.Zone}  ·  {zoneFights.Count} encounters  ·  {FmtSpan(SumDuration(zoneFights))}";
-                    var sig = (zone.GroupKey, zoneFights.Count, zoneFights.Count > 0 ? zoneFights[^1] : null);
+                    // Correlator.Version catches in-place merges; Count still
+                    // matters because the Bosses-only filter changes the list
+                    // without touching the correlator.
+                    var sig = (zone.GroupKey, zoneFights.Count, manager.Correlator.Version);
                     if (sig != _zoneSummarySig)
                     {
                         _zoneSummarySig = sig;
@@ -2960,19 +2995,25 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     private void SnapshotEncounter(Encounter encounter, List<RowData> allies, List<RowData> pets, List<RowData> enemies)
     {
         var tags = manager.Classifier.Classify(encounter);
+        // One Duration derivation per tick, not one per combatant —
+        // EncDpsOf/EncHpsOf each re-derive it (same maths, hoisted).
+        var seconds = encounter.Duration.TotalSeconds;
         foreach (var combatant in encounter.Combatants.Values)
         {
             if (!tags.TryGetValue(combatant.Key, out var tag))
                 continue;
             if (tag.Kind is CombatantKind.System or CombatantKind.Bystander)
                 continue;
-            if (combatant.Damage <= 0 && combatant.Healed <= 0 && combatant.DamageTaken <= 0)
+            var damage = combatant.Damage;
+            var healed = combatant.Healed;
+            var taken = combatant.DamageTaken;
+            if (damage <= 0 && healed <= 0 && taken <= 0)
                 continue;
             var row = BuildRow(
                 combatant.Key, combatant.Name, tag,
-                combatant.Duration.TotalSeconds, combatant.Damage,
-                encounter.EncDpsOf(combatant), encounter.EncHpsOf(combatant),
-                combatant.DamageTaken, combatant.Deaths, ExtOf(combatant));
+                combatant.Duration.TotalSeconds, damage,
+                seconds > 0 ? damage / seconds : 0, seconds > 0 ? healed / seconds : 0,
+                taken, combatant.Deaths, ExtOf(combatant));
             BucketRow(tag, row, allies, pets, enemies);
         }
     }

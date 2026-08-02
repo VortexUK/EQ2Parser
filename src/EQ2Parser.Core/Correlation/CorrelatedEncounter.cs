@@ -19,14 +19,17 @@ public sealed class CorrelatedEncounter
 {
     private readonly List<Encounter> _sources = [];
     private Dictionary<string, MergedCombatant>? _mergedCache;
+    private Encounter? _primaryCache;
+    private IReadOnlySet<string>? _allyKeysCache;
 
     internal CorrelatedEncounter(Encounter first) => _sources.Add(first);
 
     public IReadOnlyList<Encounter> Sources => _sources;
 
     /// <summary>The primary source: longest duration (the site's
-    /// primary-upload rule). Title/success/zone read from it.</summary>
-    public Encounter Primary => _sources.MaxBy(e => e.Duration)!;
+    /// primary-upload rule). Title/success/zone read from it. Sources are
+    /// COMPLETED encounters (immutable), so this caches until a Join.</summary>
+    public Encounter Primary => _primaryCache ??= _sources.MaxBy(e => e.Duration)!;
 
     public string Zone => Primary.Zone;
     public string Title => Primary.Title;
@@ -40,6 +43,8 @@ public sealed class CorrelatedEncounter
     {
         _sources.Add(encounter);
         _mergedCache = null;
+        _primaryCache = null;
+        _allyKeysCache = null;
     }
 
     /// <summary>
@@ -87,16 +92,20 @@ public sealed class CorrelatedEncounter
         }
     }
 
-    /// <summary>Merged ally keys: the union of every source's resolved allies.</summary>
+    /// <summary>Merged ally keys: the union of every source's resolved
+    /// allies. Cached until a Join — callers read this inside per-combatant
+    /// loops, and it used to allocate + re-resolve on every access.</summary>
     public IReadOnlySet<string> MergedAllyKeys
     {
         get
         {
+            if (_allyKeysCache is not null)
+                return _allyKeysCache;
             var keys = new HashSet<string>(StringComparer.Ordinal);
             foreach (var source in _sources)
                 foreach (var ally in source.GetAllies())
                     keys.Add(ally.Key);
-            return keys;
+            return _allyKeysCache = keys;
         }
     }
 

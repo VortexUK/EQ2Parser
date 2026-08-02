@@ -619,11 +619,11 @@
                     </StackPanel>
                     <ToggleButton x:Name="DrillColumnsToggle" Style="{StaticResource PillToggle}"
                                   Content="☰ COLUMNS" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                  Visibility="{Binding SwingLevel, Converter={StaticResource InverseBoolToVis}}"
+                                  Visibility="{Binding DrillTableVisible, Converter={StaticResource BoolToVis}}"
                                   PreviewMouseLeftButtonDown="DrillColumnsToggle_PreviewMouseLeftButtonDown" />
                     <ToggleButton x:Name="SwingColumnsToggle" Style="{StaticResource PillToggle}"
                                   Content="☰ COLUMNS" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                  Visibility="{Binding SwingLevel, Converter={StaticResource BoolToVis}}"
+                                  Visibility="{Binding SwingTableVisible, Converter={StaticResource BoolToVis}}"
                                   PreviewMouseLeftButtonDown="SwingColumnsToggle_PreviewMouseLeftButtonDown" />
                     <Popup x:Name="SwingColumnsPopup" PlacementTarget="{Binding ElementName=SwingColumnsToggle}"
                            Placement="Bottom" StaysOpen="False" AllowsTransparency="True"

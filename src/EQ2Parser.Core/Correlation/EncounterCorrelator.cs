@@ -28,6 +28,11 @@ public sealed class EncounterCorrelator(CorrelatorOptions? options = null)
 
     public IReadOnlyList<CorrelatedEncounter> History => _history;
 
+    /// <summary>Bumped on every history mutation — create, merge, delete,
+    /// restore. Views cache against this instead of History.Count, which
+    /// was blind to in-place merges (stale tree/zone-summary labels).</summary>
+    public long Version { get; private set; }
+
     /// <summary>Raised when an encounter lands in a NEW correlated fight.</summary>
     public event Action<CorrelatedEncounter>? Created;
 
@@ -50,7 +55,13 @@ public sealed class EncounterCorrelator(CorrelatorOptions? options = null)
 
     /// <summary>User deletion of a correlated fight. Returns false when the
     /// fight was not (or no longer) in history.</summary>
-    public bool Remove(CorrelatedEncounter fight) => _history.Remove(fight);
+    public bool Remove(CorrelatedEncounter fight)
+    {
+        if (!_history.Remove(fight))
+            return false;
+        Version++;
+        return true;
+    }
 
     /// <summary>Undo of a user deletion: re-insert the fight at its
     /// chronological spot (history stays ordered by start time).</summary>
@@ -62,6 +73,7 @@ public sealed class EncounterCorrelator(CorrelatorOptions? options = null)
         while (index > 0 && _history[index - 1].StartTime > fight.StartTime)
             index--;
         _history.Insert(index, fight);
+        Version++;
     }
 
     /// <summary>Direct entry for tests/imports.</summary>
@@ -79,12 +91,14 @@ public sealed class EncounterCorrelator(CorrelatorOptions? options = null)
             if (IsSameFight(candidate, encounter))
             {
                 candidate.Join(encounter);
+                Version++;
                 Merged?.Invoke(candidate);
                 return;
             }
         }
         var created = new CorrelatedEncounter(encounter);
         _history.Add(created);
+        Version++;
         Created?.Invoke(created);
     }
 

@@ -32,10 +32,6 @@ public sealed class SourceManager : IDisposable
     public UpdateService Updates { get; } = new();
     public AppSettings Settings { get; set; } = AppSettings.Load();
 
-    /// <summary>Raised (on a background thread) whenever a correlated fight
-    /// is created or merged — history views resync on it.</summary>
-    public event Action? HistoryChanged;
-
     public SourceManager()
     {
         Audio = new AlertAudioService
@@ -58,8 +54,8 @@ public sealed class SourceManager : IDisposable
             Audio.Speak(text);
             CalloutAnnounced?.Invoke(text);
         };
-        Correlator.Created += _ => HistoryChanged?.Invoke();
-        Correlator.Merged += _ => HistoryChanged?.Invoke();
+        // History views resync by polling Correlator.Version on the UI tick
+        // — no event needed (the old HistoryChanged had zero subscribers).
     }
 
     public IReadOnlyList<LogSource> Sources
