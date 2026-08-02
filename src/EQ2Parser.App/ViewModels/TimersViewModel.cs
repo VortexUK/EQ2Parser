@@ -165,14 +165,24 @@ public sealed partial class TimersViewModel : ObservableObject
 
     /// <summary>Flat virtualized tree: CategoryRow headers with TimerDefRow
     /// children under the expanded ones — same idiom as Triggers.</summary>
-    public ObservableCollection<object> Rows { get; } = [];
+    public ObservableCollection<object> Rows => _tree.Rows;
     public ObservableCollection<TimerBarRow> LiveBars { get; } = [];
 
-    private readonly HashSet<string> _expandedCategories = new(StringComparer.OrdinalIgnoreCase);
+    private readonly CategoryTree<TimerDefinition> _tree;
 
     public TimersViewModel(SourceManager manager)
     {
         _manager = manager;
+        _tree = new CategoryTree<TimerDefinition>
+        {
+            ZoneOf = static d => d.Zone,
+            CategoryOf = static d => d.Category,
+            IsLexicon = static d => d.Source.Length > 0,
+            EnabledOf = static d => d.Enabled,
+            SortKeyOf = static d => d.Name,
+            MakeRow = d => new TimerDefRow(this, d),
+            LexiconHost = () => manager.Lexicon.BaseUrl.Replace("https://", ""),
+        };
         foreach (var school in Vocabulary.DamageSchools)
             DamageSchoolChips.Add(new SchoolChip(school, OnChipToggled));
         RebuildRows();
@@ -198,75 +208,11 @@ public sealed partial class TimersViewModel : ObservableObject
         || def.Category.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
         || def.Zone.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
 
-    private static string ZoneKey(TimerDefinition def) =>
-        def.Zone.Length > 0 ? def.Zone : "General";
-
-    /// <summary>Collapse/expand + header-count key: lexicon rows live in
-    /// their own section, so the same zone name never shares state with a
-    /// custom zone of the same name.</summary>
-    private static string TagFor(TimerDefinition def) =>
-        def.Source.Length > 0 ? $"lex|{ZoneKey(def)}" : ZoneKey(def);
-
-    private readonly HashSet<string> _collapsedZones = new(StringComparer.OrdinalIgnoreCase);
-
     private void RebuildRows()
     {
-        Rows.Clear();
-        var filtering = FilterText.Length > 0;
         var all = _manager.SpellTimers.Definitions;
-        List<TimerDefinition> custom = [.. all.Where(d => d.Source.Length == 0)];
-        List<TimerDefinition> lexicon = [.. all.Where(d => d.Source.Length > 0)];
-        if (lexicon.Count > 0)
-            Rows.Add(new SectionRow("Custom", "yours — edit, drag, delete"));
-        BuildSection(custom, filtering, keyPrefix: "");
-        if (lexicon.Count > 0)
-        {
-            Rows.Add(new SectionRow("Lexicon", $"curated on {_manager.Lexicon.BaseUrl.Replace("https://", "")} — enable/disable here, edit there"));
-            BuildSection(lexicon, filtering, keyPrefix: "lex|");
-        }
+        _tree.Rebuild(all, MatchesFilter, FilterText.Length > 0);
         HasTimers = all.Count > 0;
-    }
-
-    private void BuildSection(List<TimerDefinition> defs, bool filtering, string keyPrefix)
-    {
-        foreach (var zoneGroup in defs
-                     .GroupBy(ZoneKey, StringComparer.OrdinalIgnoreCase)
-                     .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
-        {
-            List<TimerDefinition> zoneMembers = [.. zoneGroup.Where(MatchesFilter)];
-            if (zoneMembers.Count == 0)
-                continue;
-            var zoneKey = keyPrefix + zoneGroup.Key;
-            // Zones default OPEN (there are few); mobs default closed.
-            var zoneExpanded = filtering || !_collapsedZones.Contains(zoneKey);
-            Rows.Add(new ZoneRow(zoneGroup.Key, zoneExpanded)
-            {
-                Key = zoneKey,
-                Count = zoneMembers.Count,
-                EnabledCount = zoneMembers.Count(d => d.Enabled),
-            });
-            if (!zoneExpanded)
-                continue;
-            foreach (var mobGroup in zoneMembers
-                         .GroupBy(d => d.Category, StringComparer.OrdinalIgnoreCase)
-                         .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
-            {
-                List<TimerDefinition> members = [.. mobGroup
-                    .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)];
-                var expandKey = $"{zoneKey}|{mobGroup.Key}";
-                var expanded = filtering || _expandedCategories.Contains(expandKey);
-                Rows.Add(new CategoryRow(mobGroup.Key, expanded)
-                {
-                    Tag = zoneKey,
-                    Count = members.Count,
-                    EnabledCount = members.Count(d => d.Enabled),
-                });
-                if (!expanded)
-                    continue;
-                foreach (var def in members)
-                    Rows.Add(new TimerDefRow(this, def));
-            }
-        }
     }
 
     [RelayCommand]
@@ -274,8 +220,7 @@ public sealed partial class TimersViewModel : ObservableObject
     {
         if (row is null)
             return;
-        if (!_collapsedZones.Add(row.Key))
-            _collapsedZones.Remove(row.Key);
+        _tree.ToggleZone(row);
         RebuildRows();
     }
 
@@ -284,9 +229,7 @@ public sealed partial class TimersViewModel : ObservableObject
     {
         if (row is null)
             return;
-        var key = $"{row.Tag}|{row.Name}";
-        if (!_expandedCategories.Add(key))
-            _expandedCategories.Remove(key);
+        _tree.ToggleCategory(row);
         RebuildRows();
     }
 
@@ -316,8 +259,7 @@ public sealed partial class TimersViewModel : ObservableObject
             return;
         var moved = current with { Category = targetCategory, Zone = targetZone };
         _manager.SpellTimers.AddOrUpdate(moved, replaceKey: current.Key);
-        _collapsedZones.Remove(targetZone.Length > 0 ? targetZone : "General");
-        _expandedCategories.Add($"{(targetZone.Length > 0 ? targetZone : "General")}|{targetCategory}");
+        _tree.Reveal(targetZone, targetCategory);
         if (_editingKey == current.Key)
             _editingKey = moved.Key;
         RebuildRows();
@@ -338,17 +280,7 @@ public sealed partial class TimersViewModel : ObservableObject
     internal void SetRowEnabled(TimerDefRow row, bool enabled)
     {
         _manager.SpellTimers.SetEnabled(row.Key, enabled);
-        var tag = TagFor(row.Definition);
-        foreach (var item in Rows)
-        {
-            if (item is CategoryRow header
-                && header.Name.Equals(row.Category, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(header.Tag, tag, StringComparison.OrdinalIgnoreCase))
-                header.EnabledCount += enabled ? 1 : -1;
-            else if (item is ZoneRow zone
-                && zone.Key.Equals(tag, StringComparison.OrdinalIgnoreCase))
-                zone.EnabledCount += enabled ? 1 : -1;
-        }
+        _tree.PatchEnabledCounts(row.Category, _tree.TagFor(row.Definition), enabled);
     }
 
     [RelayCommand]
@@ -645,9 +577,7 @@ public sealed partial class TimersViewModel : ObservableObject
         };
         _manager.SpellTimers.AddOrUpdate(definition, _editingKey);
         _editingKey = null;
-        var zoneKey = ZoneKey(definition);
-        _collapsedZones.Remove(zoneKey);
-        _expandedCategories.Add($"{zoneKey}|{definition.Category}");
+        _tree.Reveal(definition.Zone, definition.Category);
         NewTimer();
         RebuildRows();
     }
@@ -683,11 +613,17 @@ public sealed partial class TimersViewModel : ObservableObject
         }
         _manager.SpellTimers.ImportMany(timers);
         _manager.Triggers.AddOrUpdateMany(triggers);
+        // Same pass the Triggers page runs (this one had drifted and
+        // skipped it): pasted <Trigger> lines that start unknown timers
+        // get 30s defaults, AFTER explicit <Spell> lines land.
+        var linked = _manager.SpellTimers.EnsureLinkedTimers(triggers);
         List<string> parts = [];
         if (timers.Count > 0)
             parts.Add($"{timers.Count} timer{(timers.Count == 1 ? "" : "s")} imported");
         if (triggers.Count > 0)
             parts.Add($"{triggers.Count} trigger{(triggers.Count == 1 ? "" : "s")} imported (see Triggers page)");
+        if (linked > 0)
+            parts.Add($"{linked} linked timer{(linked == 1 ? "" : "s")} created with 30s defaults");
         if (failed > 0)
             parts.Add($"{failed} line{(failed == 1 ? "" : "s")} not recognised");
         ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : "Nothing to import — paste ACT share XML first.";

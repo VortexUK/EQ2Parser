@@ -154,6 +154,33 @@ public sealed class TimerService
         DefinitionsChanged?.Invoke();
     }
 
+    /// <summary>The trigger-side half of a linked pair is useless without
+    /// the timer-side half — ACT quietly auto-registers unknown spell
+    /// timers, and so do we: a 30s default the user then tunes. Lives here
+    /// so BOTH import paths run it (the Timers page's used to skip it).</summary>
+    public int EnsureLinkedTimers(IEnumerable<Trigger> triggers)
+    {
+        var created = 0;
+        foreach (var trigger in triggers)
+        {
+            if (!trigger.StartsTimer || trigger.TimerName.Length == 0
+                || Definitions.Any(d => d.Name.Equals(trigger.TimerName, StringComparison.OrdinalIgnoreCase)))
+                continue;
+            AddOrUpdate(new TimerDefinition
+            {
+                Name = trigger.TimerName,
+                Category = trigger.Category,
+                Zone = trigger.Zone,
+                // Trigger-started: the notify's attacker is whatever the
+                // regex matched, so a category lock would strangle it.
+                RestrictToCategory = false,
+                WarningSoundData = "tts",
+            });
+            created++;
+        }
+        return created;
+    }
+
     public int ImportMany(IReadOnlyCollection<TimerDefinition> definitions)
     {
         if (definitions.Count == 0)

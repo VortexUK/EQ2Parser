@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace EQ2Parser.App.ViewModels;
@@ -21,6 +22,140 @@ public interface ICategoryDropTarget
 /// <summary>Master section divider in the trigger/timer trees — the
 /// user's Custom set vs the read-only synced Lexicon set.</summary>
 public sealed record SectionRow(string Title, string Subtitle = "");
+
+/// <summary>
+/// The Section → Zone → Category → row tree shared by the Triggers and
+/// Timers pages: rebuild (filter-aware, with remembered collapse state),
+/// zone/category toggles, the drag-landing/save reveal, and in-place
+/// enabled-count patching. The two pages used to duplicate (and had
+/// already drifted on) ~200 lines of this machinery.
+/// </summary>
+public sealed class CategoryTree<TItem>
+{
+    public required Func<TItem, string> ZoneOf { get; init; }
+    public required Func<TItem, string> CategoryOf { get; init; }
+    public required Func<TItem, bool> IsLexicon { get; init; }
+    public required Func<TItem, bool> EnabledOf { get; init; }
+    public required Func<TItem, string> SortKeyOf { get; init; }
+    public required Func<TItem, object> MakeRow { get; init; }
+
+    /// <summary>Host name shown in the Lexicon section subtitle.</summary>
+    public required Func<string> LexiconHost { get; init; }
+
+    public ObservableCollection<object> Rows { get; } = [];
+
+    private readonly HashSet<string> _collapsedZones = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _expandedCategories = new(StringComparer.OrdinalIgnoreCase);
+
+    public string ZoneKeyOf(TItem item)
+    {
+        var zone = ZoneOf(item);
+        return zone.Length > 0 ? zone : "General";
+    }
+
+    /// <summary>Collapse/expand + header-count key: lexicon rows live in
+    /// their own section, so the same zone name never shares state with a
+    /// custom zone of the same name.</summary>
+    public string TagFor(TItem item) =>
+        IsLexicon(item) ? $"lex|{ZoneKeyOf(item)}" : ZoneKeyOf(item);
+
+    public void Rebuild(IReadOnlyCollection<TItem> all, Func<TItem, bool> matchesFilter, bool filtering)
+    {
+        Rows.Clear();
+        List<TItem> custom = [.. all.Where(i => !IsLexicon(i))];
+        List<TItem> lexicon = [.. all.Where(IsLexicon)];
+        if (lexicon.Count > 0)
+            Rows.Add(new SectionRow("Custom", "yours — edit, drag, delete"));
+        BuildSection(custom, matchesFilter, filtering, keyPrefix: "");
+        if (lexicon.Count > 0)
+        {
+            Rows.Add(new SectionRow("Lexicon", $"curated on {LexiconHost()} — enable/disable here, edit there"));
+            BuildSection(lexicon, matchesFilter, filtering, keyPrefix: "lex|");
+        }
+    }
+
+    private void BuildSection(List<TItem> items, Func<TItem, bool> matchesFilter, bool filtering, string keyPrefix)
+    {
+        foreach (var zoneGroup in items
+                     .GroupBy(ZoneKeyOf, StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            List<TItem> zoneMembers = [.. zoneGroup.Where(matchesFilter)];
+            if (zoneMembers.Count == 0)
+                continue;
+            var zoneKey = keyPrefix + zoneGroup.Key;
+            // Zones default OPEN (there are few); categories default closed.
+            var zoneExpanded = filtering || !_collapsedZones.Contains(zoneKey);
+            Rows.Add(new ZoneRow(zoneGroup.Key, zoneExpanded)
+            {
+                Key = zoneKey,
+                Count = zoneMembers.Count,
+                EnabledCount = zoneMembers.Count(EnabledOf),
+            });
+            if (!zoneExpanded)
+                continue;
+            foreach (var group in zoneMembers
+                         .GroupBy(CategoryOf, StringComparer.OrdinalIgnoreCase)
+                         .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                List<TItem> members = [.. group.OrderBy(SortKeyOf, StringComparer.OrdinalIgnoreCase)];
+                var expandKey = $"{zoneKey}|{group.Key}";
+                // A filter opens everything it touches; otherwise remembered state.
+                var expanded = filtering || _expandedCategories.Contains(expandKey);
+                Rows.Add(new CategoryRow(group.Key, expanded)
+                {
+                    Tag = zoneKey,
+                    Count = members.Count,
+                    EnabledCount = members.Count(EnabledOf),
+                });
+                if (!expanded)
+                    continue;
+                foreach (var item in members)
+                    Rows.Add(MakeRow(item));
+            }
+        }
+    }
+
+    /// <summary>Flip a zone's collapse state (caller rebuilds).</summary>
+    public void ToggleZone(ZoneRow row)
+    {
+        if (!_collapsedZones.Add(row.Key))
+            _collapsedZones.Remove(row.Key);
+    }
+
+    /// <summary>Flip a category's expand state (caller rebuilds).</summary>
+    public void ToggleCategory(CategoryRow row)
+    {
+        var key = $"{row.Tag}|{row.Name}";
+        if (!_expandedCategories.Add(key))
+            _expandedCategories.Remove(key);
+    }
+
+    /// <summary>Make a custom-section category visible — used after a save
+    /// or drag-move so the affected row is on screen (caller rebuilds).</summary>
+    public void Reveal(string zone, string category)
+    {
+        var zoneKey = zone.Length > 0 ? zone : "General";
+        _collapsedZones.Remove(zoneKey);
+        _expandedCategories.Add($"{zoneKey}|{category}");
+    }
+
+    /// <summary>In-place header-count patch for an enable flip — a full
+    /// rebuild would reset the list's scroll on every checkbox click.</summary>
+    public void PatchEnabledCounts(string categoryName, string tag, bool enabled)
+    {
+        foreach (var item in Rows)
+        {
+            if (item is CategoryRow header
+                && header.Name.Equals(categoryName, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(header.Tag, tag, StringComparison.OrdinalIgnoreCase))
+                header.EnabledCount += enabled ? 1 : -1;
+            else if (item is ZoneRow zone
+                && zone.Key.Equals(tag, StringComparison.OrdinalIgnoreCase))
+                zone.EnabledCount += enabled ? 1 : -1;
+        }
+    }
+}
 
 /// <summary>Top-level zone header in the trigger/timer trees — grouping
 /// only, deliberately NOT a drop target (drops land on mobs or their rows).</summary>

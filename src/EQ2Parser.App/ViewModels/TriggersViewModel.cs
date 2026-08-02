@@ -79,17 +79,26 @@ public sealed partial class TriggersViewModel : ObservableObject
 
     /// <summary>Flat virtualized tree: ZoneRow → CategoryRow (mob) →
     /// TriggerRow, same three-level idiom as the Timers page.</summary>
-    public ObservableCollection<object> Rows { get; } = [];
+    public ObservableCollection<object> Rows => _tree.Rows;
     public ObservableCollection<FiredRow> RecentFires { get; } = [];
 
-    private readonly HashSet<string> _collapsedZones = new(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<string> _expandedCategories = new(StringComparer.OrdinalIgnoreCase);
+    private readonly CategoryTree<Trigger> _tree;
 
     public IReadOnlyList<string> SoundChoices { get; } = ["Silent", "Beep", "Play WAV file", "Speak text (TTS)"];
 
     public TriggersViewModel(SourceManager manager)
     {
         _manager = manager;
+        _tree = new CategoryTree<Trigger>
+        {
+            ZoneOf = static t => t.Zone,
+            CategoryOf = static t => t.Category,
+            IsLexicon = static t => t.Source.Length > 0,
+            EnabledOf = static t => t.Enabled,
+            SortKeyOf = static t => t.RegexText,
+            MakeRow = t => new TriggerRow(this, t),
+            LexiconHost = () => manager.Lexicon.BaseUrl.Replace("https://", ""),
+        };
         RebuildRows();
         manager.Triggers.AlertFired += OnAlertFired;
         manager.Triggers.DefinitionsChanged += () =>
@@ -109,31 +118,6 @@ public sealed partial class TriggersViewModel : ObservableObject
     internal bool HasTimerNamed(string name) =>
         _manager.SpellTimers.Definitions.Any(d => d.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>The trigger-side half of a linked pair is useless without
-    /// the timer-side half — ACT quietly auto-registers unknown spell
-    /// timers, and so do we: a 30s default the user then tunes.</summary>
-    private int EnsureLinkedTimers(IEnumerable<Trigger> triggers)
-    {
-        var created = 0;
-        foreach (var trigger in triggers)
-        {
-            if (!trigger.StartsTimer || trigger.TimerName.Length == 0 || HasTimerNamed(trigger.TimerName))
-                continue;
-            _manager.SpellTimers.AddOrUpdate(new TimerDefinition
-            {
-                Name = trigger.TimerName,
-                Category = trigger.Category,
-                Zone = trigger.Zone,
-                // Trigger-started: the notify's attacker is whatever the
-                // regex matched, so a category lock would strangle it.
-                RestrictToCategory = false,
-                WarningSoundData = "tts",
-            });
-            created++;
-        }
-        return created;
-    }
-
     // ---- list ----
 
     [ObservableProperty]
@@ -151,74 +135,11 @@ public sealed partial class TriggersViewModel : ObservableObject
         || trigger.Zone.Contains(FilterText, StringComparison.OrdinalIgnoreCase)
         || trigger.SoundData.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
 
-    private static string ZoneKey(Trigger trigger) =>
-        trigger.Zone.Length > 0 ? trigger.Zone : "General";
-
-    /// <summary>Collapse/expand + header-count key: lexicon rows live in
-    /// their own section, so the same zone name never shares state with a
-    /// custom zone of the same name.</summary>
-    private static string TagFor(Trigger trigger) =>
-        trigger.Source.Length > 0 ? $"lex|{ZoneKey(trigger)}" : ZoneKey(trigger);
-
     private void RebuildRows()
     {
-        Rows.Clear();
-        var filtering = FilterText.Length > 0;
         var all = _manager.Triggers.Definitions;
-        List<Trigger> custom = [.. all.Where(t => t.Source.Length == 0)];
-        List<Trigger> lexicon = [.. all.Where(t => t.Source.Length > 0)];
-        if (lexicon.Count > 0)
-            Rows.Add(new SectionRow("Custom", "yours — edit, drag, delete"));
-        BuildSection(custom, filtering, keyPrefix: "");
-        if (lexicon.Count > 0)
-        {
-            Rows.Add(new SectionRow("Lexicon", $"curated on {_manager.Lexicon.BaseUrl.Replace("https://", "")} — enable/disable here, edit there"));
-            BuildSection(lexicon, filtering, keyPrefix: "lex|");
-        }
+        _tree.Rebuild(all, MatchesFilter, FilterText.Length > 0);
         HasTriggers = all.Count > 0;
-    }
-
-    private void BuildSection(List<Trigger> defs, bool filtering, string keyPrefix)
-    {
-        foreach (var zoneGroup in defs
-                     .GroupBy(ZoneKey, StringComparer.OrdinalIgnoreCase)
-                     .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
-        {
-            List<Trigger> zoneMembers = [.. zoneGroup.Where(MatchesFilter)];
-            if (zoneMembers.Count == 0)
-                continue;
-            var zoneKey = keyPrefix + zoneGroup.Key;
-            // Zones default OPEN (there are few); categories default closed.
-            var zoneExpanded = filtering || !_collapsedZones.Contains(zoneKey);
-            Rows.Add(new ZoneRow(zoneGroup.Key, zoneExpanded)
-            {
-                Key = zoneKey,
-                Count = zoneMembers.Count,
-                EnabledCount = zoneMembers.Count(t => t.Enabled),
-            });
-            if (!zoneExpanded)
-                continue;
-            foreach (var group in zoneMembers
-                         .GroupBy(t => t.Category, StringComparer.OrdinalIgnoreCase)
-                         .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
-            {
-                List<Trigger> members = [.. group
-                    .OrderBy(t => t.RegexText, StringComparer.OrdinalIgnoreCase)];
-                var expandKey = $"{zoneKey}|{group.Key}";
-                // A filter opens everything it touches; otherwise remembered state.
-                var expanded = filtering || _expandedCategories.Contains(expandKey);
-                Rows.Add(new CategoryRow(group.Key, expanded)
-                {
-                    Tag = zoneKey,
-                    Count = members.Count,
-                    EnabledCount = members.Count(t => t.Enabled),
-                });
-                if (!expanded)
-                    continue;
-                foreach (var trigger in members)
-                    Rows.Add(new TriggerRow(this, trigger));
-            }
-        }
     }
 
     [RelayCommand]
@@ -226,8 +147,7 @@ public sealed partial class TriggersViewModel : ObservableObject
     {
         if (row is null)
             return;
-        if (!_collapsedZones.Add(row.Key))
-            _collapsedZones.Remove(row.Key);
+        _tree.ToggleZone(row);
         RebuildRows();
     }
 
@@ -236,9 +156,7 @@ public sealed partial class TriggersViewModel : ObservableObject
     {
         if (row is null)
             return;
-        var key = $"{row.Tag}|{row.Name}";
-        if (!_expandedCategories.Add(key))
-            _expandedCategories.Remove(key);
+        _tree.ToggleCategory(row);
         RebuildRows();
     }
 
@@ -277,8 +195,7 @@ public sealed partial class TriggersViewModel : ObservableObject
             AudioCooldown = current.AudioCooldown,
         };
         _manager.Triggers.AddOrUpdate(moved, replaceKey: current.Key);
-        _collapsedZones.Remove(targetZone.Length > 0 ? targetZone : "General");
-        _expandedCategories.Add($"{(targetZone.Length > 0 ? targetZone : "General")}|{targetCategory}");
+        _tree.Reveal(targetZone, targetCategory);
         if (_editingKey == current.Key)
             _editingKey = moved.Key;
         RebuildRows();
@@ -299,17 +216,7 @@ public sealed partial class TriggersViewModel : ObservableObject
     internal void SetRowEnabled(TriggerRow row, bool enabled)
     {
         _manager.Triggers.SetEnabled(row.Key, enabled);
-        var tag = TagFor(row.Trigger);
-        foreach (var item in Rows)
-        {
-            if (item is CategoryRow header
-                && header.Name.Equals(row.Category, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(header.Tag, tag, StringComparison.OrdinalIgnoreCase))
-                header.EnabledCount += enabled ? 1 : -1;
-            else if (item is ZoneRow zone
-                && zone.Key.Equals(tag, StringComparison.OrdinalIgnoreCase))
-                zone.EnabledCount += enabled ? 1 : -1;
-        }
+        _tree.PatchEnabledCounts(row.Category, _tree.TagFor(row.Trigger), enabled);
     }
 
     [RelayCommand]
@@ -502,12 +409,10 @@ public sealed partial class TriggersViewModel : ObservableObject
         }
         _manager.Triggers.AddOrUpdate(trigger, _editingKey);
         _editingKey = null;
-        EditorInfo = EnsureLinkedTimers([trigger]) > 0
+        EditorInfo = _manager.SpellTimers.EnsureLinkedTimers([trigger]) > 0
             ? $"Also created spell timer “{trigger.TimerName}” (30s default) — set its real length on the Timers page."
             : "";
-        var zoneKey = trigger.Zone.Length > 0 ? trigger.Zone : "General";
-        _collapsedZones.Remove(zoneKey);
-        _expandedCategories.Add($"{zoneKey}|{category}");
+        _tree.Reveal(trigger.Zone, category);
         NewTrigger();
         RebuildRows();
     }
@@ -579,7 +484,7 @@ public sealed partial class TriggersViewModel : ObservableObject
         _manager.SpellTimers.ImportMany(timers);
         // AFTER the explicit <Spell> lines land, so a pasted pair links up
         // rather than spawning a default next to the real definition.
-        var linked = EnsureLinkedTimers(imported);
+        var linked = _manager.SpellTimers.EnsureLinkedTimers(imported);
         List<string> parts = [];
         if (imported.Count > 0)
             parts.Add($"{imported.Count} trigger{(imported.Count == 1 ? "" : "s")} imported");
