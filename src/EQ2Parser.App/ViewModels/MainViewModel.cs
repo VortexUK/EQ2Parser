@@ -5,9 +5,6 @@ namespace EQ2Parser.App.ViewModels;
 
 public sealed record NavItem(string Label, object Page);
 
-/// <summary>Placeholder page for sections that land in a later slice.</summary>
-public sealed record PlaceholderViewModel(string Title, string Message);
-
 /// <summary>The shell: ACT-style top tabs + current page + the ~100ms
 /// coalescing tick that refreshes whichever page is visible.</summary>
 public sealed partial class MainViewModel : ObservableObject
@@ -32,7 +29,7 @@ public sealed partial class MainViewModel : ObservableObject
         Sources = new SourcesViewModel(manager);
         Triggers = new TriggersViewModel(manager);
         Timers = new TimersViewModel(manager);
-        Overlays = new OverlaysViewModel(manager, overlay);
+        Overlays = new OverlaysViewModel(overlay);
         Settings = new SettingsViewModel(manager);
 
         NavItems =

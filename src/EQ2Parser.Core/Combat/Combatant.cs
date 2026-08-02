@@ -34,10 +34,10 @@ public sealed class Combatant(string name)
             foreach (var bucketName in buckets)
             {
                 ModAlly(swing.Victim, BucketConfig.OutgoingAllyValues[bucketName]);
-                GetOrCreate(_outgoing, bucketName, BucketConfig.OutgoingAllyValues).Add(swing);
+                GetOrCreate(_outgoing, bucketName).Add(swing);
             }
         }
-        GetOrCreate(_outgoing, BucketConfig.AllOutgoingRef, BucketConfig.OutgoingAllyValues).Add(swing);
+        GetOrCreate(_outgoing, BucketConfig.AllOutgoingRef).Add(swing);
     }
 
     /// <summary>Victim-side insertion (the mirror image).</summary>
@@ -48,10 +48,10 @@ public sealed class Combatant(string name)
             foreach (var bucketName in buckets)
             {
                 ModAlly(swing.Attacker, BucketConfig.IncomingAllyValues[bucketName]);
-                GetOrCreate(_incoming, bucketName, BucketConfig.IncomingAllyValues).Add(swing);
+                GetOrCreate(_incoming, bucketName).Add(swing);
             }
         }
-        GetOrCreate(_incoming, BucketConfig.AllIncomingRef, BucketConfig.IncomingAllyValues).Add(swing);
+        GetOrCreate(_incoming, BucketConfig.AllIncomingRef).Add(swing);
     }
 
     private void ModAlly(string otherName, int mod)
@@ -65,10 +65,10 @@ public sealed class Combatant(string name)
         Allies[key] = Allies.GetValueOrDefault(key) + mod;
     }
 
-    private static Bucket GetOrCreate(Dictionary<string, Bucket> buckets, string name, IReadOnlyDictionary<string, int> allyValues)
+    private static Bucket GetOrCreate(Dictionary<string, Bucket> buckets, string name)
     {
         if (!buckets.TryGetValue(name, out var bucket))
-            buckets[name] = bucket = new Bucket(name, allyValues.GetValueOrDefault(name));
+            buckets[name] = bucket = new Bucket(name);
         return bucket;
     }
 

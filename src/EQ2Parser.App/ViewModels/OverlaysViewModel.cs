@@ -137,9 +137,8 @@ public sealed class OverlaysViewModel
 {
     public IReadOnlyList<OverlayConfigVm> Cards { get; }
 
-    public OverlaysViewModel(SourceManager manager, OverlayController overlay)
+    public OverlaysViewModel(OverlayController overlay)
     {
-        _ = manager;
         Cards =
         [
             new OverlayConfigVm(overlay, OverlayKind.MiniParseDps, "DPS meter", "rows"),

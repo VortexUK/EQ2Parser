@@ -33,11 +33,6 @@
         <GradientStop Color="#66A07840" Offset="0" />
         <GradientStop Color="#40C8A96E" Offset="1" />
     </LinearGradientBrush>
-    <LinearGradientBrush x:Key="MeterBarPetBrush" StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Color="#332E3150" Offset="0" />
-        <GradientStop Color="#4D3A3E60" Offset="1" />
-    </LinearGradientBrush>
-
     <!-- Fonts — Cinzel (headings) / Spectral (body), both SIL OFL, embedded. -->
     <FontFamily x:Key="HeadingFont">pack://application:,,,/Fonts/#Cinzel</FontFamily>
     <FontFamily x:Key="BodyFont">pack://application:,,,/Fonts/#Spectral, Georgia</FontFamily>
@@ -130,41 +125,6 @@
         </Setter>
     </Style>
 
-    <!-- Left-rail navigation item (applied as a ListBox ItemContainerStyle). -->
-    <Style x:Key="NavItemStyle" TargetType="ListBoxItem">
-        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
-        <Setter Property="FontFamily" Value="{StaticResource BodySemiBoldFont}" />
-        <Setter Property="FontSize" Value="14" />
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ListBoxItem">
-                    <Border x:Name="Root" Background="Transparent" CornerRadius="6" Padding="12,9" Margin="8,1">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="3" />
-                                <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border x:Name="Accent" Width="3" CornerRadius="2" Background="Transparent" />
-                            <ContentPresenter Grid.Column="2" VerticalAlignment="Center" />
-                        </Grid>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Root" Property="Background" Value="#26C8A96E" />
-                            <Setter Property="Foreground" Value="{StaticResource GoldBrightBrush}" />
-                        </Trigger>
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="Root" Property="Background" Value="#33C8A96E" />
-                            <Setter TargetName="Accent" Property="Background" Value="{StaticResource GoldBrush}" />
-                            <Setter Property="Foreground" Value="{StaticResource GoldBrightBrush}" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
 
     <!-- Gold-outline action button. -->
     <Style x:Key="GoldButton" TargetType="Button">

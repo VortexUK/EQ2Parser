@@ -24,17 +24,6 @@ public class DamageValueTests
     }
 
     [Fact]
-    public void Addition_Ignores_Sentinels()
-    {
-        Assert.Equal(300, (new DamageValue(100) + new DamageValue(200)).Number);
-        Assert.Equal(100, (new DamageValue(100) + DamageValue.Miss).Number);
-        Assert.Equal(100, (DamageValue.Death + new DamageValue(100)).Number);
-        Assert.Equal(0, (DamageValue.Miss + DamageValue.Death).Number);
-        // Zero (NoDamage) is a countable value, not a sentinel: it sums.
-        Assert.Equal(100, (DamageValue.NoDamage + new DamageValue(100)).Number);
-    }
-
-    [Fact]
     public void Comparison_Uses_Text_Only_For_Two_Unknowns()
     {
         Assert.True(DamageValue.Unknown("A").CompareTo(DamageValue.Unknown("B")) < 0);

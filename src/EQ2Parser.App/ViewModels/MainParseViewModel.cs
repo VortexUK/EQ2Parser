@@ -342,7 +342,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         {
             text = node switch
             {
-                { GroupFights: { Count: > 0 } group } => AggregateSummary(node.Title.TrimStart('▸', '▾', ' '), group),
+                { GroupFights: { Count: > 0 } group } => AggregateSummary(node.Title, group),
                 { Fight: CorrelatedEncounter fight } => FightSummary(fight),
                 { Fight: AggregateFights aggregate } => AggregateSummary($"{aggregate.Zone} — {aggregate.Label}", aggregate.Fights),
                 { Fight: LiveFollow } => LiveSummary(),

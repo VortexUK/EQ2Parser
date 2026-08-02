@@ -39,7 +39,6 @@ public sealed class ParserEngine(string sourceId, string ownerName, EngineOption
     public Encounter? ActiveEncounter { get; private set; }
     public IReadOnlyList<Encounter> History => _history;
 
-    public event Action<Encounter>? EncounterStarted;
     public event Action<Encounter>? EncounterEnded;
 
     /// <summary>Next per-line sequence number (same-second ordering).</summary>
@@ -78,7 +77,6 @@ public sealed class ParserEngine(string sourceId, string ownerName, EngineOption
             ActiveEncounter = new Encounter(SourceId, OwnerName, CurrentZone);
             _history.Add(ActiveEncounter);
             InCombat = true;
-            EncounterStarted?.Invoke(ActiveEncounter);
         }
         if (hostile)
             _lastHostileTime = time;

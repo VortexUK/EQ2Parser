@@ -4,10 +4,6 @@ namespace EQ2Parser.Core.Triggers;
 /// (configurable per user decision).</summary>
 public sealed record TimerOptions
 {
-    /// <summary>Legacy (ACT's outright-ignore window). The absorb window
-    /// below covers it; kept so existing config round-trips.</summary>
-    public TimeSpan RetriggerIgnore { get; init; } = TimeSpan.FromSeconds(2);
-
     /// <summary>A re-notify within this window of the LAST notify is
     /// absorbed: the countdown holds and the window slides. AoE waves and
     /// DoT tick chains (Blanket re-ticks ~6s apart) are one cast — only a

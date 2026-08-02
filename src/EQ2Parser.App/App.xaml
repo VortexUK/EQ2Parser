@@ -36,15 +36,6 @@
             <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
                 <views:SettingsView />
             </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:PlaceholderViewModel}">
-                <StackPanel MaxWidth="520" HorizontalAlignment="Left">
-                    <TextBlock Text="{Binding Title}" Style="{StaticResource PageTitle}" />
-                    <Border Style="{StaticResource Card}">
-                        <TextBlock Text="{Binding Message}" Style="{StaticResource MutedText}"
-                                   TextWrapping="Wrap" FontSize="14" />
-                    </Border>
-                </StackPanel>
-            </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

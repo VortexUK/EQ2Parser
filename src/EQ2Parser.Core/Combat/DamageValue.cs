@@ -38,9 +38,6 @@ public readonly struct DamageValue : IEquatable<DamageValue>, IComparable<Damage
 
     public static implicit operator DamageValue(long number) => new(number);
 
-    /// <summary>Real damage/heal amount (sentinel codes read as 0 for sums).</summary>
-    public long Amount => Number > 0 ? Number : 0;
-
     public bool IsDeath => Number == DeathNumber && TextOrDefault == "Death";
     public bool IsMiss => Equals(Miss);
 
@@ -58,15 +55,6 @@ public readonly struct DamageValue : IEquatable<DamageValue>, IComparable<Damage
         _ => "Unknown",
     };
 
-    /// <summary>ACT-compatible sum: both positive → sum; one positive → that
-    /// one; neither positive → zero.</summary>
-    public static DamageValue operator +(DamageValue a, DamageValue b)
-    {
-        if (a.Number > -1 && b.Number > -1) return new DamageValue(a.Number + b.Number);
-        if (a.Number > -1) return a;
-        if (b.Number > -1) return b;
-        return NoDamage;
-    }
 
     /// <summary>ACT-compatible equality: number AND display text must match.</summary>
     public bool Equals(DamageValue other) =>

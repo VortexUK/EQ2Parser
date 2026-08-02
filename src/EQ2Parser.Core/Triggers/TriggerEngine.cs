@@ -45,7 +45,6 @@ public sealed class TriggerEngine(string ownerName)
     public event Action<TriggerFired>? Fired;
 
     public IReadOnlyCollection<Trigger> Triggers => _all.Values;
-    public IReadOnlyList<Trigger> ActiveTriggers => _active;
 
     /// <summary>Add or update (by ACT identity key) — active set rebuilds
     /// immediately, no zone change required.</summary>

@@ -2,21 +2,17 @@ namespace EQ2Parser.Core.Combat;
 
 /// <summary>
 /// A stat bucket (ACT's DamageTypeData): a named collection of per-ability
-/// stats plus the synthetic "All" ability, with an ally-polarity value that
-/// feeds the ally graph. The EQ2 bucket set and swing-category links are in
-/// <see cref="BucketConfig"/>.
+/// stats plus the synthetic "All" ability. The EQ2 bucket set, the
+/// swing-category links, and the ally-polarity values that feed the ally
+/// graph are in <see cref="BucketConfig"/>.
 /// </summary>
-public sealed class Bucket(string name, int allyValue)
+public sealed class Bucket(string name)
 {
     public const string AllAbility = "All";
 
     private readonly Dictionary<string, AbilityStats> _abilities = new(StringComparer.Ordinal);
 
     public string Name { get; } = name;
-
-    /// <summary>+1 helpful, −1 hostile, 0 neutral — accumulated into the
-    /// interaction graph between attacker and victim.</summary>
-    public int AllyValue { get; } = allyValue;
 
     public IReadOnlyDictionary<string, AbilityStats> Abilities => _abilities;
 

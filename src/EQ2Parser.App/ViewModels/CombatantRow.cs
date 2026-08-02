@@ -22,9 +22,6 @@ public sealed partial class CombatantRow : ObservableObject
     private Brush _classBrush = ClassColors.Neutral;
 
     [ObservableProperty]
-    private CombatantKind _kind;
-
-    [ObservableProperty]
     private bool _isPet;
 
     [ObservableProperty]

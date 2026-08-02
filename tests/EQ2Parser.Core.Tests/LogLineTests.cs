@@ -10,7 +10,6 @@ public class LogLineTests
         var raw = "(1753738000)[Mon Jul 28 22:26:40 2026] You hit a training dummy for 100 points of crushing damage.";
         Assert.True(LogLine.TryParse(raw, out var line));
         Assert.Equal(1753738000, line.Epoch);
-        Assert.Equal("Mon Jul 28 22:26:40 2026", line.LocalStamp);
         Assert.Equal("You hit a training dummy for 100 points of crushing damage.", line.Message);
         Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1753738000), line.Timestamp);
     }

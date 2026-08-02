@@ -138,7 +138,6 @@ public sealed class Encounter(string sourceId, string ownerName, string zone)
     public long Healed => SumAllies(static c => c.Healed);
 
     public double EncDps => Rate(Damage);
-    public double EncHps => Rate(Healed);
 
     private double Rate(long amount)
     {

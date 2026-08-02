@@ -4,10 +4,11 @@ namespace EQ2Parser.Core.Logs;
 /// One parsed EQ2 log line. The on-disk shape is:
 /// <c>(1753738000)[Mon Jul 28 22:26:40 2026] You hit a training dummy for 100 points of crushing damage.</c>
 /// — a unix epoch in parentheses, the client's local-time string in brackets,
-/// then the message. The epoch is authoritative for all timing (the bracketed
-/// string is locale/DST-ambiguous and kept only for display).
+/// then the message. The epoch is authoritative for all timing; the bracketed
+/// string is locale/DST-ambiguous and skipped entirely (materialising it was
+/// one dead string allocation per parsed line).
 /// </summary>
-public readonly record struct LogLine(long Epoch, string LocalStamp, string Message)
+public readonly record struct LogLine(long Epoch, string Message)
 {
     /// <summary>Wall-clock arrival stamp from the tail reader (the app's
     /// second clock — sub-second, live mode only). Null on imports. Never
@@ -37,9 +38,8 @@ public readonly record struct LogLine(long Epoch, string LocalStamp, string Mess
         if (closeBracket < 1)
             return false;
 
-        var stamp = rest[1..closeBracket];
         var message = rest[(closeBracket + 1)..].TrimStart(' ');
-        line = new LogLine(epoch, stamp.ToString(), message.ToString());
+        line = new LogLine(epoch, message.ToString());
         return true;
     }
 
