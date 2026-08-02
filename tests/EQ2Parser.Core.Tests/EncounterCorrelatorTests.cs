@@ -167,4 +167,33 @@ public class EncounterCorrelatorTests
         Assert.Equal("Lord Bob", fight.Title);
         Assert.Equal(At(0), fight.StartTime);
     }
+
+    [Fact]
+    public void Restore_Reinserts_Chronologically_And_Is_Idempotent()
+    {
+        var correlator = new EncounterCorrelator(new CorrelatorOptions { TimeTolerance = TimeSpan.FromSeconds(5) });
+        var a = Engine("log-a", "Alice");
+        correlator.Attach(a);
+
+        Hit(a, 0, "Alice", "a gnoll", 100);
+        a.EndCombat();
+        Hit(a, 60, "Alice", "a wolf", 100);
+        a.EndCombat();
+        Hit(a, 120, "Alice", "a bear", 100);
+        a.EndCombat();
+        Assert.Equal(3, correlator.History.Count);
+
+        // Delete the middle fight, then undo — it must come back in order.
+        var middle = correlator.History[1];
+        Assert.True(correlator.Remove(middle));
+        Assert.Equal(2, correlator.History.Count);
+
+        correlator.Restore(middle);
+        Assert.Equal(3, correlator.History.Count);
+        Assert.Same(middle, correlator.History[1]);
+
+        // Restoring a fight already in history is a no-op.
+        correlator.Restore(middle);
+        Assert.Equal(3, correlator.History.Count);
+    }
 }

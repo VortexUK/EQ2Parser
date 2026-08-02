@@ -206,6 +206,20 @@ public sealed class HistoryService : IDisposable
         }
     }
 
+    /// <summary>Undo of a tree deletion: the fight is back in the session,
+    /// so the archive must show it as loaded again.</summary>
+    public void MarkLoaded(CorrelatedEncounter fight)
+    {
+        lock (_gate)
+        {
+            foreach (var encounter in fight.Sources)
+            {
+                if (_storedIds.TryGetValue(encounter, out var box))
+                    _inParser.Add(box.Value);
+            }
+        }
+    }
+
     /// <summary>The explicit purge: rows gone for good. (A copy already
     /// loaded in the session stays until removed from the tree.)</summary>
     public void PurgeFromArchive(long encounterId)

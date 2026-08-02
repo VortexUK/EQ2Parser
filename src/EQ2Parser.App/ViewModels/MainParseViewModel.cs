@@ -370,19 +370,22 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
         return null;
     }
 
-    /// <summary>Delete a fight (or a whole zone group) from history.</summary>
+    /// <summary>Delete a fight (or a whole zone group) from history — the
+    /// fights stay in the archive, and Ctrl+Z brings them straight back.</summary>
     [RelayCommand]
     private void DeleteNode(ParseNode? node)
     {
         if (node is null)
             return;
+        List<CorrelatedEncounter> deleted = [];
         lock (manager.Sync)
         {
             if (node.GroupFights is { } group)
             {
                 foreach (var fight in group)
                 {
-                    manager.Correlator.Remove(fight);
+                    if (manager.Correlator.Remove(fight))
+                        deleted.Add(fight);
                     manager.History.MarkUnloaded(fight);
                     if (ReferenceEquals(_pinnedFight, fight))
                         _pinnedFight = null;
@@ -390,16 +393,43 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             }
             else if (node.Fight is CorrelatedEncounter fight)
             {
-                manager.Correlator.Remove(fight);
+                if (manager.Correlator.Remove(fight))
+                    deleted.Add(fight);
                 manager.History.MarkUnloaded(fight);
                 if (ReferenceEquals(_pinnedFight, fight))
                     _pinnedFight = null;
             }
         }
+        if (deleted.Count > 0)
+        {
+            manager.Undo.Push(() =>
+            {
+                lock (manager.Sync)
+                {
+                    foreach (var fight in deleted)
+                    {
+                        manager.Correlator.Restore(fight);
+                        manager.History.MarkLoaded(fight);
+                    }
+                }
+                _treeSignature = (-1, false);
+                Refresh();
+            });
+        }
         if (_pinnedFight is null)
             FollowLive = true;
         _treeSignature = (-1, false);
         Refresh();
+    }
+
+    /// <summary>Mouse-back / Esc navigation: pop one drill level if an
+    /// overlay is open. False when there is nothing to go back from.</summary>
+    public bool TryNavigateBack()
+    {
+        if (!DetailOpen)
+            return false;
+        CloseDetail();
+        return true;
     }
 
     /// <summary>Fight context menu: open the raw log at the fight's start.</summary>

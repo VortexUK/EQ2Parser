@@ -52,6 +52,18 @@ public sealed class EncounterCorrelator(CorrelatorOptions? options = null)
     /// fight was not (or no longer) in history.</summary>
     public bool Remove(CorrelatedEncounter fight) => _history.Remove(fight);
 
+    /// <summary>Undo of a user deletion: re-insert the fight at its
+    /// chronological spot (history stays ordered by start time).</summary>
+    public void Restore(CorrelatedEncounter fight)
+    {
+        if (_history.Contains(fight))
+            return;
+        var index = _history.Count;
+        while (index > 0 && _history[index - 1].StartTime > fight.StartTime)
+            index--;
+        _history.Insert(index, fight);
+    }
+
     /// <summary>Direct entry for tests/imports.</summary>
     public void Accept(Encounter encounter)
     {

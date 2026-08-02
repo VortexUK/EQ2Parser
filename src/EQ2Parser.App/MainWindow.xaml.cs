@@ -9,11 +9,33 @@ namespace EQ2Parser.App;
 public partial class MainWindow : Window
 {
     private readonly DispatcherTimer _tick;
+    private readonly MainViewModel _viewModel;
 
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
+        _viewModel = viewModel;
+
+        // Mouse back = context-aware back (drill level, then tab history).
+        PreviewMouseDown += (_, e) =>
+        {
+            if (e.ChangedButton == System.Windows.Input.MouseButton.XButton1 && _viewModel.NavigateBack())
+                e.Handled = true;
+        };
+        // Ctrl+Z restores the last deleted trigger/timer/fight — unless a
+        // text box has focus, where native text undo must keep working.
+        PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key != System.Windows.Input.Key.Z
+                || System.Windows.Input.Keyboard.Modifiers != System.Windows.Input.ModifierKeys.Control)
+                return;
+            if (System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase
+                or System.Windows.Controls.PasswordBox)
+                return;
+            if (_viewModel.Manager.Undo.TryUndo())
+                e.Handled = true;
+        };
 
         // The coalescing refresh: engine state mutates at up-to-10ms cadence
         // on background threads; the visible page repaints at ~100ms.

@@ -314,7 +314,9 @@ public sealed partial class TriggersViewModel : ObservableObject
     {
         if (row is null || row.IsLexicon)
             return;
+        var trigger = row.Trigger;
         _manager.Triggers.Remove(row.Key);
+        _manager.Undo.Push(() => _manager.Triggers.AddOrUpdate(trigger));
         if (_editingKey == row.Key)
             NewTrigger();
         RebuildRows();

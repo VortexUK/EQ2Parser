@@ -48,6 +48,36 @@ public sealed partial class MainViewModel : ObservableObject
         Sources.SyncFromManager();
     }
 
+    // ── Back navigation (mouse XButton1) ────────────────────────────────────
+
+    private readonly List<NavItem> _tabHistory = [];
+    private bool _navigatingBack;
+
+    partial void OnSelectedItemChanged(NavItem? oldValue, NavItem newValue)
+    {
+        if (_navigatingBack || oldValue is null || ReferenceEquals(oldValue, newValue))
+            return;
+        _tabHistory.Add(oldValue);
+        if (_tabHistory.Count > 20)
+            _tabHistory.RemoveAt(0);
+    }
+
+    /// <summary>Context-aware back: pop a drill level on the Main page
+    /// first; otherwise return to the previously visited tab.</summary>
+    public bool NavigateBack()
+    {
+        if (SelectedItem.Page == Main && Main.TryNavigateBack())
+            return true;
+        if (_tabHistory.Count == 0)
+            return false;
+        var target = _tabHistory[^1];
+        _tabHistory.RemoveAt(_tabHistory.Count - 1);
+        _navigatingBack = true;
+        SelectedItem = target;
+        _navigatingBack = false;
+        return true;
+    }
+
     /// <summary>Dispatcher tick (~100ms): the timer clock always advances
     /// (warnings/expiries fire whatever page is visible); page refresh only
     /// for what's on screen.</summary>

@@ -23,6 +23,7 @@ public sealed class SourceManager : IDisposable
     public TimerService SpellTimers { get; }
     public LexiconSyncService Lexicon { get; }
     public StatusCalloutMonitor Callouts { get; } = new();
+    public UndoService Undo { get; } = new();
 
     /// <summary>A mass-detriment callout was announced (already spoken) —
     /// the Notifications overlay toasts it too.</summary>

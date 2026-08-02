@@ -353,7 +353,9 @@ public sealed partial class TimersViewModel : ObservableObject
     {
         if (row is null || row.IsLexicon)
             return;
+        var definition = row.Definition;
         _manager.SpellTimers.Remove(row.Key);
+        _manager.Undo.Push(() => _manager.SpellTimers.AddOrUpdate(definition));
         if (_editingKey == row.Key)
             NewTimer();
         RebuildRows();
