@@ -78,7 +78,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>Audio prefs apply immediately, so they persist immediately
     /// too — picking a voice and never touching Save used to lose it on
-    /// restart. The Save button remains for the validated parsing fields.</summary>
+    /// restart. The Save button remains for the validated parsing fields.
+    /// Sliders fire per drag-delta, so the disk write is debounced.</summary>
     private void PersistAudio()
     {
         _manager.Settings = _manager.Settings with
@@ -87,7 +88,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             TtsRate = TtsRate,
             AlertVolume = AlertVolume,
         };
-        _manager.Settings.Save();
+        AppSettings.SaveSoon(() => _manager.Settings);
     }
 
     partial void OnSelectedVoiceChanged(TtsVoice? value)

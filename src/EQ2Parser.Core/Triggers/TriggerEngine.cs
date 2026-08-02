@@ -63,6 +63,25 @@ public sealed class TriggerEngine(string ownerName)
         return removed;
     }
 
+    /// <summary>Bulk upsert: ONE active-set rebuild for the whole batch —
+    /// per-item AddOrUpdate made imports O(N²) per engine.</summary>
+    public void AddOrUpdateMany(IEnumerable<Trigger> triggers)
+    {
+        foreach (var trigger in triggers)
+            _all[trigger.Key] = trigger;
+        RebuildActive();
+    }
+
+    /// <summary>Bulk removal by key: one rebuild for the whole batch.</summary>
+    public void RemoveMany(IEnumerable<string> keys)
+    {
+        var removed = false;
+        foreach (var key in keys)
+            removed |= _all.Remove(key);
+        if (removed)
+            RebuildActive();
+    }
+
     public void SetZone(string zoneName)
     {
         _zone = zoneName;

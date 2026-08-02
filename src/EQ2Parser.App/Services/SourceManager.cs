@@ -44,7 +44,7 @@ public sealed class SourceManager : IDisposable
             SpeakingRate = Settings.TtsRate,
             VoiceId = Settings.TtsVoiceId,
         };
-        Triggers = new TriggerService(Audio);
+        Triggers = new TriggerService(Audio, Sync);
         SpellTimers = new TimerService(Audio, Sync);
         Lexicon = new LexiconSyncService(Triggers, SpellTimers, Settings.LexiconBaseUrl);
         Callouts.MinVictims = Settings.CalloutMinPlayers;

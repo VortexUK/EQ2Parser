@@ -24,10 +24,17 @@ public sealed record TriggerSetting(
 /// source (the engine needs the owner name for the YOU-group rule), and the
 /// audio actions the Core engine decides on but never performs — beep, WAV,
 /// TTS. Definition edits fan out to every live engine immediately.
+///
+/// Locking: <c>_gate</c> guards THIS service's lists only. Live engines are
+/// matched by the log pump threads under the manager's global sync, so all
+/// engine mutation happens under <c>_engineSync</c> (the same object) —
+/// mutating them under _gate raced live matching. The two locks are never
+/// nested; disk writes happen outside both.
 /// </summary>
 public sealed class TriggerService
 {
     private readonly object _gate = new();
+    private readonly object _engineSync;
     private readonly List<Trigger> _definitions = [];
     private readonly List<TriggerEngine> _engines = [];
     private readonly AlertAudioService _audio;
@@ -40,9 +47,10 @@ public sealed class TriggerService
     /// so edits from any window show everywhere.</summary>
     public event Action? DefinitionsChanged;
 
-    public TriggerService(AlertAudioService audio)
+    public TriggerService(AlertAudioService audio, object engineSync)
     {
         _audio = audio;
+        _engineSync = engineSync;
         Load();
     }
 
@@ -63,10 +71,16 @@ public sealed class TriggerService
     {
         var engine = new TriggerEngine(ownerName);
         engine.Fired += HandleFired;
+        Trigger[] defs;
         lock (_gate)
         {
-            foreach (var trigger in _definitions)
-                engine.AddOrUpdate(trigger);
+            defs = [.. _definitions];
+        }
+        // Not yet registered or attached to a pump — fill lock-free, then
+        // register so edits fan out to it from here on.
+        engine.AddOrUpdateMany(defs);
+        lock (_gate)
+        {
             _engines.Add(engine);
         }
         return engine;
@@ -86,23 +100,28 @@ public sealed class TriggerService
     /// (the key), so the old row is removed everywhere first.</summary>
     public void AddOrUpdate(Trigger trigger, string? replaceKey = null)
     {
+        TriggerEngine[] engines;
         lock (_gate)
         {
             if (replaceKey is not null && replaceKey != trigger.Key)
-            {
                 _definitions.RemoveAll(t => t.Key == replaceKey);
-                foreach (var engine in _engines)
-                    engine.Remove(replaceKey);
-            }
             var index = _definitions.FindIndex(t => t.Key == trigger.Key);
             if (index >= 0)
                 _definitions[index] = trigger;
             else
                 _definitions.Add(trigger);
-            foreach (var engine in _engines)
-                engine.AddOrUpdate(trigger);
-            Save();
+            engines = [.. _engines];
         }
+        lock (_engineSync)
+        {
+            foreach (var engine in engines)
+            {
+                if (replaceKey is not null && replaceKey != trigger.Key)
+                    engine.Remove(replaceKey);
+                engine.AddOrUpdate(trigger);
+            }
+        }
+        Save();
         DefinitionsChanged?.Invoke();
     }
 
@@ -112,6 +131,7 @@ public sealed class TriggerService
     {
         if (triggers.Count == 0)
             return 0;
+        TriggerEngine[] engines;
         lock (_gate)
         {
             foreach (var trigger in triggers)
@@ -122,13 +142,14 @@ public sealed class TriggerService
                 else
                     _definitions.Add(trigger);
             }
-            foreach (var engine in _engines)
-            {
-                foreach (var trigger in triggers)
-                    engine.AddOrUpdate(trigger);
-            }
-            Save();
+            engines = [.. _engines];
         }
+        lock (_engineSync)
+        {
+            foreach (var engine in engines)
+                engine.AddOrUpdateMany(triggers);
+        }
+        Save();
         DefinitionsChanged?.Invoke();
         return triggers.Count;
     }
@@ -136,19 +157,23 @@ public sealed class TriggerService
     public bool Remove(string key)
     {
         bool removed;
+        TriggerEngine[] engines = [];
         lock (_gate)
         {
             removed = _definitions.RemoveAll(t => t.Key == key) > 0;
             if (removed)
-            {
-                foreach (var engine in _engines)
-                    engine.Remove(key);
-                Save();
-            }
+                engines = [.. _engines];
         }
-        if (removed)
-            DefinitionsChanged?.Invoke();
-        return removed;
+        if (!removed)
+            return false;
+        lock (_engineSync)
+        {
+            foreach (var engine in engines)
+                engine.Remove(key);
+        }
+        Save();
+        DefinitionsChanged?.Invoke();
+        return true;
     }
 
     /// <summary>Raised when a LEXICON trigger's enable flips — the sync
@@ -158,22 +183,28 @@ public sealed class TriggerService
 
     public void SetEnabled(string key, bool enabled)
     {
-        var lexicon = false;
+        bool lexicon;
+        Trigger updated;
+        TriggerEngine[] engines;
         lock (_gate)
         {
             var index = _definitions.FindIndex(t => t.Key == key);
             if (index < 0 || _definitions[index].Enabled == enabled)
                 return;
-            var updated = CloneWith(_definitions[index], enabled);
+            updated = CloneWith(_definitions[index], enabled);
             _definitions[index] = updated;
-            foreach (var engine in _engines)
-                engine.AddOrUpdate(updated);
             lexicon = updated.Source.Length > 0;
-            if (!lexicon)
-                Save();
+            engines = [.. _engines];
+        }
+        lock (_engineSync)
+        {
+            foreach (var engine in engines)
+                engine.AddOrUpdate(updated);
         }
         if (lexicon)
             LexiconEnabledChanged?.Invoke(key, enabled);
+        else
+            Save();
         // No DefinitionsChanged: enable flips patch rows in place — a full
         // rebuild would reset the list's scroll on every checkbox click.
     }
@@ -184,13 +215,15 @@ public sealed class TriggerService
     /// copy/fork wins). Disabled overrides re-apply.</summary>
     public void ApplyLexicon(IReadOnlyCollection<Trigger> triggers, IReadOnlySet<string> disabledKeys)
     {
+        List<string> removedKeys = [];
+        List<Trigger> added = [];
+        TriggerEngine[] engines;
         lock (_gate)
         {
             foreach (var old in _definitions.Where(t => t.Source.Length > 0).ToList())
             {
                 _definitions.Remove(old);
-                foreach (var engine in _engines)
-                    engine.Remove(old.Key);
+                removedKeys.Add(old.Key);
             }
             var customKeys = _definitions.Select(t => t.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
             foreach (var trigger in triggers)
@@ -201,8 +234,16 @@ public sealed class TriggerService
                     ? CloneWith(trigger, enabled: false)
                     : trigger;
                 _definitions.Add(effective);
-                foreach (var engine in _engines)
-                    engine.AddOrUpdate(effective);
+                added.Add(effective);
+            }
+            engines = [.. _engines];
+        }
+        lock (_engineSync)
+        {
+            foreach (var engine in engines)
+            {
+                engine.RemoveMany(removedKeys);
+                engine.AddOrUpdateMany(added);
             }
         }
         DefinitionsChanged?.Invoke();
@@ -242,50 +283,46 @@ public sealed class TriggerService
 
     private void Load()
     {
-        try
+        var settings = PersistedJsonFile.Load<List<TriggerSetting>>(FilePath, static () => []);
+        foreach (var s in settings)
         {
-            if (!File.Exists(FilePath))
-                return;
-            var settings = JsonSerializer.Deserialize<List<TriggerSetting>>(File.ReadAllText(FilePath)) ?? [];
-            foreach (var s in settings)
+            try
             {
-                try
+                _definitions.Add(new Trigger(s.Regex, s.Category, s.Zone)
                 {
-                    _definitions.Add(new Trigger(s.Regex, s.Category, s.Zone)
-                    {
-                        Enabled = s.Enabled,
-                        RestrictToCategoryZone = s.RestrictToZone,
-                        SoundType = Enum.IsDefined((TriggerSound)s.SoundType) ? (TriggerSound)s.SoundType : TriggerSound.None,
-                        SoundData = s.SoundData,
-                        StartsTimer = s.StartsTimer,
-                        TimerName = s.TimerName,
-                        AudioCooldown = TimeSpan.FromSeconds(Math.Clamp(s.CooldownSeconds, 0, 3600)),
-                    });
-                }
-                catch (ArgumentException)
-                {
-                    // A regex that no longer compiles is dropped, not fatal.
-                }
+                    Enabled = s.Enabled,
+                    RestrictToCategoryZone = s.RestrictToZone,
+                    SoundType = Enum.IsDefined((TriggerSound)s.SoundType) ? (TriggerSound)s.SoundType : TriggerSound.None,
+                    SoundData = s.SoundData,
+                    StartsTimer = s.StartsTimer,
+                    TimerName = s.TimerName,
+                    AudioCooldown = TimeSpan.FromSeconds(Math.Clamp(s.CooldownSeconds, 0, 3600)),
+                });
             }
-        }
-        catch (Exception)
-        {
-            // Corrupt trigger file never blocks startup.
+            catch (ArgumentException)
+            {
+                // A regex that no longer compiles is dropped, not fatal.
+            }
         }
     }
 
     private void Save()
     {
-        try
+        // Snapshot under the gate, write OUTSIDE it — callers invoke Save
+        // after releasing their locks so disk I/O never blocks matching.
+        List<TriggerSetting> settings;
+        lock (_gate)
         {
-            Directory.CreateDirectory(AppSettings.Directory);
             // The user's own triggers only — the Lexicon set is a synced
             // mirror, re-materialised from the pack cache on startup.
-            List<TriggerSetting> settings = [.. _definitions.Where(t => t.Source.Length == 0).Select(t => new TriggerSetting(
+            settings = [.. _definitions.Where(t => t.Source.Length == 0).Select(t => new TriggerSetting(
                 t.RegexText, t.Category, t.Enabled, t.RestrictToCategoryZone,
                 (int)t.SoundType, t.SoundData, t.StartsTimer, t.TimerName,
                 t.AudioCooldown.TotalSeconds, t.Zone))];
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(settings, JsonOptions));
+        }
+        try
+        {
+            PersistedJsonFile.Save(FilePath, settings, JsonOptions);
         }
         catch (Exception)
         {

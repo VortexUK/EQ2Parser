@@ -90,8 +90,8 @@ public sealed class TimerService
             if (replaceKey is not null && replaceKey != definition.Key)
                 Service.RemoveDefinition(replaceKey);
             Service.AddOrUpdateDefinition(definition);
-            Save();
         }
+        Save();
         DefinitionsChanged?.Invoke();
     }
 
@@ -101,11 +101,11 @@ public sealed class TimerService
         lock (_sync)
         {
             removed = Service.RemoveDefinition(key);
-            if (removed)
-                Save();
         }
-        if (removed)
-            DefinitionsChanged?.Invoke();
+        if (!removed)
+            return;
+        Save();
+        DefinitionsChanged?.Invoke();
     }
 
     /// <summary>Raised when a LEXICON definition's enable flips — the sync
@@ -123,11 +123,11 @@ public sealed class TimerService
                 return;
             Service.AddOrUpdateDefinition(current with { Enabled = enabled });
             lexicon = current.Source.Length > 0;
-            if (!lexicon)
-                Save();
         }
         if (lexicon)
             LexiconEnabledChanged?.Invoke(key, enabled);
+        else
+            Save();
         // No DefinitionsChanged: enable flips patch rows in place — a full
         // rebuild would reset the list's scroll on every checkbox click.
     }
@@ -162,8 +162,8 @@ public sealed class TimerService
         {
             foreach (var definition in definitions)
                 Service.AddOrUpdateDefinition(definition);
-            Save();
         }
+        Save();
         DefinitionsChanged?.Invoke();
         return definitions.Count;
     }
@@ -229,28 +229,24 @@ public sealed class TimerService
 
     private void Load()
     {
-        try
-        {
-            if (!File.Exists(FilePath))
-                return;
-            foreach (var definition in JsonSerializer.Deserialize<List<TimerDefinition>>(File.ReadAllText(FilePath)) ?? [])
-                Service.AddOrUpdateDefinition(definition);
-        }
-        catch (Exception)
-        {
-            // Corrupt timer file never blocks startup.
-        }
+        foreach (var definition in PersistedJsonFile.Load<List<TimerDefinition>>(FilePath, static () => []))
+            Service.AddOrUpdateDefinition(definition);
     }
 
     private void Save()
     {
-        try
+        // Snapshot under the lock, write OUTSIDE it — serialize+write used
+        // to run while holding the GLOBAL sync, stalling every log pump.
+        List<TimerDefinition> own;
+        lock (_sync)
         {
-            Directory.CreateDirectory(AppSettings.Directory);
             // The user's own definitions only — the Lexicon set is a synced
             // mirror, re-materialised from the pack cache on startup.
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(
-                Service.Definitions.Where(d => d.Source.Length == 0).ToList(), JsonOptions));
+            own = Service.Definitions.Where(d => d.Source.Length == 0).ToList();
+        }
+        try
+        {
+            PersistedJsonFile.Save(FilePath, own, JsonOptions);
         }
         catch (Exception)
         {

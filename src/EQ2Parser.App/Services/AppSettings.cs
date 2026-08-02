@@ -107,23 +107,13 @@ public sealed record AppSettings
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    public static AppSettings Load()
-    {
-        try
-        {
-            if (File.Exists(FilePath))
-                return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new AppSettings();
-        }
-        catch (Exception)
-        {
-            // Corrupt settings never block startup — fall back to defaults.
-        }
-        return new AppSettings();
-    }
+    public static AppSettings Load() =>
+        PersistedJsonFile.Load(FilePath, static () => new AppSettings());
 
-    public void Save()
-    {
-        System.IO.Directory.CreateDirectory(Directory);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(this, JsonOptions));
-    }
+    public void Save() => PersistedJsonFile.Save(FilePath, this, JsonOptions);
+
+    /// <summary>Debounced save for slider-drag callers — the factory runs
+    /// at write time so the FINAL drag value is what lands on disk.</summary>
+    public static void SaveSoon(Func<AppSettings> current) =>
+        PersistedJsonFile.SaveSoon(FilePath, current, JsonOptions);
 }
