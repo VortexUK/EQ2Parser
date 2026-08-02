@@ -1,0 +1,136 @@
+name: Release
+
+# Cuts a signed, attested EQ2Parser release from CI — replacing the
+# laptop `release.ps1 -Publish` flow (which trusted a personal `gh` token).
+#
+#   * push a tag `vX.Y.Z`      -> builds, signs, attests, and PUBLISHES a release
+#   * run manually (dispatch)  -> builds + signs + attests, uploads the signed
+#                                 installer as a run artifact for verification;
+#                                 only publishes if you tick `publish`
+#
+# Signing goes through SignPath (Authenticode). Today it uses the `test-signing`
+# policy (a self-signed cert — proves the pipeline; Windows won't trust it). When
+# the SignPath Foundation cert is issued, add a `release-signing` policy and
+# change `signing-policy-slug` below — that's the only edit needed.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, e.g. 0.1.0 (manual runs only).'
+        required: true
+        type: string
+      publish:
+        description: 'Publish a GitHub Release (leave off for a signed-artifact test run).'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # create the GitHub Release
+  id-token: write # OIDC for build-provenance attestation
+  attestations: write # write the attestation
+  actions: read # SignPath action reads the uploaded artifact
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        shell: pwsh
+        run: |
+          if ('${{ github.event_name }}' -eq 'push') {
+            $v = '${{ github.ref_name }}' -replace '^v', ''
+          } else {
+            $v = '${{ inputs.version }}'
+          }
+          if (-not $v) { throw 'No version resolved.' }
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Version: $v"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Velopack (vpk)
+        shell: pwsh
+        run: |
+          dotnet tool install -g vpk
+          "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Publish (self-contained win-x64)
+        shell: pwsh
+        run: >
+          dotnet publish src/EQ2Parser.App -c Release -r win-x64 --self-contained true
+          -o publish /p:Version=${{ steps.ver.outputs.version }}
+
+      - name: Pack (Velopack)
+        shell: pwsh
+        run: >
+          vpk pack --packId EQ2Parser --packVersion ${{ steps.ver.outputs.version }}
+          --packDir publish --mainExe EQ2Parser.App.exe --packTitle EQ2Parser
+          --outputDir Releases --icon src/EQ2Parser.App/Assets/EQ2Parser.ico
+
+      # SignPath fetches the artifact by id, Authenticode-signs the PE (the
+      # `<pe-file>` artifact config), and writes the signed file back locally.
+      - name: Upload unsigned installer for signing
+        id: unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-setup
+          path: Releases/EQ2Parser-win-Setup.exe
+          if-no-files-found: error
+
+      - name: Sign installer (SignPath)
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: c710b622-2381-4a27-9f97-f12a53e57850
+          project-slug: VortexUK_EQ2Parser
+          signing-policy-slug: test-signing
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      - name: Swap in the signed installer
+        shell: pwsh
+        run: |
+          $signed = Get-ChildItem signed -Recurse -Filter 'EQ2Parser-win-Setup.exe' | Select-Object -First 1
+          if (-not $signed) { throw 'Signed installer not found under signed/.' }
+          Copy-Item $signed.FullName Releases/EQ2Parser-win-Setup.exe -Force
+          Write-Host "Signed installer in place: $($signed.FullName)"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            Releases/EQ2Parser-win-Setup.exe
+            Releases/*.nupkg
+
+      # Test run (manual, publish off): keep the signed installer as a run
+      # artifact so you can verify the signature without shipping anything.
+      - name: Upload signed installer (test artifact)
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-setup
+          path: Releases/EQ2Parser-win-Setup.exe
+
+      # Real release (tag push, or manual with publish ticked).
+      # NOTE: still `--pre` until the updater is flipped to a stable channel —
+      # current users' updaters follow pre-releases, so dropping --pre now would
+      # strand them. The flip + drop of --pre is the coordinated next step.
+      - name: Publish GitHub Release
+        if: ${{ github.event_name == 'push' || inputs.publish }}
+        shell: pwsh
+        run: >
+          vpk upload github --repoUrl https://github.com/VortexUK/EQ2Parser
+          --publish --pre --releaseName "EQ2Parser ${{ steps.ver.outputs.version }}"
+          --tag "v${{ steps.ver.outputs.version }}"
+          --token ${{ secrets.GITHUB_TOKEN }} --outputDir Releases
