@@ -79,20 +79,32 @@ public sealed class SourceManager : IDisposable
         }
     }
 
+    private long _importBusyCheckedMs;
+    private bool _importBusy;
+
     /// <summary>True while any source is chewing a big backlog (wipe +
     /// re-import, first parse-from-start). The meters pause and the tree
     /// throttles while this holds — replaying history through the live UI
-    /// was slowing imports to a crawl.</summary>
+    /// was slowing imports to a crawl. Cached ~500ms: every read stats the
+    /// files, and the UI + overlay ticks read this 30+ times a second.</summary>
     public bool ImportBusy
     {
         get
         {
+            var now = Environment.TickCount64;
+            if (now - _importBusyCheckedMs < 500)
+                return _importBusy;
+            _importBusyCheckedMs = now;
+            var busy = false;
             foreach (var source in Sources)
             {
                 if (source.PendingBytes > 1_000_000)
-                    return true;
+                {
+                    busy = true;
+                    break;
+                }
             }
-            return false;
+            return _importBusy = busy;
         }
     }
 

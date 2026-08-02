@@ -155,6 +155,22 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     /// changes — walking every fight's combatants at 10 Hz would not fly.</summary>
     private (string GroupKey, int Count, long Version) _zoneSummarySig;
 
+    /// <summary>Drill-table rebuild gate: fight identity + drill position +
+    /// view level + a cheap data version. Without it the bucket/ability
+    /// tables re-derived from raw swings every 100ms tick, even for ended
+    /// fights whose data can never change again.</summary>
+    private (object? Fight, string? Key, string? Bucket, string? Ability, bool Swing, bool Log, long Version) _detailSig;
+
+    private static long DetailVersion(object fight) => fight switch
+    {
+        // Live fights: total observed swings (O(combatants) now).
+        Encounter e => e.Combatants.Values.Sum(c => (long)c.ObservedSwingCount),
+        // Correlated sources are completed and immutable — only a merge
+        // (new source) changes the data.
+        CorrelatedEncounter m => m.Sources.Count,
+        _ => 0,
+    };
+
     /// <summary>Summary row click: jump to that fight's combatant grid.</summary>
     [RelayCommand]
     private void OpenZoneFight(ZoneFightRow? row)
@@ -1659,6 +1675,10 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
     [RelayCommand]
     private void CloseDetail()
     {
+        // Any pop must force the next snapshot — the rebuild gate would
+        // otherwise skip restoring the drill title/table under a closed
+        // report or log view.
+        _detailSig = default;
         if (ReportLevel)
         {
             ReportLevel = false;
@@ -1818,6 +1838,7 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
 
     private void CloseOverlay()
     {
+        _detailSig = default;
         DetailOpen = false;
         ReportLevel = false;
         LogLevel = false;
@@ -2138,7 +2159,14 @@ public sealed partial class MainParseViewModel(SourceManager manager) : Observab
             // driving the view (it was overwriting the report's title and
             // un-hiding its tables every tick).
             if (DetailOpen && _detailKey is not null && !ReportLevel && fight is not ZoneFights)
-                detail = SnapshotDetail(fight, _detailKey);
+            {
+                var detailSig = (fight, _detailKey, _detailBucket, _detailAbility, SwingLevel, LogLevel, DetailVersion(fight));
+                if (detailSig != _detailSig)
+                {
+                    _detailSig = detailSig;
+                    detail = SnapshotDetail(fight, _detailKey);
+                }
+            }
 
             switch (fight)
             {

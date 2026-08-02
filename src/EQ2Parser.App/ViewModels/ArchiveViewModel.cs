@@ -93,11 +93,27 @@ public sealed partial class ArchiveViewModel : ObservableObject
         row.IsLoaded = true;
     }
 
+    /// <summary>Async, one fight per lock acquisition — loading 500 fights
+    /// synchronously on the UI thread (each under the global sync) froze
+    /// the app for the whole pull-back.</summary>
     [RelayCommand]
-    private void LoadAll()
+    private async Task LoadAll()
     {
-        foreach (var row in Rows)
-            LoadRow(row);
+        List<ArchiveRow> pending = [.. Rows.Where(r => !r.IsLoaded)];
+        if (pending.Count == 0)
+            return;
+        await Task.Run(() =>
+        {
+            foreach (var row in pending)
+            {
+                lock (_manager.Sync)
+                {
+                    _manager.History.LoadFight(row.Summary, _manager.Correlator);
+                }
+            }
+        });
+        foreach (var row in pending)
+            row.IsLoaded = true;
     }
 
     [RelayCommand]

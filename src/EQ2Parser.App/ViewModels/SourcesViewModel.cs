@@ -82,27 +82,26 @@ public sealed partial class SourcesViewModel(SourceManager manager) : Observable
     }
 
     /// <summary>Shell tick: pick up folder-watcher discoveries, then
-    /// refresh per-source status lines.</summary>
+    /// refresh per-source status lines. One lock for the whole snapshot
+    /// (this used to take Sync once per source per 100ms tick), and the
+    /// bound Status setters run after it is released.</summary>
     public void Refresh()
     {
         if (manager.Sources.Count != Rows.Count)
             SyncFromManager();
-        foreach (var row in Rows)
+        var statuses = new string[Rows.Count];
+        lock (manager.Sync)
         {
-            long seen, matched;
-            int encounters;
-            bool inCombat;
-            lock (manager.Sync)
+            for (var i = 0; i < Rows.Count; i++)
             {
-                seen = row.Source.Processor.LinesSeen;
-                matched = row.Source.Processor.LinesMatched;
-                encounters = row.Source.Engine.History.Count;
-                inCombat = row.Source.Engine.InCombat;
+                var row = Rows[i];
+                statuses[i] = row.Source.Error is not null
+                    ? $"error: {row.Source.Error.Message}"
+                    : $"{row.Source.Processor.LinesSeen:N0} lines · {row.Source.Processor.LinesMatched:N0} matched · {row.Source.Engine.History.Count} encounters{(row.Source.Engine.InCombat ? " · IN COMBAT" : "")}";
             }
-            row.Status = row.Source.Error is not null
-                ? $"error: {row.Source.Error.Message}"
-                : $"{seen:N0} lines · {matched:N0} matched · {encounters} encounters{(inCombat ? " · IN COMBAT" : "")}";
         }
+        for (var i = 0; i < Rows.Count && i < statuses.Length; i++)
+            Rows[i].Status = statuses[i];
     }
 
     public void SyncFromManager()
