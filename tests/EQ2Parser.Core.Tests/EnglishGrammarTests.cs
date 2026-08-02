@@ -42,6 +42,26 @@ public class EnglishGrammarTests
     }
 
     [Fact]
+    public void Suffixless_Decimal_Amount_Parses_Instead_Of_Throwing()
+    {
+        // The amount pattern admits "1234.6" (decimal, no K/M/B). A plain
+        // long.Parse threw FormatException here — and any parse exception
+        // permanently kills that log's tail loop.
+        var s = Swing("Asame's Assassinate hits Malkonis D'Morte for 1,234.6 disease damage.");
+        Assert.Equal(1_235, s.Damage.Number);
+    }
+
+    [Fact]
+    public void FirstPerson_Counter_Is_Parsed()
+    {
+        // Third-person avoids include counters; the first-person pattern
+        // omitted them, so YOUR countered attacks went unparsed.
+        var s = Swing("YOU try to slash Malkonis D'Morte, but Malkonis D'Morte counters.");
+        Assert.Equal(("YOU", "Malkonis D'Morte"), (s.Attacker, s.Victim));
+        Assert.True(s.Damage.Number < 0);
+    }
+
+    [Fact]
     public void You_AutoAttack_Is_Melee()
     {
         var s = Swing("YOU hit a lesser shadowbone skeleton for a critical of 5,529 crushing damage.");

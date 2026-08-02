@@ -129,4 +129,26 @@ public sealed class LogTailReaderTests : IDisposable
         await WaitFor(() => !lines.IsEmpty, "line from late-created file");
         Assert.Equal(["(1)[stamp] born late"], lines.Select(l => l.Raw).ToArray());
     }
+
+    [Fact]
+    public async Task Import_Backlog_Is_Read_In_Bounded_Chunks_With_Lines_Split_Across_Them()
+    {
+        // Regression: import used to read the ENTIRE backlog into one
+        // byte[] — multi-GB logs threw and silently killed the source. A
+        // tiny chunk size proves the chunked drain reassembles lines that
+        // straddle chunk boundaries (including a multi-byte UTF-8 char).
+        var expected = new List<string>();
+        var sb = new StringBuilder();
+        for (var i = 0; i < 200; i++)
+        {
+            var line = $"(1)[stamp] ability Frostbiteé number {i} hits the target";
+            expected.Add(line);
+            sb.Append(line).Append('\n');
+        }
+        AppendText(sb.ToString());
+
+        var lines = StartReader(FastPoll with { ChunkBytes = 16 });
+        await WaitFor(() => lines.Count >= expected.Count, "all chunked backlog lines");
+        Assert.Equal(expected, lines.Select(l => l.Raw).ToArray());
+    }
 }

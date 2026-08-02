@@ -90,35 +90,62 @@ public static class LiteralPrefilter
 {
     public static string? TryExtract(string pattern)
     {
-        // Alternation at the top level makes any literal non-mandatory.
-        var depth = 0;
-        foreach (var c in pattern)
-        {
-            if (c == '(') depth++;
-            else if (c == ')') depth--;
-            else if (c == '|' && depth == 0) return null;
-        }
-
+        // One escape-aware pass. Literals are only harvested at depth 0 —
+        // anything inside a group is never guaranteed (the group may be
+        // alternated or quantified away: "(stuns|dazes) you" must not yield
+        // "stuns", "(Deathbringer )?DT" must not yield "Deathbringer ").
         var best = "";
         var current = "";
+        var depth = 0;
         for (var i = 0; i < pattern.Length; i++)
         {
             var c = pattern[i];
-            if (c is '\\' or '(' or ')' or '[' or ']' or '{' or '}' or '^' or '$' or '.' or '|')
+            if (c == '\\')
             {
-                // A quantifier makes the PREVIOUS char optional/repeated —
-                // handled below; escapes and structures end the literal run.
+                // Escaped char: possibly a class (\d, \s) — end the run and
+                // never let it affect depth/alternation tracking.
                 Commit(ref best, ref current);
-                if (c == '\\') i++; // skip the escaped char
-                if (c == '[') { while (i < pattern.Length && pattern[i] != ']') i++; }
-                if (c == '{') { while (i < pattern.Length && pattern[i] != '}') i++; }
+                i++;
+                continue;
+            }
+            if (c == '(') { Commit(ref best, ref current); depth++; continue; }
+            if (c == ')') { depth = Math.Max(0, depth - 1); continue; }
+            if (c == '|')
+            {
+                // Top-level alternation: NOTHING in the pattern is mandatory.
+                if (depth == 0)
+                    return null;
+                continue; // in-group: content isn't harvested anyway
+            }
+            if (depth > 0)
+                continue;
+            if (c == '[')
+            {
+                Commit(ref best, ref current);
+                i++; // ']' as the class's first char is a literal — step past
+                while (i < pattern.Length && pattern[i] != ']')
+                    i += pattern[i] == '\\' ? 2 : 1;
+                continue;
+            }
+            if (c == '{')
+            {
+                // {0,n} makes the previous char optional, exactly like '?'.
+                if (i + 1 < pattern.Length && pattern[i + 1] == '0' && current.Length > 0)
+                    current = current[..^1];
+                Commit(ref best, ref current);
+                while (i < pattern.Length && pattern[i] != '}') i++;
                 continue;
             }
             if (c is '*' or '+' or '?')
             {
-                // The char before a quantifier isn't guaranteed: drop it.
+                // The char before a quantifier isn't guaranteed contiguous: drop it.
                 if (current.Length > 0)
                     current = current[..^1];
+                Commit(ref best, ref current);
+                continue;
+            }
+            if (c is '^' or '$' or '.' or '}' or ']')
+            {
                 Commit(ref best, ref current);
                 continue;
             }

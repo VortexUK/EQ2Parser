@@ -85,7 +85,7 @@ public static partial class EnglishGrammar
     // ── First-person avoids ─────────────────────────────────────────────────
     // YOU try to pierce Malkonis D'Morte but miss.
 
-    [GeneratedRegex(@"^YOU try to (?<verb>\w+) (?<victim>.+?),? but (?:(?<outcomeactor>.+?) )?(?<outcome>miss|misses|parries|ripostes|blocks|resists|dodges)\.$")]
+    [GeneratedRegex(@"^YOU try to (?<verb>\w+) (?<victim>.+?),? but (?:(?<outcomeactor>.+?) )?(?<outcome>miss|misses|parries|ripostes|blocks|resists|dodges|counters|block|resist|riposte|parry|dodge|counter)\.$")]
     private static partial Regex YouAvoid();
 
     // ── Wards ───────────────────────────────────────────────────────────────
@@ -484,11 +484,12 @@ public static partial class EnglishGrammar
             'B' => 1_000_000_000L,
             _ => 1L,
         };
-        if (multiplier > 1)
-        {
-            var value = double.Parse(text[..^1].Replace(",", ""), CultureInfo.InvariantCulture);
-            return new((long)Math.Round(value * multiplier));
-        }
-        return new(long.Parse(text, NumberStyles.AllowThousands, CultureInfo.InvariantCulture));
+        // The amount regex admits decimals with OR without a suffix
+        // ("1234.5") — a plain long.Parse on that throws, and any parse
+        // exception here kills the log's tail loop. decimal keeps full
+        // precision for plain integer amounts.
+        var digits = multiplier > 1 ? text[..^1] : text;
+        var value = decimal.Parse(digits.Replace(",", ""), CultureInfo.InvariantCulture);
+        return new((long)Math.Round(value * multiplier));
     }
 }

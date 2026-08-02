@@ -196,4 +196,54 @@ public class EncounterCorrelatorTests
         correlator.Restore(middle);
         Assert.Equal(3, correlator.History.Count);
     }
+
+    [Fact]
+    public void Shared_Owner_Name_Across_Sources_Does_Not_Crash_Merge()
+    {
+        // The same character name can log from two servers ("Bob" on
+        // Varsoon and Kaladim) — MergedCombatants used to throw
+        // ArgumentException building its owner map, crashing the UI tick.
+        var correlator = new EncounterCorrelator();
+        var a = Engine("log-varsoon", "Bob");
+        var b = Engine("log-kaladim", "Bob");
+        correlator.Attach(a);
+        correlator.Attach(b);
+        Hit(a, 0, "Bob", "Lord Bob", 100);
+        Hit(b, 2, "Bob", "Lord Bob", 50);
+        a.EndCombat();
+        b.EndCombat();
+
+        var fight = Assert.Single(correlator.History);
+        var merged = fight.MergedCombatants;
+        Assert.True(merged["BOB"].IsSourceOwner);
+    }
+
+    [Fact]
+    public void Merge_Still_Found_When_History_Is_Out_Of_EndTime_Order()
+    {
+        // Undo-restores and archive pull-backs insert out of end-time order.
+        // The old reverse-walk BREAK stopped at the first early-ending
+        // candidate and missed the overlapping fight beyond it.
+        var correlator = new EncounterCorrelator(new CorrelatorOptions { TimeTolerance = TimeSpan.FromSeconds(30) });
+        var a = Engine("log-a", "Alice");
+        correlator.Attach(a);
+
+        // Recent fight lands first…
+        Hit(a, 1000, "Alice", "Lord Bob", 100);
+        a.EndCombat();
+        // …then an OLD fight is appended after it (archive pull-back shape).
+        Hit(a, 0, "Alice", "a gnoll", 100);
+        a.EndCombat();
+        Assert.Equal(2, correlator.History.Count);
+
+        // A second log of the RECENT fight must still merge even though the
+        // reverse walk meets the early-ending old fight first.
+        var b = Engine("log-b", "Bobette");
+        correlator.Attach(b);
+        Hit(b, 1005, "Bobette", "Lord Bob", 50);
+        b.EndCombat();
+
+        Assert.Equal(2, correlator.History.Count);
+        Assert.Contains(correlator.History, f => f.Sources.Count == 2);
+    }
 }

@@ -54,13 +54,24 @@ public sealed class CorrelatedEncounter
             if (_mergedCache is not null)
                 return _mergedCache;
             var merged = new Dictionary<string, MergedCombatant>(StringComparer.Ordinal);
-            var ownerKeys = _sources.ToDictionary(s => s.OwnerName.ToUpperInvariant(), s => s.SourceId, StringComparer.Ordinal);
+            // Owner name → the source ids logging as that character. A plain
+            // ToDictionary threw when two sources share an owner name (the
+            // same character name on two servers, or a re-added rotation) —
+            // each such source keeps own-log authority for its combatant.
+            var ownerKeys = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+            foreach (var s in _sources)
+            {
+                var owner = s.OwnerName.ToUpperInvariant();
+                if (!ownerKeys.TryGetValue(owner, out var ids))
+                    ownerKeys[owner] = ids = [];
+                ids.Add(s.SourceId);
+            }
 
             foreach (var source in _sources)
             {
                 foreach (var (key, combatant) in source.Combatants)
                 {
-                    var isOwnLog = ownerKeys.TryGetValue(key, out var owningSource) && owningSource == source.SourceId;
+                    var isOwnLog = ownerKeys.TryGetValue(key, out var owningSources) && owningSources.Contains(source.SourceId);
                     if (!merged.TryGetValue(key, out var current))
                     {
                         merged[key] = new MergedCombatant(combatant, source.SourceId, isOwnLog);

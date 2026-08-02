@@ -28,6 +28,12 @@ public sealed record LogTailOptions
 
     /// <summary>Wall-clock source for arrival stamps (injectable for tests).</summary>
     public Func<DateTimeOffset> Clock { get; init; } = static () => DateTimeOffset.UtcNow;
+
+    /// <summary>Largest single read. Bounds import memory — a whole-backlog
+    /// read used to allocate multi-GB buffers (and throw outright past
+    /// Array.MaxLength, silently killing the source). Tests shrink it to
+    /// exercise cross-chunk line reassembly.</summary>
+    public int ChunkBytes { get; init; } = 1 << 20;
 }
 
 /// <summary>A raw line plus the wall-clock moment its read batch was observed.
@@ -67,7 +73,7 @@ public sealed class LogTailReader(string path, LogTailOptions? options = null)
 
         while (!ct.IsCancellationRequested)
         {
-            if (File.Exists(path))
+            if (File.Exists(path) && !IdleFastPath(position))
             {
                 FileStream? stream = null;
                 try
@@ -98,11 +104,17 @@ public sealed class LogTailReader(string path, LogTailOptions? options = null)
                             Interlocked.Exchange(ref _consumedPosition, 0);
                         }
 
-                        if (stream.Length > position)
+                        // Drain in bounded chunks: never allocate the whole
+                        // backlog (multi-GB on import), never wait on the
+                        // poll interval between chunks of the same backlog.
+                        while (stream.Length > position && !ct.IsCancellationRequested)
                         {
                             stream.Position = position;
-                            var fresh = new byte[stream.Length - position];
+                            var want = (int)Math.Min(_options.ChunkBytes, stream.Length - position);
+                            var fresh = new byte[want];
                             var read = await stream.ReadAsync(fresh.AsMemory(), ct).ConfigureAwait(false);
+                            if (read == 0)
+                                break;
                             position += read;
                             // One arrival stamp per read batch: lines flushed
                             // together genuinely arrived together.
@@ -133,6 +145,24 @@ public sealed class LogTailReader(string path, LogTailOptions? options = null)
             {
                 yield break;
             }
+        }
+    }
+
+    /// <summary>Skip the open/close pair when the file hasn't changed size —
+    /// the 10ms poll otherwise costs ~100 CreateFile/CloseHandle pairs per
+    /// second per dormant source. Growth, shrink (rotation), and stat
+    /// failures all fall through to the full open path.</summary>
+    private bool IdleFastPath(long position)
+    {
+        if (position < 0)
+            return false;
+        try
+        {
+            return new FileInfo(path).Length == position;
+        }
+        catch (Exception)
+        {
+            return false; // let the open path deal with whatever this is
         }
     }
 

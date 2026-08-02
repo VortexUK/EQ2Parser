@@ -160,6 +160,54 @@ public class TriggerEngineTests
     }
 
     [Fact]
+    public void Prefilter_Group_Alternation_Does_Not_Skip_The_Other_Branch()
+    {
+        // Regression: "(stuns|dazes) you" used to yield prefilter "stuns",
+        // silently skipping every line matching only the "dazes" branch.
+        var t = new Trigger("(stuns|dazes) you");
+        Assert.Equal(" you", t.PrefilterLiteral);
+
+        var (engine, fired) = Engine(new Trigger("(stuns|dazes) you") { SoundType = TriggerSound.Beep });
+        engine.Process("a warlord dazes you", T0);
+        Assert.Single(fired);
+    }
+
+    [Fact]
+    public void Prefilter_Optional_Group_Text_Is_Not_Required()
+    {
+        // Regression: "(Deathbringer )?DT incoming" used to yield the
+        // OPTIONAL group text as the required literal.
+        var t = new Trigger("(Deathbringer )?DT incoming");
+        Assert.Equal("DT incoming", t.PrefilterLiteral);
+
+        var (engine, fired) = Engine(new Trigger("(Deathbringer )?DT incoming") { SoundType = TriggerSound.Beep });
+        engine.Process("DT incoming", T0);
+        Assert.Single(fired);
+    }
+
+    [Fact]
+    public void Prefilter_MinZero_Brace_Quantifier_Drops_The_Char()
+    {
+        // "ro{0,3}ars now" — the 'o' is optional; the literal must not
+        // require it. {2,} keeps the char (occurs at least once).
+        var t = new Trigger("ro{0,3}ars now");
+        Assert.Equal("ars now", t.PrefilterLiteral);
+
+        var (engine, fired) = Engine(new Trigger("ro{0,3}ars now") { SoundType = TriggerSound.Beep });
+        engine.Process("the beast rars now", T0);
+        Assert.Single(fired);
+    }
+
+    [Fact]
+    public void Prefilter_Escaped_Parens_Do_Not_Confuse_Alternation_Depth()
+    {
+        // An escaped \) must not decrement depth — otherwise a later real
+        // top-level '|' is judged "inside a group" and the pattern gets a
+        // bogus required literal.
+        Assert.Null(new Trigger(@"\)left|right").PrefilterLiteral);
+    }
+
+    [Fact]
     public void Import_Accepts_Act_Config_File_Dialect()
     {
         // ACT's config XML / community trigger packs use long attribute

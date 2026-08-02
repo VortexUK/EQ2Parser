@@ -69,10 +69,13 @@ public sealed class EncounterCorrelator(CorrelatorOptions? options = null)
     {
         foreach (var candidate in Enumerable.Reverse(_history))
         {
-            // History is chronological; once candidates end far before this
-            // encounter starts, nothing older can match.
+            // Cheap window pre-check — a CONTINUE, not a break: undo-restores
+            // and mid-session archive pull-backs insert out of end-time
+            // order, so an early-ending candidate can still be followed (in
+            // the walk) by one that overlaps. IsSameFight re-checks the
+            // window; this just skips its zone/combatant work.
             if (candidate.EndTime < encounter.StartTime - _options.TimeTolerance)
-                break;
+                continue;
             if (IsSameFight(candidate, encounter))
             {
                 candidate.Join(encounter);
