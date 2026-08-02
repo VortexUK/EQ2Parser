@@ -110,6 +110,14 @@ public sealed class AlertAudioService : IDisposable
     /// <summary>Play an audio file (WAV/MP3). Fire-and-forget.</summary>
     public void PlayFile(string path)
     {
+        // Refuse network (UNC / non-local) paths. A trigger's sound path can
+        // be SERVER-SUPPLIED (the Lexicon pack) or pasted in (ACT import): a
+        // "\\\\attacker\\share\\a.wav" would trigger an outbound SMB auth
+        // (NTLM-hash leak) and feed attacker-chosen bytes to the audio codec
+        // on the first matching line. Legitimate sounds are local files the
+        // user picked or that ship with the app.
+        if (IsNonLocalPath(path))
+            return;
         if (!File.Exists(path))
             return;
         _ = Task.Run(async () =>
@@ -125,6 +133,22 @@ public sealed class AlertAudioService : IDisposable
                 // Unreadable/corrupt file — alert is silently skipped.
             }
         });
+    }
+
+    /// <summary>True for UNC paths (\\host\share), Windows device paths, and
+    /// URL-shaped paths — anything that resolves off the local filesystem.</summary>
+    internal static bool IsNonLocalPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return true;
+        var p = path.Trim();
+        // UNC: \\server\share, //server/share, \\?\UNC\, \\.\device
+        if (p.StartsWith(@"\\", StringComparison.Ordinal) || p.StartsWith("//", StringComparison.Ordinal))
+            return true;
+        // A URI with a non-file scheme (http:, smb:, \\ already caught).
+        if (Uri.TryCreate(p, UriKind.Absolute, out var uri) && uri.Scheme != Uri.UriSchemeFile)
+            return true;
+        return false;
     }
 
     private async Task<byte[]?> SynthesizeAsync(string text)

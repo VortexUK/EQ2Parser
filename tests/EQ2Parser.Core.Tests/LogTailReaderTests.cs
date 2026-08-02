@@ -151,4 +151,30 @@ public sealed class LogTailReaderTests : IDisposable
         await WaitFor(() => lines.Count >= expected.Count, "all chunked backlog lines");
         Assert.Equal(expected, lines.Select(l => l.Raw).ToArray());
     }
+
+    [Fact]
+    public async Task Overlong_Complete_Line_Is_Dropped_But_Following_Lines_Read()
+    {
+        // A hostile/malformed newline-terminated line far longer than any real
+        // EQ2 line must NOT be fed to the O(n²) grammar; it's dropped and the
+        // next line still parses.
+        AppendText(new string('X', 200) + "\n(1)[stamp] real line\n");
+        var lines = StartReader(FastPoll with { MaxLineBytes = 32 });
+        await WaitFor(() => lines.Any(l => l.Raw == "(1)[stamp] real line"), "line after an over-long line");
+        Assert.DoesNotContain(lines, l => l.Raw.StartsWith('X'));
+    }
+
+    [Fact]
+    public async Task Newlineless_Overlong_Carry_Is_Discarded_Then_Recovers()
+    {
+        // A giant run with no newline must not grow the carry buffer without
+        // bound (OOM); it's discarded, and the reader recovers at the next
+        // newline.
+        var lines = StartReader(FastPoll with { MaxLineBytes = 32, ChunkBytes = 16 });
+        AppendBytes(Encoding.UTF8.GetBytes(new string('Y', 200))); // no newline → over-long carry
+        await Task.Delay(80);
+        AppendText("junk\n(1)[stamp] after\n"); // recover at the newline
+        await WaitFor(() => lines.Any(l => l.Raw == "(1)[stamp] after"), "recovery after over-long carry");
+        Assert.DoesNotContain(lines, l => l.Raw.Contains('Y'));
+    }
 }

@@ -34,6 +34,14 @@ public sealed record LogTailOptions
     /// Array.MaxLength, silently killing the source). Tests shrink it to
     /// exercise cross-chunk line reassembly.</summary>
     public int ChunkBytes { get; init; } = 1 << 20;
+
+    /// <summary>Longest line the reader will assemble. A real EQ2 log line is
+    /// well under 2 KB; a line that keeps growing with no newline is a
+    /// malformed/hostile file — it would grow the carry buffer without bound
+    /// (OOM) and feed a huge string to the O(n²) grammar regexes. Past this,
+    /// the in-progress line is discarded and the reader skips to the next
+    /// newline. Tests shrink it to exercise the skip path.</summary>
+    public int MaxLineBytes { get; init; } = 16 * 1024;
 }
 
 /// <summary>A raw line plus the wall-clock moment its read batch was observed.
@@ -69,6 +77,7 @@ public sealed class LogTailReader(string path, LogTailOptions? options = null)
     public async IAsyncEnumerable<TailedLine> ReadLinesAsync([EnumeratorCancellation] CancellationToken ct = default)
     {
         long position = -1; // -1 = not yet initialised (resolve on first sight of the file)
+        var skipOverlong = false; // dropping bytes of an over-long line until the next newline
         var carry = Array.Empty<byte>(); // partial-line bytes from the previous read
 
         while (!ct.IsCancellationRequested)
@@ -101,6 +110,7 @@ public sealed class LogTailReader(string path, LogTailOptions? options = null)
                             // Truncated or rotated: start over, drop any carry.
                             position = 0;
                             carry = [];
+                            skipOverlong = false;
                             Interlocked.Exchange(ref _consumedPosition, 0);
                         }
 
@@ -121,16 +131,46 @@ public sealed class LogTailReader(string path, LogTailOptions? options = null)
                             var observedAt = _options.Clock();
 
                             var buffer = Concat(carry, fresh.AsSpan(0, read));
+
+                            // Mid-skip of an over-long line: drop everything up
+                            // to the next newline before parsing anything.
+                            if (skipOverlong)
+                            {
+                                var nl = Array.IndexOf(buffer, (byte)'\n');
+                                if (nl < 0)
+                                {
+                                    // Whole buffer is still part of the giant line — discard, keep skipping.
+                                    carry = [];
+                                    Interlocked.Exchange(ref _consumedPosition, position);
+                                    continue;
+                                }
+                                skipOverlong = false;
+                                buffer = buffer[(nl + 1)..]; // rare recovery-path slice
+                            }
+
                             var consumed = 0;
                             foreach (var (start, length) in CompleteLines(buffer))
                             {
                                 consumed = start + length;
-                                yield return new TailedLine(DecodeLine(buffer.AsSpan(start, length)), observedAt);
+                                // Drop a complete but absurdly long line (a real EQ2 line is
+                                // < 2 KB) rather than feed it to the O(n²) grammar. The
+                                // carry cap below covers the newline-less (unbounded) case.
+                                if (length <= _options.MaxLineBytes)
+                                    yield return new TailedLine(DecodeLine(buffer.AsSpan(start, length)), observedAt);
                             }
                             // Skip the newline byte(s) belonging to the last line.
                             while (consumed < buffer.Length && (buffer[consumed] == (byte)'\n' || buffer[consumed] == (byte)'\r'))
                                 consumed++;
                             carry = buffer[consumed..];
+                            // A trailing partial line longer than any real log line means a
+                            // malformed/hostile file with no newlines — discard it and skip to
+                            // the next newline instead of growing `carry` unbounded (OOM) and
+                            // feeding a huge string to the O(n²) grammar.
+                            if (carry.Length > _options.MaxLineBytes)
+                            {
+                                carry = [];
+                                skipOverlong = true;
+                            }
                             Interlocked.Exchange(ref _consumedPosition, position - carry.Length);
                         }
                     }

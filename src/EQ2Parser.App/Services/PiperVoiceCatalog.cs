@@ -146,11 +146,16 @@ public static class PiperVoiceCatalog
             if (Directory.Exists(staging))
                 Directory.Delete(staging, recursive: true);
             Directory.CreateDirectory(staging);
+            // Cap the DECOMPRESSED size: a malicious/compromised upstream
+            // archive could be a bz2 bomb that fills the disk. 4× the
+            // advertised size is generous headroom over any real model.
+            var extractCap = Math.Max(voice.SizeMb, 1L) * 1024L * 1024L * 4L;
             await Task.Run(() =>
             {
                 using var fs = File.OpenRead(archiveFile);
                 using var bz = BZip2Stream.Create(fs, CompressionMode.Decompress, false, false, false);
-                TarFile.ExtractToDirectory(bz, staging, overwriteFiles: true);
+                using var capped = new CappedReadStream(bz, extractCap);
+                TarFile.ExtractToDirectory(capped, staging, overwriteFiles: true);
             }, ct);
 
             // The archive contains one top-level folder named after itself.
@@ -178,5 +183,43 @@ public static class PiperVoiceCatalog
                 // turn a SUCCESSFUL install into a reported failure.
             }
         }
+    }
+
+    /// <summary>Read-only pass-through that aborts once more than
+    /// <paramref name="maxBytes"/> have been read — a decompression-bomb guard
+    /// wrapping the bz2 stream that TarFile inflates.</summary>
+    private sealed class CappedReadStream(Stream inner, long maxBytes) : Stream
+    {
+        private long _read;
+
+        private int Count(int n)
+        {
+            _read += n;
+            if (_read > maxBytes)
+                throw new InvalidDataException("Voice archive exceeds its expected size — refusing to extract (possible decompression bomb).");
+            return n;
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => Count(inner.Read(buffer, offset, count));
+
+        public override int Read(Span<byte> buffer) => Count(inner.Read(buffer));
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => _read;
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush() { }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 }

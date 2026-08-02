@@ -16,6 +16,12 @@ public partial class App : Application
         // First, before anything can throw: even a startup crash must leave
         // a log behind.
         CrashLog.Install(this);
+        // Process-wide default match-timeout for every Regex built without an
+        // explicit one (belt-and-suspenders for the grammar + any future
+        // pattern). Trigger patterns set their own explicit timeout; the
+        // real grammar-ReDoS defense is the log-line length cap in
+        // LogTailReader. Must be set before any Regex is constructed.
+        AppContext.SetData("REGEX_DEFAULT_MATCH_TIMEOUT", TimeSpan.FromMilliseconds(200));
         // The editors explain every option in its tooltip; WPF's default
         // ~5s auto-dismiss cuts them off mid-read.
         ToolTipService.ShowDurationProperty.OverrideMetadata(

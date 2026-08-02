@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace EQ2Parser.App.Services;
@@ -90,10 +91,37 @@ public static class PersistedJsonFile
         try
         {
             File.Move(path, $"{path}.corrupt-{DateTime.Now:yyyyMMdd-HHmmss}", overwrite: true);
+            PruneQuarantine(path);
         }
         catch (Exception)
         {
             // Locked or gone — nothing more we can do without blocking startup.
+        }
+    }
+
+    private const int KeepQuarantineFiles = 5;
+
+    /// <summary>Keep only the newest few *.corrupt-* files per base path.
+    /// Unbounded, these accumulate forever — and once a token or other secret
+    /// lives in the persisted file, each quarantine copy is a lingering
+    /// plaintext copy of it.</summary>
+    private static void PruneQuarantine(string path)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(path);
+            if (string.IsNullOrEmpty(dir))
+                return;
+            var stale = new DirectoryInfo(dir)
+                .GetFiles(Path.GetFileName(path) + ".corrupt-*")
+                .OrderByDescending(f => f.Name)
+                .Skip(KeepQuarantineFiles);
+            foreach (var f in stale)
+                f.Delete();
+        }
+        catch (Exception)
+        {
+            // Best-effort cleanup — never let it break a save.
         }
     }
 }

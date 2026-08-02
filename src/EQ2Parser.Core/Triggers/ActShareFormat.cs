@@ -25,12 +25,26 @@ public static class ActShareFormat
     /// <summary>Parse one share snippet. Returns a Trigger or a
     /// TimerDefinition (as object) depending on the element, or null for
     /// anything unrecognised/malformed.</summary>
+    // Hardened reader: DTDs prohibited and no external resolver. ACT share
+    // snippets never carry a DTD, so this is behaviour-preserving — but a
+    // pasted "snippet" with an internal-entity DTD would otherwise
+    // billion-laughs expand into a memory/CPU DoS on import (and, on other
+    // runtimes, external entities could exfiltrate files / SSRF). Prohibit +
+    // null resolver closes both.
+    private static readonly XmlReaderSettings _safeXml = new()
+    {
+        DtdProcessing = DtdProcessing.Prohibit,
+        XmlResolver = null,
+        MaxCharactersFromEntities = 1024,
+    };
+
     public static object? TryImport(string xml)
     {
         XmlDocument doc = new();
         try
         {
-            doc.LoadXml(xml.Trim());
+            using var reader = XmlReader.Create(new System.IO.StringReader(xml.Trim()), _safeXml);
+            doc.Load(reader);
         }
         catch (XmlException)
         {

@@ -19,6 +19,19 @@ public class ActShareFormatTests
     }
 
     [Fact]
+    public void Rejects_Dtd_Snippet_Blocking_Billion_Laughs()
+    {
+        // A pasted "snippet" carrying a DTD (internal-entity expansion bomb,
+        // or external-entity file read on other runtimes) must be rejected,
+        // not parsed. Real ACT snippets never carry a DTD.
+        var evil = """
+            <!DOCTYPE r [<!ENTITY a "xxxxxxxxxx"><!ENTITY b "&a;&a;&a;&a;&a;">]>
+            <Trigger R="&b;" ST="1" C="General" T="F" TN="" Ta="F" />
+            """;
+        Assert.Null(ActShareFormat.TryImport(evil));
+    }
+
+    [Fact]
     public void Imports_Act_Escaped_Regex_Entities()
     {
         // ACT ships \s as &#92;s and # as &#35; — XML decoding restores them.

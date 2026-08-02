@@ -37,12 +37,23 @@ public sealed class TriggerEngine(string ownerName)
 {
     private readonly Dictionary<string, Trigger> _all = new(StringComparer.Ordinal);
     private readonly Dictionary<string, DateTimeOffset> _lastAudio = new(StringComparer.Ordinal);
+
+    /// <summary>Keys of triggers whose regex match timed out (a ReDoS pattern
+    /// from a bad/compromised pack or import). Skipped for the rest of the
+    /// session so one pathological pattern can't re-time-out on every line.
+    /// Cleared for a key when the trigger is re-added (edited).</summary>
+    private readonly HashSet<string> _disabledByTimeout = new(StringComparer.Ordinal);
     private Trigger[] _active = [];
     private string _zone = "";
 
     public string OwnerName { get; } = ownerName;
 
     public event Action<TriggerFired>? Fired;
+
+    /// <summary>Raised (on the pump thread) when a trigger's regex exceeds
+    /// <see cref="Trigger.MatchTimeout"/> and is disabled — lets the app
+    /// surface "this trigger was too slow and was turned off".</summary>
+    public event Action<Trigger>? MatchTimedOut;
 
     public IReadOnlyCollection<Trigger> Triggers => _all.Values;
 
@@ -51,6 +62,7 @@ public sealed class TriggerEngine(string ownerName)
     public void AddOrUpdate(Trigger trigger)
     {
         _all[trigger.Key] = trigger;
+        _disabledByTimeout.Remove(trigger.Key); // an edit gets a fresh chance
         RebuildActive();
     }
 
@@ -67,7 +79,10 @@ public sealed class TriggerEngine(string ownerName)
     public void AddOrUpdateMany(IEnumerable<Trigger> triggers)
     {
         foreach (var trigger in triggers)
+        {
             _all[trigger.Key] = trigger;
+            _disabledByTimeout.Remove(trigger.Key);
+        }
         RebuildActive();
     }
 
@@ -109,11 +124,26 @@ public sealed class TriggerEngine(string ownerName)
     {
         foreach (var trigger in _active)
         {
+            if (_disabledByTimeout.Contains(trigger.Key))
+                continue;
             if (trigger.PrefilterLiteral is not null &&
                 !message.Contains(trigger.PrefilterLiteral, StringComparison.Ordinal))
                 continue;
 
-            var match = trigger.Pattern.Match(message);
+            Match match;
+            try
+            {
+                match = trigger.Pattern.Match(message);
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                // Catastrophic-backtracking pattern (bad/compromised pack or
+                // import). Disable it for the session so it can't stall the
+                // pump on every subsequent line, and let the app surface it.
+                _disabledByTimeout.Add(trigger.Key);
+                MatchTimedOut?.Invoke(trigger);
+                continue;
+            }
             if (!match.Success)
                 continue;
 

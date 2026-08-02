@@ -19,6 +19,32 @@ public class TriggerEngineTests
     }
 
     [Fact]
+    public void Catastrophic_Backtracking_Pattern_Times_Out_And_Is_Disabled()
+    {
+        // A ReDoS pattern (from a bad/compromised pack or import) must not
+        // freeze the pump: the match times out, the trigger is disabled for
+        // the session, and a normal trigger still fires.
+        var evil = new Trigger(@"^(a+)+$") { SoundType = TriggerSound.Beep };
+        var good = new Trigger(@"^dragon roars$") { SoundType = TriggerSound.Beep };
+        var (engine, fired) = Engine(evil, good);
+        var timedOut = new List<Trigger>();
+        engine.MatchTimedOut += timedOut.Add;
+
+        // Input that forces full catastrophic backtracking ($ never matches).
+        var evilLine = new string('a', 40) + "!";
+
+        engine.Process(evilLine, T0);
+        Assert.Contains(evil, timedOut);
+        // The good trigger still evaluates on a normal line...
+        engine.Process("dragon roars", T0);
+        Assert.Single(fired);
+        // ...and the disabled evil trigger no longer even runs (no second timeout).
+        timedOut.Clear();
+        engine.Process(evilLine, T0);
+        Assert.Empty(timedOut);
+    }
+
+    [Fact]
     public void Fires_With_Tts_Capture_Expansion()
     {
         var (engine, fired) = Engine(new Trigger(@"^(?<victim>\w+) is afflicted by Grim Malediction")

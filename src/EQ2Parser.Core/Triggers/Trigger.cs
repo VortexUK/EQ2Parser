@@ -20,12 +20,21 @@ public enum TriggerSound
 /// </summary>
 public sealed class Trigger
 {
+    /// <summary>Per-match timeout on every trigger regex. Trigger patterns
+    /// can be SERVER-SUPPLIED (the Lexicon pack) or pasted in (ACT-share
+    /// import), and they run synchronously on the log-pump thread under the
+    /// global lock — a catastrophic-backtracking pattern (e.g. "(a+)+$")
+    /// would otherwise freeze the entire app. A legitimate trigger matches in
+    /// microseconds; 100 ms is a vast safety margin that still aborts a ReDoS
+    /// pattern fast. The engine disables a trigger whose match times out.</summary>
+    public static readonly TimeSpan MatchTimeout = TimeSpan.FromMilliseconds(100);
+
     public Trigger(string regexText, string? category = null, string? zone = null)
     {
         RegexText = regexText;
         Category = string.IsNullOrWhiteSpace(category) ? "General" : category!;
         Zone = string.IsNullOrWhiteSpace(zone) ? "" : zone!.Trim();
-        Pattern = new Regex(regexText, RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        Pattern = new Regex(regexText, RegexOptions.Compiled | RegexOptions.CultureInvariant, MatchTimeout);
         PrefilterLiteral = LiteralPrefilter.TryExtract(regexText);
     }
 
