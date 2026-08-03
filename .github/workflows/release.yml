@@ -1,17 +1,19 @@
 name: Release
 
-# Cuts a signed, attested EQ2Parser release from CI — replacing the
-# laptop `release.ps1 -Publish` flow (which trusted a personal `gh` token).
+# Builds an attested, checksummed EQ2Parser release from CI — replacing the
+# laptop `release.ps1 -Publish` flow (which trusted a personal gh token).
 #
-#   * push a tag `vX.Y.Z`      -> builds, signs, attests, and PUBLISHES a release
-#   * run manually (dispatch)  -> builds + signs + attests, uploads the signed
-#                                 installer as a run artifact for verification;
-#                                 only publishes if you tick `publish`
+#   * push a tag `vX.Y.Z`      -> builds, attests, and PUBLISHES a release
+#   * run manually (dispatch)  -> builds + attests, uploads the installer +
+#                                 checksums as run artifacts; only publishes if
+#                                 you tick `publish`
 #
-# Signing goes through SignPath (Authenticode). Today it uses the `test-signing`
-# policy (a self-signed cert — proves the pipeline; Windows won't trust it). When
-# the SignPath Foundation cert is issued, add a `release-signing` policy and
-# change `signing-policy-slug` below — that's the only edit needed.
+# INTERIM (no code signing): integrity comes from build-provenance attestation
+# (proves the binary was built from this repo in CI) + a published SHA256SUMS.txt.
+# Users get a one-time SmartScreen warning. To add a real Authenticode signature
+# later (Certum, ~$58/yr, repo must go public) see docs/code-signing.md — the
+# signing step slots in between "Pack" and "Attest". The prior SignPath wiring is
+# in this file's git history (the "interim switch" commit).
 
 on:
   push:
@@ -24,7 +26,7 @@ on:
         required: true
         type: string
       publish:
-        description: 'Publish a GitHub Release (leave off for a signed-artifact test run).'
+        description: 'Publish a GitHub Release (leave off for a build-only test run).'
         required: false
         type: boolean
         default: false
@@ -33,28 +35,12 @@ permissions:
   contents: write # create the GitHub Release
   id-token: write # OIDC for build-provenance attestation
   attestations: write # write the attestation
-  actions: read # SignPath action reads the uploaded artifact
 
 jobs:
   release:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
-      # Fail fast + loud if the signing secret isn't reaching the job. A
-      # misnamed or Environment-scoped secret arrives as "" and SignPath then
-      # reports the same generic "Could not authorize" as a bad token would —
-      # this separates a wiring problem from a SignPath-side permission one.
-      # Prints only the length, never the value.
-      - name: Preflight — signing secret is present
-        shell: pwsh
-        env:
-          SP_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:SP_TOKEN)) {
-            throw 'SIGNPATH_API_TOKEN is empty or not visible here. It must be a Repository secret (Settings > Secrets and variables > Actions), spelled exactly SIGNPATH_API_TOKEN, not an Environment secret.'
-          }
-          Write-Host ('SIGNPATH_API_TOKEN present (length {0}).' -f $env:SP_TOKEN.Length)
 
       - name: Resolve version
         id: ver
@@ -92,34 +78,18 @@ jobs:
           --packDir publish --mainExe EQ2Parser.App.exe --packTitle EQ2Parser
           --outputDir Releases --icon src/EQ2Parser.App/Assets/EQ2Parser.ico
 
-      # SignPath fetches the artifact by id, Authenticode-signs the PE (the
-      # `<pe-file>` artifact config), and writes the signed file back locally.
-      - name: Upload unsigned installer for signing
-        id: unsigned
-        uses: actions/upload-artifact@v4
-        with:
-          name: unsigned-setup
-          path: Releases/EQ2Parser-win-Setup.exe
-          if-no-files-found: error
-
-      - name: Sign installer (SignPath)
-        uses: signpath/github-action-submit-signing-request@v1
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: c710b622-2381-4a27-9f97-f12a53e57850
-          project-slug: VortexUK_EQ2Parser
-          signing-policy-slug: test-signing
-          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
-          wait-for-completion: true
-          output-artifact-directory: signed
-
-      - name: Swap in the signed installer
+      # Publish checksums so a download can be verified without a code signature.
+      - name: Checksums
         shell: pwsh
         run: |
-          $signed = Get-ChildItem signed -Recurse -Filter 'EQ2Parser-win-Setup.exe' | Select-Object -First 1
-          if (-not $signed) { throw 'Signed installer not found under signed/.' }
-          Copy-Item $signed.FullName Releases/EQ2Parser-win-Setup.exe -Force
-          Write-Host "Signed installer in place: $($signed.FullName)"
+          $files = Get-ChildItem Releases -Include *.exe, *.nupkg -Recurse
+          if (-not $files) { throw 'No release artifacts to checksum.' }
+          $lines = foreach ($f in $files) {
+            $h = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower()
+            "$h  $($f.Name)"
+          }
+          $lines | Set-Content -Path Releases/SHA256SUMS.txt -Encoding ascii
+          Write-Host "SHA256SUMS.txt:"; Get-Content Releases/SHA256SUMS.txt
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v1
@@ -128,14 +98,16 @@ jobs:
             Releases/EQ2Parser-win-Setup.exe
             Releases/*.nupkg
 
-      # Test run (manual, publish off): keep the signed installer as a run
-      # artifact so you can verify the signature without shipping anything.
-      - name: Upload signed installer (test artifact)
+      # Test run (manual, publish off): keep the installer + checksums as run
+      # artifacts for verification without shipping anything.
+      - name: Upload build artifacts (test run)
         if: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish }}
         uses: actions/upload-artifact@v4
         with:
-          name: signed-setup
-          path: Releases/EQ2Parser-win-Setup.exe
+          name: eq2parser-setup
+          path: |
+            Releases/EQ2Parser-win-Setup.exe
+            Releases/SHA256SUMS.txt
 
       # Real release (tag push, or manual with publish ticked).
       # NOTE: still `--pre` until the updater is flipped to a stable channel —
@@ -149,3 +121,11 @@ jobs:
           --publish --pre --releaseName "EQ2Parser ${{ steps.ver.outputs.version }}"
           --tag "v${{ steps.ver.outputs.version }}"
           --token ${{ secrets.GITHUB_TOKEN }} --outputDir Releases
+
+      # Attach the checksums to the release vpk just created.
+      - name: Attach checksums to release
+        if: ${{ github.event_name == 'push' || inputs.publish }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "v${{ steps.ver.outputs.version }}" Releases/SHA256SUMS.txt --clobber
