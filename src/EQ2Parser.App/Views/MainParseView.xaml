@@ -244,6 +244,10 @@
                                               Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
                                               Command="{Binding PlacementTarget.Tag.SpecialReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <MenuItem Header="Upload to EQ2Lexicon"
+                                              Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
+                                              Command="{Binding PlacementTarget.Tag.UploadNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                     <MenuItem Header="Delete"
                                               Visibility="{Binding PlacementTarget.DataContext.IsDeletable, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
                                               Command="{Binding PlacementTarget.Tag.DeleteNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"

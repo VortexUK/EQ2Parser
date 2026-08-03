@@ -37,6 +37,19 @@ public sealed class LexiconUploadClient : IDisposable
 
     public void Dispose() => _http.Dispose();
 
+    /// <summary>Refuses to put the bearer token on the wire in cleartext:
+    /// https only, with a loopback exception for local dev servers. Returns
+    /// the problem, or null when the URL is acceptable.</summary>
+    public static string? UrlProblem(string serverUrl)
+    {
+        if (!Uri.TryCreate(serverUrl?.Trim(), UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+            return "Server URL is not a valid http(s) address.";
+        if (uri.Scheme == Uri.UriSchemeHttp && !uri.IsLoopback)
+            return "Uploads need an https:// server URL — your API token would otherwise travel unencrypted.";
+        return null;
+    }
+
     /// <summary>HMAC-SHA256 lowercase hex, keyed by the API token — must match
     /// the server's recomputation over the decompressed body.</summary>
     public static string Sign(string payloadJson, string apiToken) =>

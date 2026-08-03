@@ -57,6 +57,34 @@ warnings-as-errors, and the single `<Version>` used by Velopack releases.
 | `src/EQ2Parser.App` | WPF shell (net10.0-windows): main window, overlay, tray, settings, Velopack bootstrap. |
 | `tests/EQ2Parser.Core.Tests` | xunit. Golden-file tests use real EQ2 log excerpts under `tests/logs/`. |
 
+## Upload wiring (parser → EQ2Lexicon)
+
+The vertical (2026-08-03): `Core/Upload/` holds the testable pieces —
+`LexiconUploadClient` (transport: bearer + HMAC + gzip, injectable handler,
+plus the `UrlProblem` https-only guard with a loopback dev exception),
+`LexiconPayload` (wire DTOs), `PayloadBuilder` (Encounter → payload; 8-hex
+content encid so re-uploads dedupe server-side), `LogPaths.ParseServerName`
+(logger_server = the log's parent dir; "" for the legacy `logs/` root →
+server falls back to its default world), and `UploadQueue` (channel drain off
+the pump thread, bounded retry on network/5xx, 401/403 sets AuthPaused so a
+bad token is never hammered).
+
+App side: `UploadService` (thin adapter on SourceManager, wired to
+`Engine.EncounterEnded` in Add/Remove exactly like History.QueueSave;
+`Configure` re-reads settings), `TokenProtector` (DPAPI CurrentUser — only
+ciphertext ever reaches settings.json; ProtectedData is in-box on the
+windows TFM, no package), Settings → "Parse uploads" card (PasswordBox is
+read+cleared in the command, never bound), and a fight-tree "Upload to
+EQ2Lexicon" context item that sends every source's view of the fight
+(manual upload works with the auto toggle off and clears an auth pause —
+the explicit click is the consent/retry).
+
+Uploads mirror the ACT-plugin fleet model: every finished encounter per
+source uploads (trash included — the site's retention sweep handles it);
+multi-log mirrors of one fight are mirror-grouped server-side by distinct
+logger_names, longest duration wins as primary. Token test button hits
+`/api/auth/whoami` (accepts bearer) and shows the Discord name.
+
 ## EQ2 log format notes
 
 Log lines are `(epoch)[local timestamp] message`, e.g.

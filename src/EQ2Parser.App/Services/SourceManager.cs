@@ -40,6 +40,7 @@ public sealed class SourceManager : IDisposable
     public event Action<string>? CalloutAnnounced;
     public HistoryService History { get; } = new();
     public UpdateService Updates { get; } = new();
+    public UploadService Uploads { get; } = new();
     public AppSettings Settings { get; set; } = AppSettings.Load();
 
     public SourceManager()
@@ -64,6 +65,10 @@ public sealed class SourceManager : IDisposable
             Audio.Speak(text);
             CalloutAnnounced?.Invoke(text);
         };
+        Uploads.Configure(
+            Settings.LexiconBaseUrl,
+            TokenProtector.Unprotect(Settings.LexiconApiTokenProtected),
+            Settings.UploadEnabled);
         // History views resync by polling Correlator.Version on the UI tick
         // — no event needed (the old HistoryChanged had zero subscribers).
     }
@@ -135,6 +140,7 @@ public sealed class SourceManager : IDisposable
             {
                 Correlator.Attach(source.Engine);
                 source.Engine.EncounterEnded += History.QueueSave;
+                source.Engine.EncounterEnded += Uploads.OnEncounterEnded;
                 source.Processor.StatusApplied += Callouts.OnStatusApplied;
                 _sources.Add(source);
             }
@@ -153,6 +159,7 @@ public sealed class SourceManager : IDisposable
             _sources.Remove(source);
             Correlator.Detach(source.Engine);
             source.Engine.EncounterEnded -= History.QueueSave;
+            source.Engine.EncounterEnded -= Uploads.OnEncounterEnded;
             source.Processor.StatusApplied -= Callouts.OnStatusApplied;
             _removedPaths.Add(source.Path);
         }
@@ -347,6 +354,7 @@ public sealed class SourceManager : IDisposable
         foreach (var source in Sources)
             source.Dispose();
         History.Dispose();
+        Uploads.Dispose();
         Audio.Dispose();
         _watchCts.Dispose();
     }

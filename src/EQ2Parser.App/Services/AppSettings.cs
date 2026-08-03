@@ -85,6 +85,15 @@ public sealed record AppSettings
     /// local dev server to test curation before it ships.</summary>
     public string LexiconBaseUrl { get; init; } = "https://varsoon.eq2lexicon.com";
 
+    /// <summary>Auto-upload finished fights to EQ2Lexicon. Off until the
+    /// user opts in AND a token is saved.</summary>
+    public bool UploadEnabled { get; init; }
+
+    /// <summary>EQ2Lexicon API token, DPAPI-encrypted for the current
+    /// Windows user + base64 (see TokenProtector) — never plaintext, so a
+    /// copied settings.json (or a quarantine copy) can't leak it.</summary>
+    public string? LexiconApiTokenProtected { get; init; }
+
     /// <summary>Mass-detriment callouts ("8 players stunned").</summary>
     public bool CalloutsEnabled { get; init; } = true;
     public int CalloutMinPlayers { get; init; } = 3;

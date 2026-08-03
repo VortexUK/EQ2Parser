@@ -210,6 +210,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         _lexiconStatus = manager.Lexicon.Status;
         manager.Lexicon.StatusChanged += () =>
             System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => LexiconStatus = manager.Lexicon.Status);
+        _loadingUpload = true;
+        UploadEnabled = manager.Settings.UploadEnabled;
+        _loadingUpload = false;
+        _uploadTokenState = manager.Settings.LexiconApiTokenProtected is null ? "No token saved." : "Token saved.";
+        _uploadStatus = manager.Uploads.Status;
+        manager.Uploads.StatusChanged += () =>
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => UploadStatus = manager.Uploads.Status);
         _loadingCallouts = true;
         CalloutsEnabled = manager.Settings.CalloutsEnabled;
         CalloutMinPlayers = manager.Settings.CalloutMinPlayers.ToString();
@@ -279,6 +286,81 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     [RelayCommand]
     private void LexiconSyncNow() => _ = _manager.Lexicon.SyncAsync();
+
+    // ---- EQ2Lexicon parse uploads ----
+
+    [ObservableProperty]
+    private bool _uploadEnabled;
+
+    [ObservableProperty]
+    private string _uploadStatus = "";
+
+    [ObservableProperty]
+    private string _uploadTokenState = "";
+
+    private bool _loadingUpload;
+
+    partial void OnUploadEnabledChanged(bool value)
+    {
+        if (_loadingUpload)
+            return;
+        _manager.Settings = _manager.Settings with { UploadEnabled = value };
+        _manager.Settings.Save();
+        ReconfigureUploads();
+    }
+
+    private void ReconfigureUploads() =>
+        _manager.Uploads.Configure(
+            _manager.Settings.LexiconBaseUrl,
+            TokenProtector.Unprotect(_manager.Settings.LexiconApiTokenProtected),
+            _manager.Settings.UploadEnabled);
+
+    /// <summary>PasswordBox can't data-bind its Password (by design) — the
+    /// button passes the box itself and we read + clear it here, so the
+    /// token never sits in a bound string property.</summary>
+    [RelayCommand]
+    private void SaveUploadToken(object? parameter)
+    {
+        if (parameter is not System.Windows.Controls.PasswordBox box)
+            return;
+        var token = box.Password.Trim();
+        if (token.Length == 0)
+        {
+            UploadStatus = "Paste your API token first.";
+            return;
+        }
+        if (TokenProtector.Protect(token) is not { } blob)
+        {
+            UploadStatus = "Couldn't encrypt the token (Windows DPAPI unavailable).";
+            return;
+        }
+        box.Clear();
+        _manager.Settings = _manager.Settings with { LexiconApiTokenProtected = blob };
+        _manager.Settings.Save();
+        UploadTokenState = "Token saved.";
+        ReconfigureUploads();
+        UploadStatus = "Token saved — hit Test to verify it.";
+    }
+
+    [RelayCommand]
+    private async Task TestUploadToken()
+    {
+        UploadStatus = "Testing…";
+        UploadStatus = await _manager.Uploads.TestTokenAsync();
+    }
+
+    [RelayCommand]
+    private void ClearUploadToken()
+    {
+        _manager.Settings = _manager.Settings with { LexiconApiTokenProtected = null, UploadEnabled = false };
+        _manager.Settings.Save();
+        _loadingUpload = true;
+        UploadEnabled = false;
+        _loadingUpload = false;
+        UploadTokenState = "No token saved.";
+        ReconfigureUploads();
+        UploadStatus = "Token removed.";
+    }
 
     [RelayCommand]
     private void TestVoice() =>

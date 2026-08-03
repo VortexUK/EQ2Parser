@@ -150,6 +150,23 @@ public sealed partial class MainParseViewModel
         return true;
     }
 
+    /// <summary>Fight context menu: upload every source's view of the fight
+    /// to EQ2Lexicon — the same payloads auto-upload would have sent (the
+    /// site mirror-groups them and keeps the longest as primary). Results
+    /// surface on the Settings → Parse uploads status line.</summary>
+    [RelayCommand]
+    private void UploadNode(ParseNode? node)
+    {
+        if (node?.Fight is not CorrelatedEncounter fight)
+            return;
+        List<Encounter> sources;
+        lock (manager.Sync)
+        {
+            sources = [.. fight.Sources];
+        }
+        manager.Uploads.UploadFight(sources);
+    }
+
     /// <summary>Fight context menu: open the raw log at the fight's start.</summary>
     [RelayCommand]
     private void ViewFightLog(ParseNode? node)
