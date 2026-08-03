@@ -12,7 +12,11 @@ namespace EQ2Parser.App.Services;
 /// </summary>
 public sealed class UpdateService
 {
-    public const string RepoUrl = "https://github.com/VortexUK/EQ2Parser";
+    /// <summary>The PUBLIC releases-only repo — the updater reads it
+    /// anonymously, so it must stay public while the code repo is private.
+    /// If releases ever move back to the code repo, ship a transitional
+    /// build from THIS feed first or existing installs never see the move.</summary>
+    public const string RepoUrl = "https://github.com/VortexUK/EQ2Parser-releases";
 
     private readonly UpdateManager _manager = new(new GithubSource(RepoUrl, null, prerelease: true));
 

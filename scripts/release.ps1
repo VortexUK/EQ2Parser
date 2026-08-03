@@ -30,8 +30,10 @@ vpk pack --packId EQ2Parser --packVersion $Version --packDir publish `
 if ($LASTEXITCODE -ne 0) { throw 'vpk pack failed' }
 
 if ($Publish) {
+    # Publishes to the PUBLIC releases-only repo — the in-app updater reads
+    # it anonymously (the code repo is private).
     Write-Host 'Uploading to GitHub Releases (pre-release)...'
-    vpk upload github --repoUrl https://github.com/VortexUK/EQ2Parser `
+    vpk upload github --repoUrl https://github.com/VortexUK/EQ2Parser-releases `
         --publish --pre --releaseName "EQ2Parser $Version" --tag "v$Version" `
         --token (gh auth token) --outputDir Releases
     if ($LASTEXITCODE -ne 0) { throw 'vpk upload failed' }
