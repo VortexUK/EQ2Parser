@@ -19,6 +19,11 @@ public sealed record LexiconPayload
     [JsonPropertyName("damage_types")] public List<PayloadDamageType> DamageTypes { get; init; } = [];
     [JsonPropertyName("attack_types")] public List<PayloadAttackType> AttackTypes { get; init; } = [];
 
+    /// <summary>Soft provenance signals (the plugin's v0.1.15 field — the
+    /// server stores ≤32 entries × 64 chars). Null = omitted from the JSON;
+    /// see LogProvenance for the values we stamp.</summary>
+    [JsonPropertyName("client_warnings")] public List<string>? ClientWarnings { get; init; }
+
     private static readonly JsonSerializerOptions Options = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,

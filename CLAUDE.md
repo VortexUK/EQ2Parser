@@ -85,6 +85,21 @@ multi-log mirrors of one fight are mirror-grouped server-side by distinct
 logger_names, longest duration wins as primary. Token test button hits
 `/api/auth/whoami` (accepts bearer) and shows the Discord name.
 
+Log-writer provenance (2026-08-03): `Core/Logs/LogFileHolders` probes who
+holds the log file via the Windows **Restart Manager** (the supported
+"which processes are using this file" API — write-handle-specific
+enumeration would need undocumented NtQuerySystemInformation; rejected as
+fragile). EQ2 keeps its log open for append while /log is on, so
+"EverQuest2 among the holders" is the live-writer signal. `LogProvenance`
+(pure, tested) turns a probe into `client_warnings`: `log_writer_eq2` /
+`log_writer_unverified` + capped `log_foreign_holder:<name>` entries. The
+probe runs on the UploadQueue drain thread seconds after the fight ends
+(~ms cost, once per fight, never per line); manual re-uploads of archived
+fights skip it (`withProvenance: false`) — probing NOW says nothing about
+who wrote the log THEN. Explicit decision: NO server-side stat recompute
+from raw swings — needlessly expensive; provenance stamping is the
+mechanism.
+
 ## EQ2 log format notes
 
 Log lines are `(epoch)[local timestamp] message`, e.g.

@@ -11,7 +11,8 @@ namespace EQ2Parser.Core.Upload;
 /// </summary>
 public static class PayloadBuilder
 {
-    public static LexiconPayload Build(Encounter encounter, string loggerServer)
+    public static LexiconPayload Build(
+        Encounter encounter, string loggerServer, IReadOnlyList<string>? clientWarnings = null)
     {
         var allies = encounter.GetAllies();
         var allyKeys = new HashSet<string>(allies.Select(a => a.Key), StringComparer.Ordinal);
@@ -130,6 +131,7 @@ public static class PayloadBuilder
             Combatants = combatants,
             DamageTypes = damageTypes,
             AttackTypes = attackTypes,
+            ClientWarnings = clientWarnings is { Count: > 0 } ? [.. clientWarnings] : null,
         };
     }
 

@@ -13,16 +13,24 @@ namespace EQ2Parser.Core.Upload;
 /// </summary>
 public sealed class UploadQueue : IDisposable
 {
-    private readonly Channel<(Encounter Encounter, string LoggerServer)> _work =
-        Channel.CreateUnbounded<(Encounter, string)>();
+    private readonly Channel<(Encounter Encounter, string LoggerServer, bool WithProvenance)> _work =
+        Channel.CreateUnbounded<(Encounter, string, bool)>();
     private readonly Func<LexiconPayload, CancellationToken, Task<UploadResult>> _send;
+    private readonly Func<Encounter, IReadOnlyList<string>?>? _provenance;
     private readonly CancellationTokenSource _cts = new();
     private readonly Task _drain;
     private volatile bool _authPaused;
 
-    public UploadQueue(Func<LexiconPayload, CancellationToken, Task<UploadResult>> send)
+    /// <param name="send">Transport — the client's UploadAsync.</param>
+    /// <param name="provenance">Optional client_warnings provider (the log
+    /// writer probe), invoked on the drain thread right before the payload
+    /// builds — never on the pump thread.</param>
+    public UploadQueue(
+        Func<LexiconPayload, CancellationToken, Task<UploadResult>> send,
+        Func<Encounter, IReadOnlyList<string>?>? provenance = null)
     {
         _send = send;
+        _provenance = provenance;
         _drain = Task.Run(DrainAsync);
     }
 
@@ -48,12 +56,15 @@ public sealed class UploadQueue : IDisposable
     /// <summary>Raised from the drain thread whenever Status changes.</summary>
     public event Action? StatusChanged;
 
-    /// <summary>Safe from any thread; never blocks.</summary>
-    public void Enqueue(Encounter encounter, string loggerServer)
+    /// <summary>Safe from any thread; never blocks. Pass
+    /// <paramref name="withProvenance"/> = false when the fight ended long
+    /// ago (manual re-uploads of archived fights) — probing the log NOW
+    /// would say nothing about who wrote it THEN, so nothing is claimed.</summary>
+    public void Enqueue(Encounter encounter, string loggerServer, bool withProvenance = true)
     {
         if (_authPaused || encounter.Title == Encounter.PlaceholderTitle)
             return;
-        _work.Writer.TryWrite((encounter, loggerServer));
+        _work.Writer.TryWrite((encounter, loggerServer, withProvenance));
     }
 
     /// <summary>Call when the token changes (or the user explicitly retries)
@@ -70,14 +81,27 @@ public sealed class UploadQueue : IDisposable
     {
         try
         {
-            await foreach (var (encounter, server) in _work.Reader.ReadAllAsync(_cts.Token).ConfigureAwait(false))
+            await foreach (var (encounter, server, withProvenance) in _work.Reader.ReadAllAsync(_cts.Token).ConfigureAwait(false))
             {
                 if (_authPaused)
                     continue; // drained but dropped — queued before the pause landed
                 LexiconPayload payload;
                 try
                 {
-                    payload = PayloadBuilder.Build(encounter, server);
+                    IReadOnlyList<string>? warnings = null;
+                    if (withProvenance && _provenance is { } provenance)
+                    {
+                        try
+                        {
+                            warnings = provenance(encounter);
+                        }
+                        catch (Exception)
+                        {
+                            // A failed probe never blocks the upload — the
+                            // payload just carries no provenance claim.
+                        }
+                    }
+                    payload = PayloadBuilder.Build(encounter, server, warnings);
                 }
                 catch (Exception ex)
                 {

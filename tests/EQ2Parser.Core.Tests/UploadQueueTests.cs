@@ -146,6 +146,43 @@ public class UploadQueueTests
     }
 
     [Fact]
+    public async Task Provenance_Warnings_Ride_Along_On_Auto_Uploads_Only()
+    {
+        var payloads = new List<LexiconPayload>();
+        using var queue = new UploadQueue(
+            (p, _) =>
+            {
+                lock (payloads)
+                {
+                    payloads.Add(p);
+                }
+                return Task.FromResult(Ok());
+            },
+            provenance: _ => [LogProvenance.WriterVerified]);
+
+        queue.Enqueue(BuildEncounter(), "Varsoon"); //                     auto: probes
+        queue.Enqueue(BuildEncounter(), "Varsoon", withProvenance: false); // manual: claims nothing
+        await WaitFor(() => queue.Uploaded == 2, "both uploads");
+
+        Assert.Equal([LogProvenance.WriterVerified], payloads[0].ClientWarnings);
+        Assert.Null(payloads[1].ClientWarnings);
+        // And the wire shape: omitted entirely when null, present when set.
+        Assert.DoesNotContain("client_warnings", payloads[1].ToJson());
+        Assert.Contains($"\"client_warnings\":[\"{LogProvenance.WriterVerified}\"]", payloads[0].ToJson());
+    }
+
+    [Fact]
+    public async Task Probe_Failure_Never_Blocks_The_Upload()
+    {
+        using var queue = new UploadQueue(
+            (_, _) => Task.FromResult(Ok()),
+            provenance: _ => throw new InvalidOperationException("probe exploded"));
+
+        queue.Enqueue(BuildEncounter(), "Varsoon");
+        await WaitFor(() => queue.Uploaded == 1, "upload despite probe failure");
+    }
+
+    [Fact]
     public async Task Sender_Exception_Is_A_Failure_Not_A_Crash()
     {
         // The reconfigure race: the client can be disposed mid-send. The

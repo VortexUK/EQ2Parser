@@ -18,9 +18,18 @@ public sealed class UploadService : IDisposable
 
     public UploadService()
     {
-        _queue = new UploadQueue(SendAsync);
+        _queue = new UploadQueue(SendAsync, ProbeProvenance);
         _queue.StatusChanged += () => Set(_queue.Status);
     }
+
+    /// <summary>Log-writer provenance for an auto upload: who holds the log
+    /// file right now (seconds after the fight ended)? EverQuest2 among the
+    /// holders → the positive live-log stamp; see LogProvenance.</summary>
+    private static IReadOnlyList<string>? ProbeProvenance(Encounter encounter) =>
+        OperatingSystem.IsWindows()
+            ? LogProvenance.BuildWarnings(
+                Core.Logs.LogFileHolders.Probe(encounter.SourceId), Environment.ProcessId)
+            : null;
 
     /// <summary>Last event line — the Settings card shows it.</summary>
     public string Status { get; private set; } = "";
@@ -90,8 +99,10 @@ public sealed class UploadService : IDisposable
             return;
         }
         _queue.ResetAuthPause();
+        // No provenance on manual uploads: the fight may have ended long
+        // ago, and probing the log NOW says nothing about who wrote it THEN.
         foreach (var encounter in sources)
-            _queue.Enqueue(encounter, LogPaths.ParseServerName(encounter.SourceId));
+            _queue.Enqueue(encounter, LogPaths.ParseServerName(encounter.SourceId), withProvenance: false);
     }
 
     /// <summary>Settings "Test" button — verifies the token against
