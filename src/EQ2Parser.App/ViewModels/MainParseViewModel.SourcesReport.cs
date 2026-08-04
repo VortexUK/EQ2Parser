@@ -104,6 +104,7 @@ public sealed partial class MainParseViewModel
             var targets = ReportTargets(parameter, out var context);
             var fightObj = parameter is ParseNode { Fight: { } nodeFight } ? nodeFight : ResolveFight();
             var tags = SourceReportTags(fightObj);
+            var seconds = FightSeconds(fightObj);
 
             List<(string Name, SourceTally T)> rows = [];
             foreach (var (name, combatants) in targets
@@ -125,6 +126,7 @@ public sealed partial class MainParseViewModel
                 ("NAME".PadRight(18), Services.ClassColors.TreeHeader),
                 ("CLASS".PadRight(14), Services.ClassColors.TreeHeader),
                 ("   TOTAL", Services.ClassColors.TreeHeader),
+                ("     DPS", Services.ClassColors.TreeHeader),
                 ("          CLASS           RAID           ITEM           AUTO            PET", Services.ClassColors.TreeHeader));
 
             var totals = new long[5];
@@ -137,6 +139,7 @@ public sealed partial class MainParseViewModel
                     (name.PadRight(18), Services.ClassColors.TreeText),
                     ((tally.DetectedClass ?? "?").PadRight(14), tally.Undetected ? Services.ClassColors.Neutral : Services.ClassColors.TreeText),
                     ($"{CombatantRow.Compact(tally.Total),8}", Services.ClassColors.TreeText),
+                    ($"{CombatantRow.Compact(tally.Total / seconds),8}", Services.ClassColors.SourceClass),
                     ("  " + Cell(tally.BySource[0], tally.Total), SourceBrush(AbilitySource.Class)),
                     ("  " + Cell(tally.BySource[1], tally.Total), SourceBrush(AbilitySource.Raid)),
                     ("  " + Cell(tally.BySource[2], tally.Total), SourceBrush(AbilitySource.Item)),
@@ -152,6 +155,7 @@ public sealed partial class MainParseViewModel
                     ("TOTAL".PadRight(18), Services.ClassColors.TreeHeader),
                     ("".PadRight(14), Services.ClassColors.TreeText),
                     ($"{CombatantRow.Compact(grandTotal),8}", Services.ClassColors.TreeText),
+                    ($"{CombatantRow.Compact(grandTotal / seconds),8}", Services.ClassColors.SourceClass),
                     ("  " + Cell(totals[0], grandTotal), SourceBrush(AbilitySource.Class)),
                     ("  " + Cell(totals[1], grandTotal), SourceBrush(AbilitySource.Raid)),
                     ("  " + Cell(totals[2], grandTotal), SourceBrush(AbilitySource.Item)),
@@ -181,7 +185,7 @@ public sealed partial class MainParseViewModel
                 }
             }
 
-            RenderRaidBuffContributions(rows);
+            RenderRaidBuffContributions(rows, seconds);
 
             // Curation footers: what the raid's granted buffs actually did,
             // and the top item-labelled names (mislabels surface here —
@@ -247,7 +251,9 @@ public sealed partial class MainParseViewModel
         lock (manager.Sync)
         {
             var targets = ReportTargets(row, out var context);
-            var tags = SourceReportTags(ResolveFight());
+            var fight = ResolveFight();
+            var tags = SourceReportTags(fight);
+            var seconds = FightSeconds(fight);
             var detected = tags.TryGetValue(row.Key, out var tag) ? tag.Class.ClassName : null;
             var tally = AccumulateSources(targets.Select(t => t.C), detected);
 
@@ -266,7 +272,7 @@ public sealed partial class MainParseViewModel
             ReportLine(
                 ("SOURCE".PadRight(9), Services.ClassColors.TreeHeader),
                 ("ABILITY".PadRight(28), Services.ClassColors.TreeHeader),
-                ("   DAMAGE   % TOTAL     HITS", Services.ClassColors.TreeHeader));
+                ("   DAMAGE      DPS   % TOTAL     HITS", Services.ClassColors.TreeHeader));
 
             foreach (var source in SourceOrder)
             {
@@ -280,13 +286,13 @@ public sealed partial class MainParseViewModel
                 ReportLine(
                     ((source == AbilitySource.System ? "AUTO" : source.ToString().ToUpperInvariant()).PadRight(9), SourceBrush(source)),
                     ($"{abilities.Count} abilities".PadRight(28), Services.ClassColors.Neutral),
-                    ($"{CombatantRow.Compact(subtotal),9}  {100.0 * subtotal / tally.Total,6:F1}%", SourceBrush(source)));
+                    ($"{CombatantRow.Compact(subtotal),9}{CombatantRow.Compact(subtotal / seconds),9}  {100.0 * subtotal / tally.Total,6:F1}%", SourceBrush(source)));
                 foreach (var (ability, (_, damage, hits)) in abilities)
                 {
                     ReportLine(
                         ("".PadRight(9), Services.ClassColors.TreeText),
                         (ability.PadRight(28), Services.ClassColors.TreeText),
-                        ($"{CombatantRow.Compact(damage),9}  {100.0 * damage / tally.Total,6:F1}%  {hits,7:N0}", Services.ClassColors.TreeText));
+                        ($"{CombatantRow.Compact(damage),9}{CombatantRow.Compact(damage / seconds),9}  {100.0 * damage / tally.Total,6:F1}%  {hits,7:N0}", Services.ClassColors.TreeText));
                 }
             }
 
@@ -345,7 +351,7 @@ public sealed partial class MainParseViewModel
         return (credits, classByAlly, beneficiaries);
     }
 
-    private void RenderRaidBuffContributions(List<(string Name, SourceTally T)> rows)
+    private void RenderRaidBuffContributions(List<(string Name, SourceTally T)> rows, double seconds)
     {
         var (credits, classByAlly, beneficiaries) = ComputeRaidCredits(rows);
         if (credits.Count == 0)
@@ -366,6 +372,7 @@ public sealed partial class MainParseViewModel
                 (granter.PadRight(18), Services.ClassColors.TreeText),
                 ((classByAlly.GetValueOrDefault(granter) ?? "").PadRight(14), Services.ClassColors.TreeText),
                 ($"{CombatantRow.Compact(credited),8}{(estimated ? " ~" : "  ")}", SourceBrush(AbilitySource.Raid)),
+                ($"≈{CombatantRow.Compact(credited / seconds)} dps".PadLeft(11), SourceBrush(AbilitySource.Raid)),
                 ($"  {from}", Services.ClassColors.Neutral));
             // WHO the procs fired on — "credited to the dirge" should never
             // need a log grep to answer "from whose swings?".
@@ -432,10 +439,12 @@ public sealed partial class MainParseViewModel
             return;
         var credited = mine.Sum(c => c.Damage / Math.Max(1, c.Granters.Count));
         var estimated = mine.Any(c => c.Estimated);
+        var grantSeconds = FightSeconds(fight);
         ReportLine(("", Services.ClassColors.Neutral));
         ReportLine(
             ("GRANTED TO THE RAID".PadRight(28), Services.ClassColors.TreeHeader),
-            ($"{CombatantRow.Compact(credited),9} credited{(estimated ? " ~" : "")}", SourceBrush(AbilitySource.Raid)));
+            ($"{CombatantRow.Compact(credited),9} credited{(estimated ? " ~" : "")}", SourceBrush(AbilitySource.Raid)),
+            ($"  ≈{CombatantRow.Compact(credited / grantSeconds)} dps", SourceBrush(AbilitySource.Raid)));
         foreach (var credit in mine.Take(8))
         {
             ReportLine(
