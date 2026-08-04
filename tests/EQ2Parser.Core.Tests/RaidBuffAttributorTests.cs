@@ -15,9 +15,13 @@ public class RaidBuffAttributorTests
             ["shared boon"] = ["Dirge", "Troubador"],
         });
 
+    // Real-world shape: the BENEFICIARIES (Eskel the Swashbuckler et al.)
+    // are whose swings carry the proc; the attributor's job is crediting
+    // the DIRGE who granted it. Beneficiaries never appear as granters.
     private static readonly Dictionary<string, string> Allies = new()
     {
-        ["Eskel"] = "Dirge",
+        ["Ariadneh"] = "Dirge",
+        ["Eskel"] = "Swashbuckler",
         ["Menludiir"] = "Templar",
         ["Waverat"] = "Troubador",
     };
@@ -27,9 +31,9 @@ public class RaidBuffAttributorTests
     {
         var credits = new RaidBuffAttributor(Map).Attribute([("Blade Chime", 1000)], Allies);
         var credit = Assert.Single(credits);
-        Assert.Equal(["Eskel"], credit.Granters);
+        Assert.Equal(["Ariadneh"], credit.Granters);
         Assert.False(credit.Estimated);
-        Assert.Equal(1000, RaidBuffAttributor.CreditByGranter(credits)["Eskel"]);
+        Assert.Equal(1000, RaidBuffAttributor.CreditByGranter(credits)["Ariadneh"]);
     }
 
     [Fact]
@@ -41,14 +45,14 @@ public class RaidBuffAttributorTests
         Assert.True(credit.Estimated);
         Assert.Equal(2, credit.Granters.Count);
         var byGranter = RaidBuffAttributor.CreditByGranter(credits);
-        Assert.Equal(500, byGranter["Eskel"]);
+        Assert.Equal(500, byGranter["Ariadneh"]);
         Assert.Equal(500, byGranter["Fiix"]);
     }
 
     [Fact]
     public void No_Granting_Class_Present_Is_Unattributed_Not_Guessed()
     {
-        var noTroub = new Dictionary<string, string> { ["Eskel"] = "Dirge" };
+        var noTroub = new Dictionary<string, string> { ["Ariadneh"] = "Dirge" };
         var credits = new RaidBuffAttributor(Map).Attribute([("Precise Note", 800)], noTroub);
         var credit = Assert.Single(credits);
         Assert.Empty(credit.Granters);
@@ -61,9 +65,9 @@ public class RaidBuffAttributorTests
         var credits = new RaidBuffAttributor(Map).Attribute([("Shared Boon", 1000)], Allies);
         var credit = Assert.Single(credits);
         Assert.True(credit.Estimated);
-        Assert.Equal(["Eskel", "Waverat"], credit.Granters);
+        Assert.Equal(["Ariadneh", "Waverat"], credit.Granters);
         var byGranter = RaidBuffAttributor.CreditByGranter(credits);
-        Assert.Equal(500, byGranter["Eskel"]);
+        Assert.Equal(500, byGranter["Ariadneh"]);
         Assert.Equal(500, byGranter["Waverat"]);
     }
 
@@ -71,7 +75,7 @@ public class RaidBuffAttributorTests
     public void Roman_Numeral_Tiers_Resolve_Through_Normalization()
     {
         var credits = new RaidBuffAttributor(Map).Attribute([("Blade Chime IV", 100)], Allies);
-        Assert.Equal(["Eskel"], Assert.Single(credits).Granters);
+        Assert.Equal(["Ariadneh"], Assert.Single(credits).Granters);
     }
 
     [Fact]
