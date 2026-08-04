@@ -110,8 +110,23 @@ public static class PiperVoiceCatalog
     public static string TokensPath(PiperVoice voice) =>
         Path.Combine(ModelDir(voice), "tokens.txt");
 
+    /// <summary>Model + tokens present AND non-empty — a zero-byte model
+    /// from a failed disk write used to pass a bare Exists check and then
+    /// fail synthesis on every phrase.</summary>
     public static bool IsInstalled(PiperVoice voice) =>
-        File.Exists(ModelPath(voice)) && File.Exists(TokensPath(voice));
+        NonEmpty(ModelPath(voice)) && NonEmpty(TokensPath(voice));
+
+    private static bool NonEmpty(string path)
+    {
+        try
+        {
+            return new FileInfo(path) is { Exists: true, Length: > 0 };
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
 
     /// <summary>Download + install a voice. Progress is 0–1 (download phase;
     /// extraction is a few seconds at the end).</summary>

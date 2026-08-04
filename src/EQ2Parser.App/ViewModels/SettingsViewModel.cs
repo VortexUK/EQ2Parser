@@ -210,6 +210,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         _lexiconStatus = manager.Lexicon.Status;
         manager.Lexicon.StatusChanged += () =>
             System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => LexiconStatus = manager.Lexicon.Status);
+        // A broken neural voice must say SO — the silent Windows-voice
+        // fallback cost a tester a session of confusion.
+        manager.Audio.NeuralVoiceFailed += reason =>
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+                VoiceStatus = $"Neural voice failed to speak ({reason}) — alerts are using a Windows voice. "
+                    + "Try removing the pack below and downloading it again, then hit Test.");
         _loadingUpload = true;
         UploadEnabled = manager.Settings.UploadEnabled;
         _loadingUpload = false;

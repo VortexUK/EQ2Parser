@@ -45,6 +45,14 @@ public sealed class AlertAudioService : IDisposable
     /// when the system exposes one, else the system default).</summary>
     public string? VoiceId { get; set; }
 
+    /// <summary>Raised (on the speech pump thread) when the selected NEURAL
+    /// voice failed and a phrase fell back to a Windows voice — carries the
+    /// reason. Fired once per voice selection until it recovers, not per
+    /// phrase, so the Settings status line doesn't churn.</summary>
+    public event Action<string>? NeuralVoiceFailed;
+
+    private string? _reportedNeuralFailure;
+
     public AlertAudioService()
     {
         _speechPump = Task.Run(async () =>
@@ -162,12 +170,15 @@ public sealed class AlertAudioService : IDisposable
 
         // Neural voice: synthesize on this pump thread (~100 ms warm).
         // Missing/broken model falls through to the Windows backend so an
-        // alert mid-download still speaks.
+        // alert mid-download still speaks — but never SILENTLY: a tester
+        // spent a session on the wrong voice because every failure in this
+        // chain was swallowed.
         if (PiperVoiceCatalog.Find(VoiceId) is { } neural && PiperVoiceCatalog.IsInstalled(neural))
         {
             var neuralWav = _piper.Synthesize(neural, text, SpeakingRate);
             if (neuralWav is not null)
             {
+                _reportedNeuralFailure = null; // recovered
                 lock (_cacheGate)
                 {
                     if (_ttsCache.Count >= CacheCap)
@@ -175,6 +186,11 @@ public sealed class AlertAudioService : IDisposable
                     _ttsCache[key] = neuralWav;
                 }
                 return neuralWav;
+            }
+            if (_reportedNeuralFailure != VoiceId)
+            {
+                _reportedNeuralFailure = VoiceId;
+                NeuralVoiceFailed?.Invoke(_piper.LastError ?? "unknown error");
             }
         }
 

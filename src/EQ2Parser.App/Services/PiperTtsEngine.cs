@@ -18,6 +18,12 @@ public sealed class PiperTtsEngine : IDisposable
     private OfflineTts? _tts;
     private string? _loadedArchive;
 
+    /// <summary>Why the last synthesis returned null (exception type +
+    /// message, or "produced no audio") — null after a success. Lets the
+    /// caller tell the user WHY alerts fell back to a Windows voice instead
+    /// of failing silently.</summary>
+    public string? LastError { get; private set; }
+
     /// <summary>Synthesize to 16-bit WAV bytes, or null when the model
     /// can't load or produces nothing.</summary>
     public byte[]? Synthesize(PiperVoice voice, string text, double rate)
@@ -57,18 +63,24 @@ public sealed class PiperTtsEngine : IDisposable
 
                 var audio = _tts!.Generate(text, (float)Math.Clamp(rate, 0.5, 3.0), voice.SpeakerId);
                 if (audio.Samples.Length == 0)
+                {
+                    LastError = "model produced no audio";
                     return null;
+                }
                 using var ms = new MemoryStream();
                 using (var writer = new WaveFileWriter(new IgnoreDisposeStream(ms), new WaveFormat(audio.SampleRate, 16, 1)))
                 {
                     writer.WriteSamples(audio.Samples, 0, audio.Samples.Length);
                 }
+                LastError = null;
                 return ms.ToArray();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // A corrupt model or native failure degrades to the Windows
-                // voice fallback in AlertAudioService.
+                // voice fallback in AlertAudioService — record WHY so the
+                // Settings page can say so instead of pretending.
+                LastError = $"{ex.GetType().Name}: {ex.Message}";
                 _tts?.Dispose();
                 _tts = null;
                 _loadedArchive = null;
