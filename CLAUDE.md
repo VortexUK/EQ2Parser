@@ -107,3 +107,13 @@ Log lines are `(epoch)[local timestamp] message`, e.g.
 Log path shape: `<install>/logs/<server>/eq2log_<character>.txt` (the ACT
 plugin's LogPathParser documents the variants). Files are ANSI/UTF-8 mixed
 historically — the tail reader must handle encoding defensively.
+
+Owner-name aliasing: some temp pets act entirely under the OWNER's name —
+the Templar hammer's swings log as "Menludiir's Divine Smash …" AND its
+expiry logs as "Menludiir has died", indistinguishable from a real player
+death (ACT miscounts it identically; parity preserves it). Consequences:
+pet abilities need source_overrides.json entries, and death counts/lines
+are NOT a trustworthy signal for heuristics (this killed the death-window
+idea for two-dirge raid-buff disambiguation — see RaidBuffAttributor: an
+even estimated split is the proven ceiling, the log carries no caster
+identity for granted buffs anywhere).
