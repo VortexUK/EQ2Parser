@@ -34,6 +34,10 @@ public sealed partial class MainParseViewModel
         _ => Services.ClassColors.Neutral,
     };
 
+    /// <summary>"System" is developer jargon — the bucket is auto-attack.</summary>
+    private static string SourceLabel(AbilitySource source) =>
+        source == AbilitySource.System ? "Auto-attack" : source.ToString();
+
     /// <summary>Per-target accumulation: damage per source, plus per-ability
     /// rollups for the detail view and the curation footers.</summary>
     private sealed class SourceTally
@@ -109,7 +113,7 @@ public sealed partial class MainParseViewModel
                 ("NAME".PadRight(18), Services.ClassColors.TreeHeader),
                 ("CLASS".PadRight(14), Services.ClassColors.TreeHeader),
                 ("   TOTAL", Services.ClassColors.TreeHeader),
-                ("          CLASS           RAID           ITEM         SYSTEM", Services.ClassColors.TreeHeader));
+                ("          CLASS           RAID           ITEM           AUTO", Services.ClassColors.TreeHeader));
 
             var totals = new long[4];
             long grandTotal = 0;
@@ -167,7 +171,7 @@ public sealed partial class MainParseViewModel
                 ReportCartesianVisible = false;
                 ReportDonutInner = [.. SourceOrder
                     .Where(s => totals[(int)s] > 0)
-                    .Select(ISeries (s) => Ring(s.ToString(), totals[(int)s], SourceSk[(int)s], grandTotal, 44))];
+                    .Select(ISeries (s) => Ring(SourceLabel(s), totals[(int)s], SourceSk[(int)s], grandTotal, 44))];
                 var raidAbilities = rows
                     .SelectMany(r => r.T.ByAbility)
                     .Where(kv => kv.Value.Source == AbilitySource.Raid)
@@ -238,7 +242,7 @@ public sealed partial class MainParseViewModel
                     continue;
                 var subtotal = abilities.Sum(kv => kv.Value.Damage);
                 ReportLine(
-                    (source.ToString().ToUpperInvariant().PadRight(9), SourceBrush(source)),
+                    ((source == AbilitySource.System ? "AUTO" : source.ToString().ToUpperInvariant()).PadRight(9), SourceBrush(source)),
                     ($"{abilities.Count} abilities".PadRight(28), Services.ClassColors.Neutral),
                     ($"{CombatantRow.Compact(subtotal),9}  {100.0 * subtotal / tally.Total,6:F1}%", SourceBrush(source)));
                 foreach (var (ability, (_, damage, hits)) in abilities)
@@ -260,7 +264,7 @@ public sealed partial class MainParseViewModel
             ReportCartesianVisible = false;
             ReportDonutInner = [.. SourceOrder
                 .Where(s => tally.BySource[(int)s] > 0)
-                .Select(ISeries (s) => Ring(s.ToString(), tally.BySource[(int)s], SourceSk[(int)s], tally.Total, 44))];
+                .Select(ISeries (s) => Ring(SourceLabel(s), tally.BySource[(int)s], SourceSk[(int)s], tally.Total, 44))];
             ReportDonutOuter = [.. tally.ByAbility
                 .OrderByDescending(kv => kv.Value.Damage)
                 .Take(10)
