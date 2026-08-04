@@ -45,6 +45,14 @@ public class SourceOverridesTests
         // SK kit — class for the SK (own spell) AND the coercer (their play).
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Death Cloud", "Coercer"));
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Painbringer", "Shadowknight"));
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Siphon Strike", "Coercer"));
+        // Unholy Strike + Voracious Soul are REAL SK grants (user-confirmed
+        // source spells) — no overrides: the map alone keeps them
+        // attributable (Raid on non-SKs, Class on the SK).
+        Assert.Equal(AbilitySource.Raid, identifier.ClassifySource("Unholy Strike", "Wizard"));
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Unholy Strike", "Shadowknight"));
+        Assert.Equal(AbilitySource.Raid, identifier.ClassifySource("Voracious Soul", "Paladin"));
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Voracious Soul", "Shadowknight"));
     }
 
     [Fact]

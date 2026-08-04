@@ -186,6 +186,24 @@
       ],
       "source": "class",
       "note": "SK castable that ALSO appears under Coercer names: charm pets act under the coercer's name and cast the charmed mob's SK kit, which tagged Raid and falsely credited the real SK. Charm is the coercer's play - class for both."
+    },
+    {
+      "ability": "Siphon Strike",
+      "classes": [
+        "Shadowknight",
+        "Coercer"
+      ],
+      "source": "class",
+      "note": "SK castable also appearing under coercer names via charm pets (see Painbringer)."
+    },
+    {
+      "ability": "Unending Agony",
+      "classes": [
+        "Shadowknight",
+        "Coercer"
+      ],
+      "source": "class",
+      "note": "SK castable also appearing under coercer names via charm pets (see Painbringer)."
     }
   ]
 }
