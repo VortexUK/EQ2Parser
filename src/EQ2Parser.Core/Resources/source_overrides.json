@@ -1,0 +1,10 @@
+{
+  "overrides": [
+    {
+      "ability": "Divine Smash",
+      "classes": ["Templar", "Inquisitor"],
+      "source": "class",
+      "note": "Cleric hammer temp-pet ability - the pet swings log under the owner's own name, and the name is absent from census spell lists, so the map called it an item proc."
+    }
+  ]
+}

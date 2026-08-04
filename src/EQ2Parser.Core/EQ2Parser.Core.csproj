@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\spell_classes.json" />
+    <EmbeddedResource Include="Resources\source_overrides.json" />
   </ItemGroup>
 
 </Project>

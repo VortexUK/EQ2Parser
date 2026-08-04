@@ -27,7 +27,14 @@ public sealed class SourceManager : IDisposable
 
     public object Sync { get; } = new();
     public EncounterCorrelator Correlator { get; } = new();
-    public CombatantClassifier Classifier { get; } = new(new ClassIdentifier(SpellClassMap.LoadEmbedded()));
+
+    /// <summary>Curated source corrections + an optional local hot-fix file
+    /// (%LocalAppData%\EQ2Parser\source_overrides.json, rules win over the
+    /// embedded set) so a mislabel is fixable without waiting on a release.</summary>
+    public CombatantClassifier Classifier { get; } = new(new ClassIdentifier(
+        SpellClassMap.LoadEmbedded(),
+        SourceOverrides.LoadEmbedded()
+            .MergeFile(System.IO.Path.Combine(AppSettings.Directory, "source_overrides.json"))));
     public AlertAudioService Audio { get; }
     public TriggerService Triggers { get; }
     public TimerService SpellTimers { get; }

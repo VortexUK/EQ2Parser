@@ -27,10 +27,13 @@ public sealed record ClassDetection(string? ClassName, double Confidence, int Ma
 /// Detects a combatant's class from the abilities THEY cast (outgoing swings
 /// are inherently "obviously them" — buffs cast on them by others never
 /// appear here), by majority vote over the spell→class map. Also tags each
-/// ability with its source (class kit / granted raid buff / item proc).
+/// ability with its source (class kit / granted raid buff / item proc),
+/// consulting the curated <see cref="SourceOverrides"/> first.
 /// </summary>
-public sealed class ClassIdentifier(SpellClassMap map)
+public sealed class ClassIdentifier(SpellClassMap map, SourceOverrides? overrides = null)
 {
+    private readonly SourceOverrides _overrides = overrides ?? SourceOverrides.Empty;
+
     private static readonly HashSet<string> SystemAbilities = new(StringComparer.Ordinal)
     {
         Grammar.EnglishGrammar.AutoAttackAbility,
@@ -89,9 +92,13 @@ public sealed class ClassIdentifier(SpellClassMap map)
             abilities.Count);
     }
 
-    /// <summary>Tag one ability for a combatant with a known/detected class.</summary>
+    /// <summary>Tag one ability for a combatant with a known/detected class.
+    /// Curated overrides outrank everything — they exist precisely for the
+    /// cases the map gets wrong.</summary>
     public AbilitySource ClassifySource(string abilityName, string? detectedClass)
     {
+        if (_overrides.TryResolve(abilityName, detectedClass, out var overridden))
+            return overridden;
         if (SystemAbilities.Contains(abilityName))
             return AbilitySource.System;
         var classes = Map.ClassesFor(abilityName);
