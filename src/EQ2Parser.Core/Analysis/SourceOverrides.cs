@@ -23,9 +23,15 @@ public sealed class SourceOverrides
 
     private sealed record RuleFile(List<RuleEntry>? Overrides);
 
-    private sealed record RuleEntry(string? Ability, string[]? Classes, string? Source, string? Note);
+    private sealed record RuleEntry(
+        string? Ability, string[]? Classes, string? Source, string? Note, string[]? GrantedBy);
 
     private readonly Dictionary<string, List<Rule>> _rules = new(StringComparer.Ordinal);
+
+    /// <summary>ability (normalized) → curated granting classes for the
+    /// raid-buff attributor — for the cases neither map layer states
+    /// truthfully. First-merged (user file) wins.</summary>
+    private readonly Dictionary<string, string[]> _grantedBy = new(StringComparer.Ordinal);
 
     /// <summary>Why the last MergeFile was skipped, or null when it loaded
     /// (or no file was present). Surfaced so a user edit that fails to parse
@@ -79,14 +85,20 @@ public sealed class SourceOverrides
             stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         foreach (var entry in file?.Overrides ?? [])
         {
-            if (entry.Ability is not { Length: > 0 } ability || entry.Source is not { Length: > 0 } source)
+            if (entry.Ability is not { Length: > 0 } ability)
                 continue;
-            if (!Enum.TryParse<AbilitySource>(source, ignoreCase: true, out var parsed))
+            var key = SpellClassMap.Normalize(ability);
+            if (entry.GrantedBy is { Length: > 0 } granted
+                && (prepend || !_grantedBy.ContainsKey(key)))
+            {
+                _grantedBy[key] = granted;
+            }
+            if (entry.Source is not { Length: > 0 } source
+                || !Enum.TryParse<AbilitySource>(source, ignoreCase: true, out var parsed))
                 continue;
             var classes = entry.Classes is { Length: > 0 }
                 ? new HashSet<string>(entry.Classes, StringComparer.OrdinalIgnoreCase)
                 : null;
-            var key = SpellClassMap.Normalize(ability);
             if (!_rules.TryGetValue(key, out var list))
                 _rules[key] = list = [];
             if (prepend)
@@ -95,6 +107,11 @@ public sealed class SourceOverrides
                 list.Add(new Rule(classes, parsed));
         }
     }
+
+    /// <summary>Curated granting classes for an ability, or null when no
+    /// override exists (the attributor then asks the map).</summary>
+    public IReadOnlyList<string>? GrantedByFor(string abilityName) =>
+        _grantedBy.TryGetValue(SpellClassMap.Normalize(abilityName), out var granted) ? granted : null;
 
     /// <summary>First matching rule for this ability + detected class, if
     /// any. Class-scoped rules need a detected class to match; unscoped

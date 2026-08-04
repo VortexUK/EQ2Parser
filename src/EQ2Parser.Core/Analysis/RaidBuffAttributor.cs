@@ -11,8 +11,10 @@ namespace EQ2Parser.Core.Analysis;
 /// (flagged estimated), none leaves the damage unattributed rather than
 /// guessed. View-only: uploads and stored data are never rewritten.
 /// </summary>
-public sealed class RaidBuffAttributor(SpellClassMap map)
+public sealed class RaidBuffAttributor(SpellClassMap map, SourceOverrides? overrides = null)
 {
+    private readonly SourceOverrides _overrides = overrides ?? SourceOverrides.Empty;
+
     /// <summary>One raid-granted ability's attribution verdict.</summary>
     /// <param name="Ability">Proc/effect name as logged.</param>
     /// <param name="Damage">Raid-wide damage done under that name.</param>
@@ -36,7 +38,9 @@ public sealed class RaidBuffAttributor(SpellClassMap map)
         List<Credit> credits = [];
         foreach (var (ability, damage) in raidSourced)
         {
-            var granting = map.ClassesFor(ability);
+            // Curated grantedBy overrides outrank the map; otherwise the
+            // effects-first lookup (see GrantingClassesFor for why).
+            var granting = _overrides.GrantedByFor(ability) ?? map.GrantingClassesFor(ability);
             var granters = classByAlly
                 .Where(kv => granting.Contains(kv.Value, StringComparer.OrdinalIgnoreCase))
                 .Select(kv => kv.Key)

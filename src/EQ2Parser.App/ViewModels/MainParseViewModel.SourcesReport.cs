@@ -291,7 +291,8 @@ public sealed partial class MainParseViewModel
         var classByAlly = rows
             .Where(r => r.T.DetectedClass is not null)
             .ToDictionary(r => r.Name, r => r.T.DetectedClass!, StringComparer.OrdinalIgnoreCase);
-        var credits = new RaidBuffAttributor(manager.Classifier.Identifier.Map)
+        var credits = new RaidBuffAttributor(
+                manager.Classifier.Identifier.Map, manager.Classifier.Identifier.Overrides)
             .Attribute(raidSourced, classByAlly);
         return (credits, classByAlly);
     }

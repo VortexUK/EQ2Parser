@@ -86,4 +86,47 @@ public class RaidBuffAttributorTests
         var credits = new RaidBuffAttributor(Map).Attribute([("Mystery Proc", 100)], Allies);
         Assert.Empty(Assert.Single(credits).Granters);
     }
+
+    [Fact]
+    public void Effects_Layer_Outranks_A_SameName_Castable_For_Granting()
+    {
+        // The Divine Strike case: a Templar SCROLL of the same name exists
+        // (spells layer), but the proc on OTHERS is granted by a Paladin
+        // buff (effects layer). The union co-credited every Templar; the
+        // effects-first rule credits only the Paladin — exact, unflagged.
+        var map = SpellClassMap.FromDictionary(
+            spells: new() { ["divine strike"] = ["Templar"] },
+            effects: new() { ["divine strike"] = ["Paladin"] });
+        var allies = new Dictionary<string, string>
+        {
+            ["Menludiir"] = "Templar",
+            ["Sihtric"] = "Paladin",
+        };
+        var credits = new RaidBuffAttributor(map).Attribute([("Divine Strike", 1000)], allies);
+        var credit = Assert.Single(credits);
+        Assert.Equal(["Sihtric"], credit.Granters);
+        Assert.False(credit.Estimated);
+    }
+
+    [Fact]
+    public void Spells_Layer_Still_Grants_When_Effects_Is_Silent()
+    {
+        // Perfection of the Maestro: the procs log under the buff's own
+        // scroll name, so the spells layer is the (only) granting identity.
+        var map = SpellClassMap.FromDictionary(
+            spells: new() { ["perfection of the maestro"] = ["Troubador"] });
+        var credits = new RaidBuffAttributor(map)
+            .Attribute([("Perfection of the Maestro", 500)], Allies);
+        Assert.Equal(["Waverat"], Assert.Single(credits).Granters);
+    }
+
+    [Fact]
+    public void GrantedBy_Override_Outranks_Both_Map_Layers()
+    {
+        var overrides = SourceOverrides.FromJson(
+            """{ "overrides": [ { "ability": "Blade Chime", "grantedBy": ["Troubador"] } ] }""");
+        var credits = new RaidBuffAttributor(Map, overrides).Attribute([("Blade Chime", 1000)], Allies);
+        var credit = Assert.Single(credits);
+        Assert.Equal(["Waverat"], credit.Granters); // the troub, not the dirge
+    }
 }

@@ -32,7 +32,8 @@ public sealed record ClassDetection(string? ClassName, double Confidence, int Ma
 /// </summary>
 public sealed class ClassIdentifier(SpellClassMap map, SourceOverrides? overrides = null)
 {
-    private readonly SourceOverrides _overrides = overrides ?? SourceOverrides.Empty;
+    /// <summary>Exposed so the attributor shares the same curated set.</summary>
+    public SourceOverrides Overrides { get; } = overrides ?? SourceOverrides.Empty;
 
     private static readonly HashSet<string> SystemAbilities = new(StringComparer.Ordinal)
     {
@@ -97,7 +98,7 @@ public sealed class ClassIdentifier(SpellClassMap map, SourceOverrides? override
     /// cases the map gets wrong.</summary>
     public AbilitySource ClassifySource(string abilityName, string? detectedClass)
     {
-        if (_overrides.TryResolve(abilityName, detectedClass, out var overridden))
+        if (Overrides.TryResolve(abilityName, detectedClass, out var overridden))
             return overridden;
         if (SystemAbilities.Contains(abilityName))
             return AbilitySource.System;

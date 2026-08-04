@@ -67,6 +67,22 @@ public sealed partial class SpellClassMap
     public IReadOnlyList<string> VotingClassesFor(string abilityName) =>
         _spells.TryGetValue(Normalize(abilityName), out var classes) ? classes : [];
 
+    /// <summary>Granting-class lookup for raid-buff attribution. The EFFECTS
+    /// layer is authoritative when it knows the name: a proc appearing on
+    /// OTHER characters comes from the buff that grants it, never from a
+    /// same-named castable spell. ("Divine Strike" is both a Templar scroll
+    /// AND the proc a Paladin buff grants — only the Paladin grants it to
+    /// the raid; the union wrongly co-credited every Templar.) The spells
+    /// layer is the fallback for buffs whose procs log under the buff's own
+    /// scroll name (Perfection of the Maestro).</summary>
+    public IReadOnlyList<string> GrantingClassesFor(string abilityName)
+    {
+        var key = Normalize(abilityName);
+        if (_effects.TryGetValue(key, out var effect))
+            return effect;
+        return _spells.TryGetValue(key, out var scroll) ? scroll : [];
+    }
+
     /// <summary>Tagging lookup — scroll names plus triggered-effect names.
     /// Empty = not a class ability at all (item proc signal).</summary>
     public IReadOnlyList<string> ClassesFor(string abilityName)
