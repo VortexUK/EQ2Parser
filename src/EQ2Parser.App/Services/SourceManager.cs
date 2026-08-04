@@ -69,6 +69,10 @@ public sealed class SourceManager : IDisposable
             Settings.LexiconBaseUrl,
             TokenProtector.Unprotect(Settings.LexiconApiTokenProtected),
             Settings.UploadEnabled);
+        // Archive collapse: whenever a mirror joins a fight, the archive
+        // keeps only the primary copy (fires under Sync — correlator events
+        // are raised inside Accept on the pump/restore path).
+        Correlator.Merged += History.CollapseToPrimary;
         // History views resync by polling Correlator.Version on the UI tick
         // — no event needed (the old HistoryChanged had zero subscribers).
     }

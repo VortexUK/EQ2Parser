@@ -31,6 +31,18 @@ public sealed class CorrelatedEncounter
     /// COMPLETED encounters (immutable), so this caches until a Join.</summary>
     public Encounter Primary => _primaryCache ??= _sources.MaxBy(e => e.Duration)!;
 
+    /// <summary>Every source except <see cref="Primary"/> — the mirrors the
+    /// archive collapse discards (the archive keeps ONE copy of each fight,
+    /// matching the site's keep-the-primary retention rule).</summary>
+    public IEnumerable<Encounter> NonPrimarySources
+    {
+        get
+        {
+            var primary = Primary;
+            return _sources.Where(s => !ReferenceEquals(s, primary));
+        }
+    }
+
     public string Zone => Primary.Zone;
     public string Title => Primary.Title;
     public SuccessLevel GetSuccessLevel() => Primary.GetSuccessLevel();

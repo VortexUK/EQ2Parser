@@ -35,6 +35,11 @@ public sealed class HistoryService : IDisposable
     /// phantom "loaded" id made the archive refuse to pull them back.</summary>
     private readonly HashSet<Encounter> _unloadedBeforeSave = [];
 
+    /// <summary>Non-primary mirrors doomed by the archive collapse before
+    /// their background save landed — the writer drops them instead of
+    /// saving a copy the collapse would immediately delete.</summary>
+    private readonly HashSet<Encounter> _skipSave = [];
+
     public HistoryService()
     {
         Directory.CreateDirectory(AppSettings.Directory);
@@ -45,9 +50,15 @@ public sealed class HistoryService : IDisposable
             {
                 try
                 {
-                    long id;
                     lock (_gate)
                     {
+                        // Doomed by the archive collapse (a non-primary
+                        // mirror of an already-archived fight) — drop it.
+                        if (_skipSave.Remove(encounter))
+                        {
+                            _unloadedBeforeSave.Remove(encounter);
+                            continue;
+                        }
                         var unloaded = _unloadedBeforeSave.Remove(encounter);
                         // A re-parse of an already-archived fight maps to
                         // its existing row instead of saving a duplicate —
@@ -64,11 +75,14 @@ public sealed class HistoryService : IDisposable
                             _inParser.Remove(staleId);
                             existing = null;
                         }
-                        id = existing ?? _store.SaveEncounter(encounter);
+                        var id = existing ?? _store.SaveEncounter(encounter);
                         if (!unloaded)
                             _inParser.Add(id);
+                        // Inside the gate so CollapseToPrimary can never see
+                        // a saved row without its id mapping (it would doom
+                        // via _skipSave and orphan the row).
+                        _storedIds.Add(encounter, new StrongBox<long>(id));
                     }
-                    _storedIds.Add(encounter, new StrongBox<long>(id));
                 }
                 catch (Exception)
                 {
@@ -197,6 +211,34 @@ public sealed class HistoryService : IDisposable
         _storedIds.Add(encounter, new StrongBox<long>(summary.Id));
         _inParser.Add(summary.Id);
         correlator.Accept(encounter);
+    }
+
+    /// <summary>Correlator Merged handler: the archive keeps ONE copy of
+    /// each fight — the primary (longest), matching the site's retention
+    /// rule. A non-primary mirror already saved is deleted; one still in
+    /// the save queue is dropped before it lands. The in-RAM session view
+    /// keeps every mirror (that's what the perspective dropdown flicks
+    /// between) — this only shapes what survives into the archive. Also
+    /// self-heals pre-collapse archives: startup restore replays mirrors
+    /// through the correlator, and each re-merge prunes the duplicates.</summary>
+    public void CollapseToPrimary(CorrelatedEncounter fight)
+    {
+        lock (_gate)
+        {
+            foreach (var mirror in fight.NonPrimarySources)
+            {
+                if (_storedIds.TryGetValue(mirror, out var box))
+                {
+                    _store.DeleteEncounter(box.Value);
+                    _inParser.Remove(box.Value);
+                    _storedIds.Remove(mirror);
+                }
+                else
+                {
+                    _skipSave.Add(mirror);
+                }
+            }
+        }
     }
 
     /// <summary>Tree deletion: the fight leaves the session but stays in

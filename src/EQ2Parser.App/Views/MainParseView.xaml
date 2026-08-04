@@ -333,6 +333,13 @@
                         <TextBlock Text="LIVE" FontSize="10" Foreground="{StaticResource SuccessBrush}"
                                    FontFamily="{StaticResource BodySemiBoldFont}" />
                     </Border>
+                    <!-- Which log's view of the fight — only when there is
+                         more than one (multi-log boxing / merged fights). -->
+                    <ComboBox ItemsSource="{Binding Perspectives}" SelectedItem="{Binding SelectedPerspective}"
+                              DisplayMemberPath="Label" MinWidth="130" Margin="12,0,0,0" FontSize="12"
+                              VerticalAlignment="Center"
+                              Visibility="{Binding PerspectiveVisible, Converter={StaticResource BoolToVis}}"
+                              ToolTip="Perspective: whose log this view is built from. Combined merges every witness (each character's own log wins for their numbers)." />
                 </StackPanel>
                 <ToggleButton x:Name="ColumnsToggle"
                               Content="☰ COLUMNS" HorizontalAlignment="Right" VerticalAlignment="Center"

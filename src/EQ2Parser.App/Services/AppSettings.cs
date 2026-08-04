@@ -94,6 +94,11 @@ public sealed record AppSettings
     /// copied settings.json (or a quarantine copy) can't leak it.</summary>
     public string? LexiconApiTokenProtected { get; init; }
 
+    /// <summary>Character whose log the live view follows when several
+    /// sources are in combat at once (the perspective dropdown persists the
+    /// last pick). Null = first source in combat.</summary>
+    public string? LivePerspectiveOwner { get; init; }
+
     /// <summary>Mass-detriment callouts ("8 players stunned").</summary>
     public bool CalloutsEnabled { get; init; } = true;
     public int CalloutMinPlayers { get; init; } = 3;

@@ -68,12 +68,19 @@ public sealed partial class MainParseViewModel
         ChartData? chart = null;
         List<ZoneFightRow>? zoneRows = null;
         object? resolvedFight;
+        List<PerspectiveOption> perspectiveOptions;
+        PerspectiveOption? perspectiveChosen;
 
         lock (manager.Sync)
         {
+            (perspectiveOptions, perspectiveChosen) = ComputePerspectives();
+            _effectivePerspective = perspectiveChosen;
             var fight = ResolveFight();
             if (fight is null)
+            {
+                ApplyPerspectives(perspectiveOptions, perspectiveChosen);
                 return;
+            }
             resolvedFight = fight;
             // While a report overlays the drill, the drill must not keep
             // driving the view (it was overwriting the report's title and
@@ -132,6 +139,7 @@ public sealed partial class MainParseViewModel
                 chart = MaybeSnapshotChart(resolvedFight, allies);
         }
 
+        ApplyPerspectives(perspectiveOptions, perspectiveChosen);
         Breadcrumb = breadcrumb;
         InCombat = live;
         ZoneSummaryOpen = resolvedFight is ZoneFights;
@@ -163,15 +171,139 @@ public sealed partial class MainParseViewModel
     private object? ResolveFight()
     {
         if (!FollowLive && _pinnedFight is not null)
+        {
+            // A specific witness of a merged fight is selected — render that
+            // mirror's own view instead of the combined one.
+            if (_pinnedFight is CorrelatedEncounter merged
+                && _effectivePerspective?.SourceId is { } mirrorId
+                && merged.Sources.FirstOrDefault(s => s.SourceId == mirrorId) is { } mirror)
+                return mirror;
             return _pinnedFight;
+        }
+        // Live: the chosen perspective's fight first, else first in combat.
+        if (_effectivePerspective?.SourceId is { } liveId)
+        {
+            foreach (var source in manager.Sources)
+            {
+                if (source.Engine.ActiveEncounter is { } chosen && chosen.SourceId == liveId)
+                    return chosen;
+            }
+        }
         foreach (var source in manager.Sources)
         {
             if (source.Engine.ActiveEncounter is { } active)
                 return active;
         }
         if (manager.Correlator.History.Count > 0)
-            return manager.Correlator.History[^1];
+        {
+            var last = manager.Correlator.History[^1];
+            // The follow-live fallback honours a witness pick too.
+            if (_effectivePerspective?.SourceId is { } lastId
+                && last.Sources.FirstOrDefault(s => s.SourceId == lastId) is { } lastMirror)
+                return lastMirror;
+            return last;
+        }
         return null;
+    }
+
+    // ── Perspective plumbing ────────────────────────────────────────────────
+
+    /// <summary>Options for the CURRENT context (live vs pinned merged
+    /// fight) + the effective choice for this tick. Runs under the sync
+    /// lock. Selection preference: the user's current pick when still
+    /// valid, else the persisted live owner (live only), else the default
+    /// (first live source / Combined).</summary>
+    private (List<PerspectiveOption> Options, PerspectiveOption? Chosen) ComputePerspectives()
+    {
+        if (FollowLive || _pinnedFight is null)
+        {
+            List<Encounter> active = [];
+            foreach (var source in manager.Sources)
+            {
+                if (source.Engine.ActiveEncounter is { } encounter)
+                    active.Add(encounter);
+            }
+            // Nothing live: follow-live falls back to the last finished
+            // fight — keep the witness dropdown available for it.
+            if (active.Count == 0
+                && manager.Correlator.History.Count > 0
+                && manager.Correlator.History[^1] is { Sources.Count: > 1 } last)
+                return MergedOptions(last);
+            if (active.Count < 2)
+                return ([], null);
+            var options = OptionsFor(active);
+            PerspectiveOption? chosen = null;
+            if (SelectedPerspective?.SourceId is { } currentId)
+                chosen = options.FirstOrDefault(o => o.SourceId == currentId);
+            if (chosen is null && manager.Settings.LivePerspectiveOwner is { Length: > 0 } preferred)
+            {
+                var match = active.FirstOrDefault(e =>
+                    string.Equals(e.OwnerName, preferred, StringComparison.OrdinalIgnoreCase));
+                if (match is not null)
+                    chosen = options.First(o => o.SourceId == match.SourceId);
+            }
+            return (options, chosen ?? options[0]);
+        }
+        if (_pinnedFight is CorrelatedEncounter merged && merged.Sources.Count > 1)
+            return MergedOptions(merged);
+        return ([], null);
+    }
+
+    /// <summary>Combined + one option per witness, keeping the user's pick
+    /// when it still applies (a live pick carries over to the same fight's
+    /// finished view — the SourceIds match).</summary>
+    private (List<PerspectiveOption> Options, PerspectiveOption? Chosen) MergedOptions(CorrelatedEncounter merged)
+    {
+        List<PerspectiveOption> options = [new("Combined", null), .. OptionsFor(merged.Sources)];
+        var chosen = SelectedPerspective is { } current && options.Contains(current)
+            ? current
+            : options[0];
+        return (options, chosen);
+    }
+
+    /// <summary>Owner-name labels, disambiguated with the log's server
+    /// folder when two sources share a character name.</summary>
+    private static List<PerspectiveOption> OptionsFor(IReadOnlyList<Encounter> mirrors)
+    {
+        List<PerspectiveOption> options = new(mirrors.Count);
+        foreach (var mirror in mirrors)
+        {
+            var label = mirror.OwnerName;
+            if (mirrors.Count(m => string.Equals(m.OwnerName, mirror.OwnerName, StringComparison.OrdinalIgnoreCase)) > 1)
+            {
+                var server = Core.Upload.LogPaths.ParseServerName(mirror.SourceId);
+                if (server.Length > 0)
+                    label = $"{mirror.OwnerName} — {server}";
+            }
+            options.Add(new PerspectiveOption(label, mirror.SourceId));
+        }
+        return options;
+    }
+
+    /// <summary>Sync the dropdown to this tick's computed options/choice —
+    /// only touching the collection when the option SET actually changed,
+    /// so an open dropdown isn't yanked shut at 10 Hz.</summary>
+    private void ApplyPerspectives(List<PerspectiveOption> options, PerspectiveOption? chosen)
+    {
+        _applyingPerspectives = true;
+        try
+        {
+            var sig = string.Join("", options.Select(o => $"{o.Label}{o.SourceId}"));
+            if (sig != _perspectiveSig)
+            {
+                _perspectiveSig = sig;
+                Perspectives.Clear();
+                foreach (var option in options)
+                    Perspectives.Add(option);
+                PerspectiveVisible = options.Count > 1;
+            }
+            if (!Equals(SelectedPerspective, chosen))
+                SelectedPerspective = chosen;
+        }
+        finally
+        {
+            _applyingPerspectives = false;
+        }
     }
 
     private static string Describe(string zone, string title, TimeSpan duration, double dps, bool live)

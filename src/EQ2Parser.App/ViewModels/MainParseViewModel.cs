@@ -57,6 +57,11 @@ public sealed class LiveFollow
     private LiveFollow() { }
 }
 
+/// <summary>One entry in the perspective dropdown: a specific log source's
+/// view of the resolved fight, or the merged view (SourceId null). Record
+/// equality lets rebuilt option lists preserve the user's selection.</summary>
+public sealed record PerspectiveOption(string Label, string? SourceId);
+
 /// <summary>One row of a drill-down table (ability or attacker breakdown).</summary>
 public sealed partial class AbilityRow : ObservableObject
 {
@@ -151,6 +156,43 @@ public sealed partial class MainParseViewModel : ObservableObject
 
     private object? _pinnedFight;
     private (long Version, bool AnyActive) _treeSignature = (-1, false);
+
+    // ── Perspective (which log's view of the resolved fight) ────────────────
+
+    public ObservableCollection<PerspectiveOption> Perspectives { get; } = [];
+
+    [ObservableProperty]
+    private PerspectiveOption? _selectedPerspective;
+
+    [ObservableProperty]
+    private bool _perspectiveVisible;
+
+    /// <summary>The reconciled choice for THIS tick — ResolveFight reads it
+    /// under the sync lock; the ObservableCollection/SelectedPerspective sync
+    /// happens after the lock (see ApplyPerspectives).</summary>
+    private PerspectiveOption? _effectivePerspective;
+
+    private bool _applyingPerspectives;
+    private string _perspectiveSig = "";
+
+    partial void OnSelectedPerspectiveChanged(PerspectiveOption? value)
+    {
+        if (_applyingPerspectives || value is null)
+            return;
+        _effectivePerspective = value;
+        // A live pick is sticky: boxers always want their main — persist the
+        // owner so the next session's live view starts there too.
+        if (FollowLive && value.SourceId is { } sourceId)
+        {
+            var owner = manager.Sources.FirstOrDefault(s => s.Path == sourceId)?.Owner;
+            if (owner is { Length: > 0 } && owner != manager.Settings.LivePerspectiveOwner)
+            {
+                manager.Settings = manager.Settings with { LivePerspectiveOwner = owner };
+                manager.Settings.Save();
+            }
+        }
+        RefreshGrid();
+    }
 
     public BulkObservableCollection<ParseNode> TreeNodes { get; } = [];
     public ObservableCollection<CombatantRow> AllyRows { get; } = [];

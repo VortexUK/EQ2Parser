@@ -28,6 +28,29 @@ public class EncounterCorrelatorTests
     }
 
     [Fact]
+    public void NonPrimarySources_Is_Everything_But_The_Longest()
+    {
+        var correlator = new EncounterCorrelator();
+        var a = Engine("log-a", "Alice");
+        var b = Engine("log-b", "Bobette");
+        correlator.Attach(a);
+        correlator.Attach(b);
+
+        // Alice's window is 0-20s (longest → primary); Bobette's 1-8s.
+        Hit(a, 0, "Alice", "Lord Bob", 100);
+        Hit(a, 20, "Alice", "Lord Bob", 100);
+        Hit(b, 1, "Bobette", "Lord Bob", 50);
+        Hit(b, 8, "Bobette", "Lord Bob", 50);
+        a.EndCombat();
+        b.EndCombat();
+
+        var fight = Assert.Single(correlator.History);
+        Assert.Equal("log-a", fight.Primary.SourceId);
+        var mirror = Assert.Single(fight.NonPrimarySources);
+        Assert.Equal("log-b", mirror.SourceId);
+    }
+
+    [Fact]
     public void Two_Logs_Of_The_Same_Fight_Merge_With_PerCombatant_Authority()
     {
         var correlator = new EncounterCorrelator();
