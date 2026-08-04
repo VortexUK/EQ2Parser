@@ -154,6 +154,15 @@
       ],
       "source": "class",
       "note": "Conjuror swarm-pet attack via the (plural) double possessive - Moro's roaring flames' Heat Blast hits ..."
+    },
+    {
+      "ability": "Joust",
+      "classes": [
+        "Paladin",
+        "Shadowknight"
+      ],
+      "source": "class",
+      "note": "Crusader combat art both subclasses have - census only recorded the Paladin variant, so a Shadowknight jousting was misread as a Paladin-granted raid proc and falsely credited to the Paladin."
     }
   ]
 }

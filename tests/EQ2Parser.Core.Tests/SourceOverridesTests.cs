@@ -33,6 +33,10 @@ public class SourceOverridesTests
         // Conjuror pet kit, same aliasing (incl. the plural-possessive swarm).
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Aery Whip", "Conjuror"));
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("roaring flames' Heat Blast", "Conjuror"));
+        // Joust is a crusader CA census only recorded for Paladin — an SK
+        // jousting was misread as a Paladin-granted raid proc.
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Joust", "Shadowknight"));
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Joust", "Paladin"));
     }
 
     [Fact]

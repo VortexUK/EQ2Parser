@@ -314,14 +314,26 @@ public sealed partial class MainParseViewModel
     /// no meter ever shows. Inference by detected class (the logs carry no
     /// caster identity for granted buffs — verified empirically); an even
     /// split among same-class granters is flagged, never silently exact.</summary>
-    private (IReadOnlyList<RaidBuffAttributor.Credit> Credits, Dictionary<string, string> ClassByAlly)
+    private (IReadOnlyList<RaidBuffAttributor.Credit> Credits, Dictionary<string, string> ClassByAlly,
+        Dictionary<string, List<(string Ally, long Damage)>> Beneficiaries)
         ComputeRaidCredits(List<(string Name, SourceTally T)> rows)
     {
-        var raidSourced = rows
-            .SelectMany(r => r.T.ByAbility)
-            .Where(kv => kv.Value.Source == AbilitySource.Raid)
-            .GroupBy(kv => kv.Key, StringComparer.Ordinal)
-            .Select(g => (Ability: g.Key, Damage: g.Sum(kv => kv.Value.Damage)))
+        // Per-ability totals AND who actually swung them — "credited to the
+        // dirge" must be able to answer "from whose procs?".
+        var beneficiaries = new Dictionary<string, List<(string, long)>>(StringComparer.Ordinal);
+        foreach (var (name, tally) in rows)
+        {
+            foreach (var (ability, entry) in tally.ByAbility)
+            {
+                if (entry.Source != AbilitySource.Raid)
+                    continue;
+                if (!beneficiaries.TryGetValue(ability, out var list))
+                    beneficiaries[ability] = list = [];
+                list.Add((name, entry.Damage));
+            }
+        }
+        var raidSourced = beneficiaries
+            .Select(kv => (Ability: kv.Key, Damage: kv.Value.Sum(b => b.Item2)))
             .OrderByDescending(t => t.Damage)
             .ToList();
         var classByAlly = rows
@@ -330,12 +342,12 @@ public sealed partial class MainParseViewModel
         var credits = new RaidBuffAttributor(
                 manager.Classifier.Identifier.Map, manager.Classifier.Identifier.Overrides)
             .Attribute(raidSourced, classByAlly);
-        return (credits, classByAlly);
+        return (credits, classByAlly, beneficiaries);
     }
 
     private void RenderRaidBuffContributions(List<(string Name, SourceTally T)> rows)
     {
-        var (credits, classByAlly) = ComputeRaidCredits(rows);
+        var (credits, classByAlly, beneficiaries) = ComputeRaidCredits(rows);
         if (credits.Count == 0)
             return;
         var byGranter = RaidBuffAttributor.CreditByGranter(credits);
@@ -355,6 +367,22 @@ public sealed partial class MainParseViewModel
                 ((classByAlly.GetValueOrDefault(granter) ?? "").PadRight(14), Services.ClassColors.TreeText),
                 ($"{CombatantRow.Compact(credited),8}{(estimated ? " ~" : "  ")}", SourceBrush(AbilitySource.Raid)),
                 ($"  {from}", Services.ClassColors.Neutral));
+            // WHO the procs fired on — "credited to the dirge" should never
+            // need a log grep to answer "from whose swings?".
+            var whose = mine
+                .SelectMany(c => beneficiaries.GetValueOrDefault(c.Ability, []))
+                .GroupBy(b => b.Ally, StringComparer.OrdinalIgnoreCase)
+                .Select(g => (Ally: g.Key, Damage: g.Sum(b => b.Damage)))
+                .OrderByDescending(b => b.Damage)
+                .ToList();
+            if (whose.Count > 0)
+            {
+                var shown = string.Join(" · ", whose.Take(5).Select(b => $"{b.Ally} {CombatantRow.Compact(b.Damage)}"));
+                var more = whose.Count > 5 ? $" (+{whose.Count - 5} more)" : "";
+                ReportLine(
+                    ("".PadRight(18), Services.ClassColors.Neutral),
+                    ($"  via {shown}{more}", Services.ClassColors.Neutral));
+            }
         }
         var unattributed = credits.Where(c => c.Granters.Count == 0).ToList();
         if (unattributed.Count > 0)
@@ -395,7 +423,7 @@ public sealed partial class MainParseViewModel
             if (tally.Total > 0)
                 rows.Add((name, tally));
         }
-        var (credits, _) = ComputeRaidCredits(rows);
+        var (credits, _, _) = ComputeRaidCredits(rows);
         var mine = credits
             .Where(c => c.Granters.Contains(row.Name, StringComparer.OrdinalIgnoreCase))
             .OrderByDescending(c => c.Damage)
