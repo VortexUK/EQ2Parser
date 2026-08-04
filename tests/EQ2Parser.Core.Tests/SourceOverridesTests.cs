@@ -46,6 +46,11 @@ public class SourceOverridesTests
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Death Cloud", "Coercer"));
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Painbringer", "Shadowknight"));
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Siphon Strike", "Coercer"));
+        // Shadow Step: summoner AA sharing a name with an Assassin scroll —
+        // class for necro/conjy; a real Assassin still resolves via the map.
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Shadow Step", "Necromancer"));
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Shadow Step", "Conjuror"));
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Shadow Step", "Assassin"));
         // Unholy Strike + Voracious Soul are REAL SK grants (user-confirmed
         // source spells) — no overrides: the map alone keeps them
         // attributable (Raid on non-SKs, Class on the SK).

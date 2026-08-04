@@ -204,6 +204,15 @@
       ],
       "source": "class",
       "note": "SK castable also appearing under coercer names via charm pets (see Painbringer)."
+    },
+    {
+      "ability": "Shadow Step",
+      "classes": [
+        "Necromancer",
+        "Conjuror"
+      ],
+      "source": "class",
+      "note": "Summoner AA ability (user-confirmed; every attacker in the logs is a necro/conjy). Census has a same-named Assassin scroll, so summoners' casts tagged Raid and sat unattributed. An actual Assassin still falls through to the map -> class."
     }
   ]
 }
