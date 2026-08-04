@@ -14,6 +14,11 @@ public enum AbilitySource
     Item,
     /// <summary>Auto-attack / system pseudo-abilities.</summary>
     System,
+    /// <summary>A summoner-pet ability on a class that CANNOT own that pet —
+    /// the signature of a renamed pet: summoners can name their pet after
+    /// another player, silently merging the pet's damage into that player's
+    /// parse. A Wizard with Throat Gash (necro pet kit) is being padded.</summary>
+    Pet,
 }
 
 /// <summary>The verdict for one combatant.</summary>

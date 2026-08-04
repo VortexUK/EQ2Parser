@@ -2,7 +2,9 @@
   "overrides": [
     {
       "ability": "Divine Smash",
-      "classes": ["Templar"],
+      "classes": [
+        "Templar"
+      ],
       "source": "class",
       "note": "Templar hammer temp-pet ability (Inquisitors do NOT get the hammer) - the pet swings log under the owner's own name, and the name is absent from census spell lists, so the map called it an item proc."
     },
@@ -23,91 +25,133 @@
     },
     {
       "ability": "Poisoned Spike",
-      "classes": ["Necromancer"],
+      "classes": [
+        "Necromancer"
+      ],
       "source": "class",
-      "note": "Necromancer scout-pet ability - pet attacks log under the owner's name (verified: every attacker in the logs is a necro). Absent from census, so the map said item."
+      "note": "Necromancer scout-pet ability - pet attacks log under the owner's name (verified: every attacker in the logs is a necro). Absent from census, so the map said item.",
+      "pet": true
     },
     {
       "ability": "Throat Gash",
-      "classes": ["Necromancer"],
+      "classes": [
+        "Necromancer"
+      ],
       "source": "class",
-      "note": "Necromancer scout-pet ability - see Poisoned Spike."
+      "note": "Necromancer scout-pet ability - see Poisoned Spike.",
+      "pet": true
     },
     {
       "ability": "Unseen Blade",
-      "classes": ["Necromancer"],
+      "classes": [
+        "Necromancer"
+      ],
       "source": "class",
-      "note": "Necromancer scout-pet ability - see Poisoned Spike."
+      "note": "Necromancer scout-pet ability - see Poisoned Spike.",
+      "pet": true
     },
     {
       "ability": "Shadowy Garrote",
-      "classes": ["Necromancer"],
+      "classes": [
+        "Necromancer"
+      ],
       "source": "class",
-      "note": "Necromancer scout-pet ability - see Poisoned Spike."
+      "note": "Necromancer scout-pet ability - see Poisoned Spike.",
+      "pet": true
     },
     {
       "ability": "Shadestrike",
-      "classes": ["Necromancer"],
+      "classes": [
+        "Necromancer"
+      ],
       "source": "class",
-      "note": "Necromancer scout-pet ability - see Poisoned Spike."
+      "note": "Necromancer scout-pet ability - see Poisoned Spike.",
+      "pet": true
     },
     {
       "ability": "Acidity",
-      "classes": ["Necromancer"],
+      "classes": [
+        "Necromancer"
+      ],
       "source": "class",
-      "note": "Necromancer pet ability - see Poisoned Spike."
+      "note": "Necromancer pet ability - see Poisoned Spike.",
+      "pet": true
     },
     {
       "ability": "blighted horde's Grave Decay",
-      "classes": ["Necromancer"],
+      "classes": [
+        "Necromancer"
+      ],
       "source": "class",
       "note": "Swarm-pet attack. The log line is a DOUBLE possessive (Martyn's blighted horde's Grave Decay hits ...) and the grammar - ACT-identically - splits at the first 's, so the pet entity becomes part of the ability name. Grammar stays ACT-parity; the label is fixed here."
     },
     {
       "ability": "Aery Whip",
-      "classes": ["Conjuror"],
+      "classes": [
+        "Conjuror"
+      ],
       "source": "class",
-      "note": "Conjuror pet ability - pet attacks log under the owner's name (verified: every attacker in the logs is a conjuror). Absent from census, so the map said item."
+      "note": "Conjuror pet ability - pet attacks log under the owner's name (verified: every attacker in the logs is a conjuror). Absent from census, so the map said item.",
+      "pet": true
     },
     {
       "ability": "Wisp Blade",
-      "classes": ["Conjuror"],
+      "classes": [
+        "Conjuror"
+      ],
       "source": "class",
-      "note": "Conjuror pet ability - see Aery Whip."
+      "note": "Conjuror pet ability - see Aery Whip.",
+      "pet": true
     },
     {
       "ability": "Thunderous Attack",
-      "classes": ["Conjuror"],
+      "classes": [
+        "Conjuror"
+      ],
       "source": "class",
-      "note": "Conjuror pet ability - see Aery Whip."
+      "note": "Conjuror pet ability - see Aery Whip.",
+      "pet": true
     },
     {
       "ability": "Furystorm",
-      "classes": ["Conjuror"],
+      "classes": [
+        "Conjuror"
+      ],
       "source": "class",
-      "note": "Conjuror pet ability - see Aery Whip."
+      "note": "Conjuror pet ability - see Aery Whip.",
+      "pet": true
     },
     {
       "ability": "Storm Surge",
-      "classes": ["Conjuror"],
+      "classes": [
+        "Conjuror"
+      ],
       "source": "class",
-      "note": "Conjuror pet ability - see Aery Whip."
+      "note": "Conjuror pet ability - see Aery Whip.",
+      "pet": true
     },
     {
       "ability": "Galestorm",
-      "classes": ["Conjuror"],
+      "classes": [
+        "Conjuror"
+      ],
       "source": "class",
-      "note": "Conjuror pet ability - see Aery Whip."
+      "note": "Conjuror pet ability - see Aery Whip.",
+      "pet": true
     },
     {
       "ability": "aqueous swarm's Frozen Waters",
-      "classes": ["Conjuror"],
+      "classes": [
+        "Conjuror"
+      ],
       "source": "class",
       "note": "Conjuror swarm-pet attack via the double possessive (see blighted horde's Grave Decay)."
     },
     {
       "ability": "roaring flames' Heat Blast",
-      "classes": ["Conjuror"],
+      "classes": [
+        "Conjuror"
+      ],
       "source": "class",
       "note": "Conjuror swarm-pet attack via the (plural) double possessive - Moro's roaring flames' Heat Blast hits ..."
     }

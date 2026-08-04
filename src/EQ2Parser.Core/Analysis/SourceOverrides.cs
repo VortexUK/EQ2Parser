@@ -18,13 +18,16 @@ namespace EQ2Parser.Core.Analysis;
 public sealed class SourceOverrides
 {
     /// <summary>One correction: ability (normalized), the classes it applies
-    /// to (null/empty = any class), and the forced source.</summary>
-    private sealed record Rule(HashSet<string>? Classes, AbilitySource Source);
+    /// to (null/empty = any class), the forced source, and whether the
+    /// ability is a renameable summoner-pet's kit ("pet": true) — on a
+    /// detected class OUTSIDE the rule's classes that tags as
+    /// <see cref="AbilitySource.Pet"/>, the renamed-pet padding signature.</summary>
+    private sealed record Rule(HashSet<string>? Classes, AbilitySource Source, bool Pet);
 
     private sealed record RuleFile(List<RuleEntry>? Overrides);
 
     private sealed record RuleEntry(
-        string? Ability, string[]? Classes, string? Source, string? Note, string[]? GrantedBy);
+        string? Ability, string[]? Classes, string? Source, string? Note, string[]? GrantedBy, bool? Pet);
 
     private readonly Dictionary<string, List<Rule>> _rules = new(StringComparer.Ordinal);
 
@@ -101,10 +104,11 @@ public sealed class SourceOverrides
                 : null;
             if (!_rules.TryGetValue(key, out var list))
                 _rules[key] = list = [];
+            var rule = new Rule(classes, parsed, entry.Pet == true && classes is not null);
             if (prepend)
-                list.Insert(0, new Rule(classes, parsed));
+                list.Insert(0, rule);
             else
-                list.Add(new Rule(classes, parsed));
+                list.Add(rule);
         }
     }
 
@@ -115,7 +119,11 @@ public sealed class SourceOverrides
 
     /// <summary>First matching rule for this ability + detected class, if
     /// any. Class-scoped rules need a detected class to match; unscoped
-    /// rules always match the ability.</summary>
+    /// rules always match the ability. When no rule matches but the ability
+    /// is a summoner-pet kit ("pet": true) and the detected class is OUTSIDE
+    /// the owning classes, resolves to <see cref="AbilitySource.Pet"/> — a
+    /// renamed pet merging its damage into this player (an undetected class
+    /// stays on the map fallback; no claim without evidence).</summary>
     public bool TryResolve(string abilityName, string? detectedClass, out AbilitySource source)
     {
         source = default;
@@ -128,6 +136,11 @@ public sealed class SourceOverrides
                 source = rule.Source;
                 return true;
             }
+        }
+        if (detectedClass is not null && rules.Any(r => r.Pet))
+        {
+            source = AbilitySource.Pet;
+            return true;
         }
         return false;
     }

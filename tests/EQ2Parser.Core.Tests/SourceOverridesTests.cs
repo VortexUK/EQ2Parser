@@ -30,12 +30,27 @@ public class SourceOverridesTests
         // a composite "pet's Ability" name via the double possessive.
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Throat Gash", "Necromancer"));
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("blighted horde's Grave Decay", "Necromancer"));
-        // Non-necros fall back to the map (absent from both layers → Item).
-        Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Throat Gash", "Brigand"));
         // Conjuror pet kit, same aliasing (incl. the plural-possessive swarm).
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Aery Whip", "Conjuror"));
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("roaring flames' Heat Blast", "Conjuror"));
-        Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Aery Whip", "Wizard"));
+    }
+
+    [Fact]
+    public void Pet_Kit_On_The_Wrong_Class_Is_The_Renamed_Pet_Signature()
+    {
+        // Summoners can name their pet after ANOTHER player, merging the
+        // pet's damage into that player's parse. The ability-level signature
+        // is unfakeable: a class that cannot own the pet showing its kit.
+        var identifier = new ClassIdentifier(SpellClassMap.LoadEmbedded(), SourceOverrides.LoadEmbedded());
+        Assert.Equal(AbilitySource.Pet, identifier.ClassifySource("Throat Gash", "Brigand"));
+        Assert.Equal(AbilitySource.Pet, identifier.ClassifySource("Aery Whip", "Wizard"));
+        // Cross-summoner counts too — a necro can't own the conjy pet.
+        Assert.Equal(AbilitySource.Pet, identifier.ClassifySource("Aery Whip", "Necromancer"));
+        // No detected class → no claim; map fallback (Item) as before.
+        Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Throat Gash", null));
+        // Swarm composites carry the CASTER's name and can't be renamed
+        // onto someone else — not flagged, map fallback applies.
+        Assert.Equal(AbilitySource.Item, identifier.ClassifySource("blighted horde's Grave Decay", "Wizard"));
     }
 
     [Fact]

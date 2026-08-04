@@ -19,10 +19,12 @@ public static class ClassColors
     public static readonly SolidColorBrush Mage = Frozen("#93B4FF");
     public static readonly SolidColorBrush Neutral = Frozen("#8B90AB");
 
-    // Ability source tags (drill-down): own class kit / raid-granted / item proc.
+    // Ability source tags (drill-down): own class kit / raid-granted / item
+    // proc / renamed-pet padding (red — it's a fraud signal).
     public static readonly SolidColorBrush SourceClass = Frozen("#C8A96E");
     public static readonly SolidColorBrush SourceRaid = Frozen("#93D9FF");
     public static readonly SolidColorBrush SourceItem = Frozen("#9D9D9D");
+    public static readonly SolidColorBrush SourcePet = Frozen("#F87171");
 
     // Parse-tree text: default, gold headers, and fight outcomes.
     public static readonly SolidColorBrush TreeText = Frozen("#E2E4F0");

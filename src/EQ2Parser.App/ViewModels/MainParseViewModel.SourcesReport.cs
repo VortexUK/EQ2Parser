@@ -16,7 +16,7 @@ namespace EQ2Parser.App.ViewModels;
 public sealed partial class MainParseViewModel
 {
     private static readonly AbilitySource[] SourceOrder =
-        [AbilitySource.Class, AbilitySource.Raid, AbilitySource.Item, AbilitySource.System];
+        [AbilitySource.Class, AbilitySource.Raid, AbilitySource.Item, AbilitySource.System, AbilitySource.Pet];
 
     private static readonly SKColor[] SourceSk =
     [
@@ -24,6 +24,7 @@ public sealed partial class MainParseViewModel
         new(0x93, 0xD9, 0xFF), // raid — blue
         new(0x9D, 0x9D, 0x9D), // item — grey
         new(0x8B, 0x90, 0xAB), // system — slate
+        new(0xF8, 0x71, 0x71), // renamed pet — red (fraud signal)
     ];
 
     private static System.Windows.Media.Brush SourceBrush(AbilitySource source) => source switch
@@ -31,18 +32,24 @@ public sealed partial class MainParseViewModel
         AbilitySource.Class => Services.ClassColors.SourceClass,
         AbilitySource.Raid => Services.ClassColors.SourceRaid,
         AbilitySource.Item => Services.ClassColors.SourceItem,
+        AbilitySource.Pet => Services.ClassColors.SourcePet,
         _ => Services.ClassColors.Neutral,
     };
 
-    /// <summary>"System" is developer jargon — the bucket is auto-attack.</summary>
-    private static string SourceLabel(AbilitySource source) =>
-        source == AbilitySource.System ? "Auto-attack" : source.ToString();
+    /// <summary>"System" is developer jargon — the bucket is auto-attack.
+    /// Pet = a summoner-pet kit on a class that can't own it (renamed pet).</summary>
+    private static string SourceLabel(AbilitySource source) => source switch
+    {
+        AbilitySource.System => "Auto-attack",
+        AbilitySource.Pet => "Renamed pet",
+        _ => source.ToString(),
+    };
 
     /// <summary>Per-target accumulation: damage per source, plus per-ability
     /// rollups for the detail view and the curation footers.</summary>
     private sealed class SourceTally
     {
-        public readonly long[] BySource = new long[4];
+        public readonly long[] BySource = new long[5];
         public readonly Dictionary<string, (AbilitySource Source, long Damage, int Hits)> ByAbility = new(StringComparer.Ordinal);
         public long Total;
         public string? DetectedClass;
@@ -113,9 +120,9 @@ public sealed partial class MainParseViewModel
                 ("NAME".PadRight(18), Services.ClassColors.TreeHeader),
                 ("CLASS".PadRight(14), Services.ClassColors.TreeHeader),
                 ("   TOTAL", Services.ClassColors.TreeHeader),
-                ("          CLASS           RAID           ITEM           AUTO", Services.ClassColors.TreeHeader));
+                ("          CLASS           RAID           ITEM           AUTO            PET", Services.ClassColors.TreeHeader));
 
-            var totals = new long[4];
+            var totals = new long[5];
             long grandTotal = 0;
             static string Cell(long damage, long total) =>
                 damage > 0 ? $"{CombatantRow.Compact(damage),7} {100.0 * damage / total,4:F0}%" : "—".PadLeft(13);
@@ -128,8 +135,9 @@ public sealed partial class MainParseViewModel
                     ("  " + Cell(tally.BySource[0], tally.Total), SourceBrush(AbilitySource.Class)),
                     ("  " + Cell(tally.BySource[1], tally.Total), SourceBrush(AbilitySource.Raid)),
                     ("  " + Cell(tally.BySource[2], tally.Total), SourceBrush(AbilitySource.Item)),
-                    ("  " + Cell(tally.BySource[3], tally.Total), SourceBrush(AbilitySource.System)));
-                for (var i = 0; i < 4; i++)
+                    ("  " + Cell(tally.BySource[3], tally.Total), SourceBrush(AbilitySource.System)),
+                    ("  " + Cell(tally.BySource[4], tally.Total), SourceBrush(AbilitySource.Pet)));
+                for (var i = 0; i < 5; i++)
                     totals[i] += tally.BySource[i];
                 grandTotal += tally.Total;
             }
@@ -142,7 +150,30 @@ public sealed partial class MainParseViewModel
                     ("  " + Cell(totals[0], grandTotal), SourceBrush(AbilitySource.Class)),
                     ("  " + Cell(totals[1], grandTotal), SourceBrush(AbilitySource.Raid)),
                     ("  " + Cell(totals[2], grandTotal), SourceBrush(AbilitySource.Item)),
-                    ("  " + Cell(totals[3], grandTotal), SourceBrush(AbilitySource.System)));
+                    ("  " + Cell(totals[3], grandTotal), SourceBrush(AbilitySource.System)),
+                    ("  " + Cell(totals[4], grandTotal), SourceBrush(AbilitySource.Pet)));
+            }
+
+            // The padding alarm — worth its own loud lines, not just a column:
+            // a summoner named their pet after this player, merging the pet's
+            // damage into their parse.
+            var padded = rows.Where(r => r.T.BySource[(int)AbilitySource.Pet] > 0).ToList();
+            if (padded.Count > 0)
+            {
+                ReportLine(("", Services.ClassColors.Neutral));
+                foreach (var (name, tally) in padded.OrderByDescending(r => r.T.BySource[(int)AbilitySource.Pet]))
+                {
+                    var petAbilities = string.Join(" · ", tally.ByAbility
+                        .Where(kv => kv.Value.Source == AbilitySource.Pet)
+                        .OrderByDescending(kv => kv.Value.Damage)
+                        .Take(4)
+                        .Select(kv => $"{kv.Key} {CombatantRow.Compact(kv.Value.Damage)}"));
+                    ReportLine(
+                        ("⚠ possible renamed-pet padding: ", Services.ClassColors.SourcePet),
+                        ($"{name} ({tally.DetectedClass}) +{CombatantRow.Compact(tally.BySource[(int)AbilitySource.Pet])}",
+                            Services.ClassColors.SourcePet),
+                        ($" — {petAbilities} — summoner pet kit this class cannot own", Services.ClassColors.Neutral));
+                }
             }
 
             RenderRaidBuffContributions(rows);

@@ -424,6 +424,7 @@ public sealed partial class MainParseViewModel
                 "class" => ClassColors.SourceClass,
                 "raid" => ClassColors.SourceRaid,
                 "item" => ClassColors.SourceItem,
+                "pet" => ClassColors.SourcePet, // renamed-pet padding — loud
                 _ => ClassColors.Neutral,
             };
             row.Casts = data.Swings.ToString("N0");
