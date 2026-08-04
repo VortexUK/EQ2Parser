@@ -141,6 +141,8 @@ public sealed partial class MainParseViewModel
                     ("  " + Cell(totals[3], grandTotal), SourceBrush(AbilitySource.System)));
             }
 
+            RenderRaidBuffContributions(rows);
+
             // Curation footers: what the raid's granted buffs actually did,
             // and the top item-labelled names (mislabels surface here —
             // promote them into source_overrides.json).
@@ -248,6 +250,8 @@ public sealed partial class MainParseViewModel
                 }
             }
 
+            RenderGrantedToRaid(row, detected);
+
             OpenReport($"{context} › sources report");
 
             ReportChartTitle1 = "SOURCE SPLIT";
@@ -263,6 +267,153 @@ public sealed partial class MainParseViewModel
                 .Select(ISeries (kv) => Ring(kv.Key, kv.Value.Damage, SourceSk[(int)kv.Value.Source], tally.Total, 44))];
             ReportChartVisible = true;
         }
+    }
+
+    /// <summary>The facet-2 payoff: raid-granted proc damage credited back
+    /// to the class member who granted the buff — the support-class number
+    /// no meter ever shows. Inference by detected class (the logs carry no
+    /// caster identity for granted buffs — verified empirically); an even
+    /// split among same-class granters is flagged, never silently exact.</summary>
+    private (IReadOnlyList<RaidBuffAttributor.Credit> Credits, Dictionary<string, string> ClassByAlly)
+        ComputeRaidCredits(List<(string Name, SourceTally T)> rows)
+    {
+        var raidSourced = rows
+            .SelectMany(r => r.T.ByAbility)
+            .Where(kv => kv.Value.Source == AbilitySource.Raid)
+            .GroupBy(kv => kv.Key, StringComparer.Ordinal)
+            .Select(g => (Ability: g.Key, Damage: g.Sum(kv => kv.Value.Damage)))
+            .OrderByDescending(t => t.Damage)
+            .ToList();
+        var classByAlly = rows
+            .Where(r => r.T.DetectedClass is not null)
+            .ToDictionary(r => r.Name, r => r.T.DetectedClass!, StringComparer.OrdinalIgnoreCase);
+        var credits = new RaidBuffAttributor(manager.Classifier.Identifier.Map)
+            .Attribute(raidSourced, classByAlly);
+        return (credits, classByAlly);
+    }
+
+    private void RenderRaidBuffContributions(List<(string Name, SourceTally T)> rows)
+    {
+        var (credits, classByAlly) = ComputeRaidCredits(rows);
+        if (credits.Count == 0)
+            return;
+        var byGranter = RaidBuffAttributor.CreditByGranter(credits);
+
+        ReportLine(("", Services.ClassColors.Neutral));
+        ReportLine(("RAID-BUFF CONTRIBUTIONS (granted procs credited to the granting class)", Services.ClassColors.TreeHeader));
+        foreach (var (granter, credited) in byGranter.OrderByDescending(kv => kv.Value))
+        {
+            var mine = credits.Where(c => c.Granters.Contains(granter, StringComparer.OrdinalIgnoreCase)).ToList();
+            var estimated = mine.Any(c => c.Estimated);
+            var from = string.Join(" · ", mine
+                .OrderByDescending(c => c.Damage)
+                .Take(4)
+                .Select(c => $"{c.Ability} {CombatantRow.Compact(c.Damage / Math.Max(1, c.Granters.Count))}"));
+            ReportLine(
+                (granter.PadRight(18), Services.ClassColors.TreeText),
+                ((classByAlly.GetValueOrDefault(granter) ?? "").PadRight(14), Services.ClassColors.TreeText),
+                ($"{CombatantRow.Compact(credited),8}{(estimated ? " ~" : "  ")}", SourceBrush(AbilitySource.Raid)),
+                ($"  {from}", Services.ClassColors.Neutral));
+        }
+        var unattributed = credits.Where(c => c.Granters.Count == 0).ToList();
+        if (unattributed.Count > 0)
+        {
+            ReportLine(
+                ("unattributed".PadRight(18), Services.ClassColors.Neutral),
+                (string.Join(" · ", unattributed
+                    .OrderByDescending(c => c.Damage)
+                    .Take(4)
+                    .Select(c => $"{c.Ability} {CombatantRow.Compact(c.Damage)} (no {JoinClasses(c.GrantingClasses)} detected)")),
+                    Services.ClassColors.Neutral));
+        }
+        if (credits.Any(c => c.Estimated))
+            ReportLine(("~ estimated: split evenly among same-class granters — the log names no caster", Services.ClassColors.Neutral));
+    }
+
+    private static string JoinClasses(IReadOnlyList<string> classes) =>
+        classes.Count == 0 ? "granting class" : string.Join("/", classes);
+
+    /// <summary>Combatant scope: if THIS ally granted raid buffs, show what
+    /// their buffs did for everyone — the support-class credit line.</summary>
+    private void RenderGrantedToRaid(CombatantRow row, string? detected)
+    {
+        if (detected is null)
+            return;
+        var fight = ResolveFight();
+        var allies = FightAllyCombatants(fight);
+        if (allies.Count == 0)
+            return;
+        var tags = SourceReportTags(fight);
+        List<(string Name, SourceTally T)> rows = [];
+        foreach (var (name, combatants) in allies
+            .GroupBy(t => t.Name)
+            .Select(g => (g.Key, g.Select(t => t.C).ToList())))
+        {
+            var cls = tags.TryGetValue(name.ToUpperInvariant(), out var tag) ? tag.Class.ClassName : null;
+            var tally = AccumulateSources(combatants, cls);
+            if (tally.Total > 0)
+                rows.Add((name, tally));
+        }
+        var (credits, _) = ComputeRaidCredits(rows);
+        var mine = credits
+            .Where(c => c.Granters.Contains(row.Name, StringComparer.OrdinalIgnoreCase))
+            .OrderByDescending(c => c.Damage)
+            .ToList();
+        if (mine.Count == 0)
+            return;
+        var credited = mine.Sum(c => c.Damage / Math.Max(1, c.Granters.Count));
+        var estimated = mine.Any(c => c.Estimated);
+        ReportLine(("", Services.ClassColors.Neutral));
+        ReportLine(
+            ("GRANTED TO THE RAID".PadRight(28), Services.ClassColors.TreeHeader),
+            ($"{CombatantRow.Compact(credited),9} credited{(estimated ? " ~" : "")}", SourceBrush(AbilitySource.Raid)));
+        foreach (var credit in mine.Take(8))
+        {
+            ReportLine(
+                ("".PadRight(9), Services.ClassColors.TreeText),
+                (credit.Ability.PadRight(28), Services.ClassColors.TreeText),
+                ($"{CombatantRow.Compact(credit.Damage / Math.Max(1, credit.Granters.Count)),9}"
+                    + (credit.Estimated ? $"  (split {credit.Granters.Count} ways)" : ""),
+                    SourceBrush(AbilitySource.Raid)));
+        }
+        if (estimated)
+            ReportLine(("~ estimated: split evenly among same-class granters — the log names no caster", Services.ClassColors.Neutral));
+    }
+
+    /// <summary>Every classified ally of the resolved fight (merged or
+    /// live). Aggregates are skipped — the granted-to-raid section only
+    /// renders for a single fight.</summary>
+    private List<(string Name, Combatant C)> FightAllyCombatants(object? fight)
+    {
+        List<(string, Combatant)> targets = [];
+        switch (fight)
+        {
+            case CorrelatedEncounter merged:
+            {
+                var tags = manager.Classifier.Classify(merged.Primary);
+                foreach (var (key, entry) in merged.MergedCombatants)
+                {
+                    if (!merged.MergedAllyKeys.Contains(key))
+                        continue;
+                    if (tags.TryGetValue(key, out var tag) && tag.Kind is CombatantKind.System or CombatantKind.Bystander)
+                        continue;
+                    targets.Add((entry.Combatant.Name, entry.Combatant));
+                }
+                break;
+            }
+            case Encounter encounter:
+            {
+                var tags = manager.Classifier.Classify(encounter);
+                foreach (var ally in encounter.GetAllies())
+                {
+                    if (tags.TryGetValue(ally.Key, out var tag) && tag.Kind is CombatantKind.System or CombatantKind.Bystander)
+                        continue;
+                    targets.Add((ally.Name, ally));
+                }
+                break;
+            }
+        }
+        return targets;
     }
 
     /// <summary>Distinguishable shades of one hue for the ability ring.</summary>
