@@ -32,6 +32,10 @@ public class SourceOverridesTests
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("blighted horde's Grave Decay", "Necromancer"));
         // Non-necros fall back to the map (absent from both layers → Item).
         Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Throat Gash", "Brigand"));
+        // Conjuror pet kit, same aliasing (incl. the plural-possessive swarm).
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Aery Whip", "Conjuror"));
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("roaring flames' Heat Blast", "Conjuror"));
+        Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Aery Whip", "Wizard"));
     }
 
     [Fact]

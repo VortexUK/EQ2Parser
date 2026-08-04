@@ -62,6 +62,54 @@
       "classes": ["Necromancer"],
       "source": "class",
       "note": "Swarm-pet attack. The log line is a DOUBLE possessive (Martyn's blighted horde's Grave Decay hits ...) and the grammar - ACT-identically - splits at the first 's, so the pet entity becomes part of the ability name. Grammar stays ACT-parity; the label is fixed here."
+    },
+    {
+      "ability": "Aery Whip",
+      "classes": ["Conjuror"],
+      "source": "class",
+      "note": "Conjuror pet ability - pet attacks log under the owner's name (verified: every attacker in the logs is a conjuror). Absent from census, so the map said item."
+    },
+    {
+      "ability": "Wisp Blade",
+      "classes": ["Conjuror"],
+      "source": "class",
+      "note": "Conjuror pet ability - see Aery Whip."
+    },
+    {
+      "ability": "Thunderous Attack",
+      "classes": ["Conjuror"],
+      "source": "class",
+      "note": "Conjuror pet ability - see Aery Whip."
+    },
+    {
+      "ability": "Furystorm",
+      "classes": ["Conjuror"],
+      "source": "class",
+      "note": "Conjuror pet ability - see Aery Whip."
+    },
+    {
+      "ability": "Storm Surge",
+      "classes": ["Conjuror"],
+      "source": "class",
+      "note": "Conjuror pet ability - see Aery Whip."
+    },
+    {
+      "ability": "Galestorm",
+      "classes": ["Conjuror"],
+      "source": "class",
+      "note": "Conjuror pet ability - see Aery Whip."
+    },
+    {
+      "ability": "aqueous swarm's Frozen Waters",
+      "classes": ["Conjuror"],
+      "source": "class",
+      "note": "Conjuror swarm-pet attack via the double possessive (see blighted horde's Grave Decay)."
+    },
+    {
+      "ability": "roaring flames' Heat Blast",
+      "classes": ["Conjuror"],
+      "source": "class",
+      "note": "Conjuror swarm-pet attack via the (plural) double possessive - Moro's roaring flames' Heat Blast hits ..."
     }
   ]
 }
