@@ -110,8 +110,13 @@ public sealed partial class MainParseViewModel
                 .GroupBy(t => t.Name)
                 .Select(g => (g.Key, g.Select(t => t.C).ToList())))
             {
-                var detected = tags.TryGetValue(name.ToUpperInvariant(), out var tag) ? tag.Class.ClassName : null;
-                var tally = AccumulateSources(combatants, detected);
+                tags.TryGetValue(name.ToUpperInvariant(), out var tag);
+                // Own-entity pets (Avatar of Fright et al.) are NOT players —
+                // the grid's Pets section owns them, and their kit would
+                // pollute the split (a fear pet "detects" as a Bruiser).
+                if (tag?.Kind == CombatantKind.Pet)
+                    continue;
+                var tally = AccumulateSources(combatants, tag?.Class.ClassName);
                 if (tally.Total > 0)
                     rows.Add((name, tally));
             }
@@ -431,7 +436,8 @@ public sealed partial class MainParseViewModel
                 {
                     if (!merged.MergedAllyKeys.Contains(key))
                         continue;
-                    if (tags.TryGetValue(key, out var tag) && tag.Kind is CombatantKind.System or CombatantKind.Bystander)
+                    if (tags.TryGetValue(key, out var tag)
+                        && tag.Kind is CombatantKind.System or CombatantKind.Bystander or CombatantKind.Pet)
                         continue;
                     targets.Add((entry.Combatant.Name, entry.Combatant));
                 }
@@ -442,7 +448,8 @@ public sealed partial class MainParseViewModel
                 var tags = manager.Classifier.Classify(encounter);
                 foreach (var ally in encounter.GetAllies())
                 {
-                    if (tags.TryGetValue(ally.Key, out var tag) && tag.Kind is CombatantKind.System or CombatantKind.Bystander)
+                    if (tags.TryGetValue(ally.Key, out var tag)
+                        && tag.Kind is CombatantKind.System or CombatantKind.Bystander or CombatantKind.Pet)
                         continue;
                     targets.Add((ally.Name, ally));
                 }
