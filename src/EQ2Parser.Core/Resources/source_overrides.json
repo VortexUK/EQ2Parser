@@ -163,6 +163,11 @@
       ],
       "source": "class",
       "note": "Crusader combat art both subclasses have - census only recorded the Paladin variant, so a Shadowknight jousting was misread as a Paladin-granted raid proc and falsely credited to the Paladin."
+    },
+    {
+      "ability": "Strike of Faith",
+      "source": "class",
+      "note": "Multi-class (HO-style) ability - attackers span the whole raid (zerker, coercer, swash, dirge, brigand, troub...). The census effects layer tied the name to Inquisitor only, which falsely credited the Inquisitor as a raid granter."
     }
   ]
 }

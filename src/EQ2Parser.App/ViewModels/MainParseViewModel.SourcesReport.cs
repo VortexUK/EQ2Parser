@@ -353,7 +353,7 @@ public sealed partial class MainParseViewModel
 
     private void RenderRaidBuffContributions(List<(string Name, SourceTally T)> rows, double seconds)
     {
-        var (credits, classByAlly, beneficiaries) = ComputeRaidCredits(rows);
+        var (credits, classByAlly, _) = ComputeRaidCredits(rows);
         if (credits.Count == 0)
             return;
         var byGranter = RaidBuffAttributor.CreditByGranter(credits);
@@ -374,22 +374,6 @@ public sealed partial class MainParseViewModel
                 ($"{CombatantRow.Compact(credited),8}{(estimated ? " ~" : "  ")}", SourceBrush(AbilitySource.Raid)),
                 ($"≈{CombatantRow.Compact(credited / seconds)} dps".PadLeft(11), SourceBrush(AbilitySource.Raid)),
                 ($"  {from}", Services.ClassColors.Neutral));
-            // WHO the procs fired on — "credited to the dirge" should never
-            // need a log grep to answer "from whose swings?".
-            var whose = mine
-                .SelectMany(c => beneficiaries.GetValueOrDefault(c.Ability, []))
-                .GroupBy(b => b.Ally, StringComparer.OrdinalIgnoreCase)
-                .Select(g => (Ally: g.Key, Damage: g.Sum(b => b.Damage)))
-                .OrderByDescending(b => b.Damage)
-                .ToList();
-            if (whose.Count > 0)
-            {
-                var shown = string.Join(" · ", whose.Take(5).Select(b => $"{b.Ally} {CombatantRow.Compact(b.Damage)}"));
-                var more = whose.Count > 5 ? $" (+{whose.Count - 5} more)" : "";
-                ReportLine(
-                    ("".PadRight(18), Services.ClassColors.Neutral),
-                    ($"  via {shown}{more}", Services.ClassColors.Neutral));
-            }
         }
         var unattributed = credits.Where(c => c.Granters.Count == 0).ToList();
         if (unattributed.Count > 0)

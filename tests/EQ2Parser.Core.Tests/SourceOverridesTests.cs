@@ -37,6 +37,10 @@ public class SourceOverridesTests
         // jousting was misread as a Paladin-granted raid proc.
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Joust", "Shadowknight"));
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Joust", "Paladin"));
+        // Strike of Faith: multi-class (HO-style) — the effects layer tied
+        // it to Inquisitor only, falsely crediting the Inquisitor.
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Strike of Faith", "Berserker"));
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Strike of Faith", null));
     }
 
     [Fact]
