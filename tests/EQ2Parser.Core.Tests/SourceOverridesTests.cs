@@ -41,6 +41,10 @@ public class SourceOverridesTests
         // it to Inquisitor only, falsely crediting the Inquisitor.
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Strike of Faith", "Berserker"));
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Strike of Faith", null));
+        // Charm pets act under the coercer's name and cast the charmed mob's
+        // SK kit — class for the SK (own spell) AND the coercer (their play).
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Death Cloud", "Coercer"));
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Painbringer", "Shadowknight"));
     }
 
     [Fact]

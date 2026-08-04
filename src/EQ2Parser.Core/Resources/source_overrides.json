@@ -168,6 +168,24 @@
       "ability": "Strike of Faith",
       "source": "class",
       "note": "Multi-class (HO-style) ability - attackers span the whole raid (zerker, coercer, swash, dirge, brigand, troub...). The census effects layer tied the name to Inquisitor only, which falsely credited the Inquisitor as a raid granter."
+    },
+    {
+      "ability": "Painbringer",
+      "classes": [
+        "Shadowknight",
+        "Coercer"
+      ],
+      "source": "class",
+      "note": "SK castable that ALSO appears under Coercer names: charm pets act under the coercer's name and cast the charmed mob's SK kit, which tagged Raid and falsely credited the real SK. Charm is the coercer's play - class for both."
+    },
+    {
+      "ability": "Death Cloud",
+      "classes": [
+        "Shadowknight",
+        "Coercer"
+      ],
+      "source": "class",
+      "note": "SK castable that ALSO appears under Coercer names: charm pets act under the coercer's name and cast the charmed mob's SK kit, which tagged Raid and falsely credited the real SK. Charm is the coercer's play - class for both."
     }
   ]
 }

@@ -366,7 +366,7 @@ public sealed partial class MainParseViewModel
         return acc;
     }
 
-    private static void ApplyAbilityRows(ObservableCollection<AbilityRow> rows, List<AbilityData> snapshot, bool sort, bool bars)
+    private void ApplyAbilityRows(ObservableCollection<AbilityRow> rows, List<AbilityData> snapshot, bool sort, bool bars)
     {
         if (sort)
         {
@@ -422,7 +422,9 @@ public sealed partial class MainParseViewModel
             row.SourceBrush = data.Source switch
             {
                 "class" => ClassColors.SourceClass,
-                "raid" => ClassColors.SourceRaid,
+                // Raid tags wear the GRANTING class's archetype colour —
+                // Fae Fires reads healer-green, Precise Note scout-yellow.
+                "raid" => GrantingBrush(data.Name),
                 "item" => ClassColors.SourceItem,
                 "pet" => ClassColors.SourcePet, // renamed-pet padding — loud
                 _ => ClassColors.Neutral,

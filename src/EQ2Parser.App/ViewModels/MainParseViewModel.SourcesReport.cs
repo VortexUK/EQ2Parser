@@ -221,8 +221,10 @@ public sealed partial class MainParseViewModel
                     .Take(8)
                     .ToList();
                 var raidTotal = Math.Max(1, totals[(int)AbilitySource.Raid]);
+                // Slices wear the GRANTING class's archetype colour — a
+                // green slice is healer-granted, yellow scout, blue mage.
                 ReportDonutOuter = [.. raidAbilities
-                    .Select((t, i) => Ring(t.Name, t.Damage, ShadeOf(SourceSk[1], i), raidTotal, 44))];
+                    .Select(ISeries (t) => Ring(t.Name, t.Damage, GrantingSk(t.Name), raidTotal, 44))];
                 ReportChartVisible = true;
             }
         }
@@ -240,6 +242,20 @@ public sealed partial class MainParseViewModel
             if (top.Count == 0)
                 return;
             ReportLine(("", Services.ClassColors.Neutral));
+            if (source == AbilitySource.Raid)
+            {
+                // Each granted ability wears its granting class's archetype
+                // colour — the footer doubles as a who-buffs-what legend.
+                List<(string, System.Windows.Media.Brush)> parts = [($"{label}: ", Services.ClassColors.TreeHeader)];
+                for (var i = 0; i < top.Count; i++)
+                {
+                    if (i > 0)
+                        parts.Add((" · ", Services.ClassColors.Neutral));
+                    parts.Add(($"{top[i].Name} {CombatantRow.Compact(top[i].Damage)}", GrantingBrush(top[i].Name)));
+                }
+                ReportLine([.. parts]);
+                return;
+            }
             ReportLine(
                 ($"{label}: ", Services.ClassColors.TreeHeader),
                 (string.Join(" · ", top.Select(t => $"{t.Name} {CombatantRow.Compact(t.Damage)}")), SourceBrush(source)));
@@ -310,7 +326,10 @@ public sealed partial class MainParseViewModel
             ReportDonutOuter = [.. tally.ByAbility
                 .OrderByDescending(kv => kv.Value.Damage)
                 .Take(10)
-                .Select(ISeries (kv) => Ring(kv.Key, kv.Value.Damage, SourceSk[(int)kv.Value.Source], tally.Total, 44))];
+                .Select(ISeries (kv) => Ring(
+                    kv.Key, kv.Value.Damage,
+                    kv.Value.Source == AbilitySource.Raid ? GrantingSk(kv.Key) : SourceSk[(int)kv.Value.Source],
+                    tally.Total, 44))];
             ReportChartVisible = true;
         }
     }
@@ -373,7 +392,7 @@ public sealed partial class MainParseViewModel
                 ((classByAlly.GetValueOrDefault(granter) ?? "").PadRight(14), Services.ClassColors.TreeText),
                 ($"{CombatantRow.Compact(credited),8}{(estimated ? " ~" : "  ")}", SourceBrush(AbilitySource.Raid)),
                 ($"≈{CombatantRow.Compact(credited / seconds)} dps".PadLeft(11), SourceBrush(AbilitySource.Raid)),
-                ($"  {from}", Services.ClassColors.Neutral));
+                ($"  {from}", Services.ClassColors.For(classByAlly.GetValueOrDefault(granter))));
         }
         var unattributed = credits.Where(c => c.Granters.Count == 0).ToList();
         if (unattributed.Count > 0)
@@ -480,13 +499,19 @@ public sealed partial class MainParseViewModel
         return targets;
     }
 
-    /// <summary>Distinguishable shades of one hue for the ability ring.</summary>
-    private static SKColor ShadeOf(SKColor baseColor, int index)
+    /// <summary>Archetype colour of the class that GRANTS a raid ability —
+    /// Fae Fires ← Fury → priest green, Precise Note ← Troubador → scout
+    /// yellow, Ice Lash ← Wizard → mage blue. Neutral when unknown.</summary>
+    private System.Windows.Media.SolidColorBrush GrantingBrush(string ability)
     {
-        var factor = 1.0f - 0.09f * index;
-        return new SKColor(
-            (byte)Math.Clamp(baseColor.Red * factor, 40, 255),
-            (byte)Math.Clamp(baseColor.Green * factor, 40, 255),
-            (byte)Math.Clamp(baseColor.Blue * factor, 40, 255));
+        var identifier = manager.Classifier.Identifier;
+        var granting = identifier.Overrides.GrantedByFor(ability) ?? identifier.Map.GrantingClassesFor(ability);
+        return Services.ClassColors.For(granting.Count > 0 ? granting[0] : null);
+    }
+
+    private SKColor GrantingSk(string ability)
+    {
+        var media = GrantingBrush(ability).Color;
+        return new SKColor(media.R, media.G, media.B);
     }
 }
