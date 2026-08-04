@@ -25,6 +25,13 @@ public class SourceOverridesTests
         // character's own play, not items (absent from census → Item before).
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Ringing Blow", "Wizard"));
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Bloodletting", null));
+        // Necro scout-pet kit logs under the owner's name (verified: every
+        // attacker in the logs is a necromancer); swarm-pet attacks parse as
+        // a composite "pet's Ability" name via the double possessive.
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Throat Gash", "Necromancer"));
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("blighted horde's Grave Decay", "Necromancer"));
+        // Non-necros fall back to the map (absent from both layers → Item).
+        Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Throat Gash", "Brigand"));
     }
 
     [Fact]

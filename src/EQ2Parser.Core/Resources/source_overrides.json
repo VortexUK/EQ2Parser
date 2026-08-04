@@ -20,6 +20,48 @@
       "ability": "Bloodletting",
       "source": "class",
       "note": "Freeblood racial proc - intrinsic to the character, not an item proc (absent from census, so the map defaulted to item)."
+    },
+    {
+      "ability": "Poisoned Spike",
+      "classes": ["Necromancer"],
+      "source": "class",
+      "note": "Necromancer scout-pet ability - pet attacks log under the owner's name (verified: every attacker in the logs is a necro). Absent from census, so the map said item."
+    },
+    {
+      "ability": "Throat Gash",
+      "classes": ["Necromancer"],
+      "source": "class",
+      "note": "Necromancer scout-pet ability - see Poisoned Spike."
+    },
+    {
+      "ability": "Unseen Blade",
+      "classes": ["Necromancer"],
+      "source": "class",
+      "note": "Necromancer scout-pet ability - see Poisoned Spike."
+    },
+    {
+      "ability": "Shadowy Garrote",
+      "classes": ["Necromancer"],
+      "source": "class",
+      "note": "Necromancer scout-pet ability - see Poisoned Spike."
+    },
+    {
+      "ability": "Shadestrike",
+      "classes": ["Necromancer"],
+      "source": "class",
+      "note": "Necromancer scout-pet ability - see Poisoned Spike."
+    },
+    {
+      "ability": "Acidity",
+      "classes": ["Necromancer"],
+      "source": "class",
+      "note": "Necromancer pet ability - see Poisoned Spike."
+    },
+    {
+      "ability": "blighted horde's Grave Decay",
+      "classes": ["Necromancer"],
+      "source": "class",
+      "note": "Swarm-pet attack. The log line is a DOUBLE possessive (Martyn's blighted horde's Grave Decay hits ...) and the grammar - ACT-identically - splits at the first 's, so the pet entity becomes part of the ability name. Grammar stays ACT-parity; the label is fixed here."
     }
   ]
 }
