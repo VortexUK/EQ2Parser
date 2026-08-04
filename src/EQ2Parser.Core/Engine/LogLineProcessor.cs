@@ -133,10 +133,22 @@ public sealed class LogLineProcessor
             {
                 var killer = Resolve(death.Killer);
                 var victim = Resolve(death.Victim);
+                // In the owner's OWN log a real self-death is always second
+                // person ("Avatar of Growth has killed you.") — the game
+                // never writes the log owner's death in third person. So a
+                // third-person death naming the OWNER can only be an entity
+                // acting under their name: the Templar hammer temp pet et
+                // al. Verified empirically (2026-08, 685MB of raid logs):
+                // 82 own-name deaths were all hammer expiries on the summon
+                // cadence; the 16 real deaths were all "killed you", with
+                // zero overlap between the shapes. ACT counts them all as
+                // the player — a deliberate, documented deviation.
+                var petDeath = death.Victim.Equals(Engine.OwnerName, StringComparison.OrdinalIgnoreCase);
                 // Death drops the timer mods ON the combatant AND the ones
                 // they applied — a dead swiper's debuff dies with them, and
-                // running timers it stretched rescale pro-rata.
-                if (live)
+                // running timers it stretched rescale pro-rata. A pet death
+                // must NOT strip the owner's timers.
+                if (live && !petDeath)
                     _timers?.NotifyDeath(victim, anchor);
                 // Deaths are recorded into a live fight but never start one —
                 // an out-of-combat "Alas, X has died" is not an encounter.
@@ -145,14 +157,22 @@ public sealed class LogLineProcessor
                 Engine.AddSwing(
                     SwingCategory.Melee, false, "None",
                     killer, Combatant.KillingAbility, DamageValue.Death,
-                    line.Timestamp, victim, "death", extra: null, observedAt: line.ObservedAt);
+                    line.Timestamp, victim, "death",
+                    extra: petDeath ? Combatant.PetDeathExtra : null,
+                    observedAt: line.ObservedAt);
                 break;
             }
         }
     }
 
     // "YOURSELF" appears as the victim of self-targeted lines ("…absorbs 720
-    // points of damage from being done to YOURSELF.") — same person as YOU.
+    // points of damage from being done to YOURSELF."), and kill lines use
+    // lowercase second person ("Avatar of Growth has killed you.") — the
+    // case-sensitive match sent the owner's REAL deaths to a stray
+    // combatant literally named "you". All you-forms are the log owner.
     private string Resolve(string name) =>
-        name is EnglishGrammar.You or "You" or "YOURSELF" or "Yourself" ? Engine.OwnerName : name;
+        name.Equals("you", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("yourself", StringComparison.OrdinalIgnoreCase)
+            ? Engine.OwnerName
+            : name;
 }

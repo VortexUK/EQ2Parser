@@ -325,13 +325,19 @@ public sealed partial class MainParseViewModel
                 ? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
                 : ClassMapFor(fightObj);
 
-            // Collect every death with its lead-up, ordered by time.
+            // Collect every death with its lead-up, ordered by time. Temp-pet
+            // deaths (recorded under the owner's name, marked at parse time)
+            // are counted separately, never listed as the player dying.
+            var petDeaths = 0;
             List<(DateTimeOffset Time, string Victim, string Killer, List<Core.Combat.Swing> Lead)> deaths = [];
             foreach (var (targetName, combatant) in targets)
             {
                 if (combatant.IncomingBuckets.GetValueOrDefault(BucketConfig.AllIncomingRef) is not { } incoming)
                     continue;
-                foreach (var death in incoming.All.Swings.Where(sw => sw.Damage.IsDeath))
+                petDeaths += incoming.All.Swings.Count(
+                    sw => sw.Damage.IsDeath && sw.Extra == Combatant.PetDeathExtra);
+                foreach (var death in incoming.All.Swings.Where(
+                    sw => sw.Damage.IsDeath && sw.Extra != Combatant.PetDeathExtra))
                 {
                     var lead = incoming.All.Swings
                         .Where(sw => !sw.Damage.IsDeath && sw.Time <= death.Time && sw.Damage.Number != 0)
@@ -346,6 +352,10 @@ public sealed partial class MainParseViewModel
             if (deaths.Count == 0)
             {
                 ReportLine(("No deaths.", ClassColors.OutcomeWin));
+                if (petDeaths > 0)
+                    ReportLine((
+                        $"{petDeaths} temp-pet death{(petDeaths == 1 ? "" : "s")} excluded (pets die under their owner's name)",
+                        ClassColors.Neutral));
                 OpenReport($"{context} › death report");
                 ReportChartVisible = false;
                 return;
@@ -356,7 +366,8 @@ public sealed partial class MainParseViewModel
 
             ReportLine(
                 ($"{deaths.Count} death{(deaths.Count == 1 ? "" : "s")}", ClassColors.OutcomeLoss),
-                ($"   first {Rel(deaths[0].Time)}   last {Rel(deaths[^1].Time)}", ClassColors.Neutral));
+                ($"   first {Rel(deaths[0].Time)}   last {Rel(deaths[^1].Time)}", ClassColors.Neutral),
+                (petDeaths > 0 ? $"   +{petDeaths} temp-pet (excluded)" : "", ClassColors.Neutral));
             ReportLine(("", ClassColors.Neutral));
             foreach (var (time, victim, killer, lead) in deaths)
             {

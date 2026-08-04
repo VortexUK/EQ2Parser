@@ -73,6 +73,19 @@ Improvements live in architecture, robustness, performance and UX:
    re-evaluate on edit (not only on zone change); trigger/spell-timer packs
    subscribe per-encounter from EQ2Lexicon raids.db.
 9. **Companion logs**: not reimplemented — superseded by (1).
+10. **Owner death counts are TRUE deaths** (2026-08-04 — the one deliberate
+    stat deviation, user-approved). In the owner's own log a real self-death
+    is always second person ("has killed you."); a third-person death naming
+    the owner can only be a temp pet dying under their name (the Templar
+    hammer — verified: 82 own-name deaths were all hammer expiries vs 16
+    real "killed you" deaths, zero shape overlap). ACT counts all of them as
+    the player (~6× inflation for a raiding Templar) and also miscounts the
+    real ones onto a stray "you" combatant. We mark own-name third-person
+    kills as pet deaths: excluded from Deaths/kill credit/success, shown
+    separately in the death report. Third parties' deaths keep ACT parity —
+    their shapes are genuinely indistinguishable (buff-fade correlation
+    tested and rejected: 44% coincidence vs 49% signal); per-combatant
+    authority lets each character's own log correct their own count.
 
 ---
 

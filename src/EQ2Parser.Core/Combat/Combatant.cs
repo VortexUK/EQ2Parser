@@ -113,16 +113,36 @@ public sealed class Combatant(string name)
         }
     }
 
-    /// <summary>Deaths: the incoming Killing pseudo-ability count, else
-    /// death-coded incoming swings.</summary>
+    /// <summary>Marks a Killing swing as a TEMP PET dying under its owner's
+    /// name (the Templar hammer logs "X has killed Menludiir" — third person,
+    /// owner's own name, in the owner's own log; a REAL self-death is always
+    /// second person "has killed you"). Excluded from Deaths so a raiding
+    /// Templar's count isn't ~6× inflated the way ACT counts it.</summary>
+    public const string PetDeathExtra = "pet-death";
+
+    /// <summary>Deaths: the incoming Killing pseudo-ability count (pet
+    /// deaths excluded), else death-coded incoming swings.</summary>
     public int Deaths
     {
         get
         {
             if (_incoming.TryGetValue(BucketConfig.AllIncomingRef, out var reference)
                 && reference.Abilities.TryGetValue(KillingAbility, out var killing))
-                return killing.Swings.Count;
+                return killing.Swings.Count(sw => sw.Extra != PetDeathExtra);
             return AllOf(_incoming, BucketConfig.AllIncomingRef)?.DeathCount ?? 0;
+        }
+    }
+
+    /// <summary>Temp-pet deaths recorded under this combatant's name —
+    /// shown separately, never counted as the player dying.</summary>
+    public int PetDeaths
+    {
+        get
+        {
+            if (_incoming.TryGetValue(BucketConfig.AllIncomingRef, out var reference)
+                && reference.Abilities.TryGetValue(KillingAbility, out var killing))
+                return killing.Swings.Count(sw => sw.Extra == PetDeathExtra);
+            return 0;
         }
     }
 
@@ -135,7 +155,8 @@ public sealed class Combatant(string name)
             return 0;
         var count = 0;
         foreach (var s in all.Swings)
-            if (s.Damage.IsDeath && (isAlly || Swing.LooksLikePlayer(s.Victim)))
+            if (s.Damage.IsDeath && s.Extra != PetDeathExtra
+                && (isAlly || Swing.LooksLikePlayer(s.Victim)))
                 count++;
         return count;
     }
