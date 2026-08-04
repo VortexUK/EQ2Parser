@@ -7,16 +7,24 @@ public class SourceOverridesTests
     private static readonly SpellClassMap EmptyMap = SpellClassMap.FromDictionary([]);
 
     [Fact]
-    public void Embedded_Overrides_Fix_Divine_Smash_For_Clerics()
+    public void Embedded_Overrides_Fix_The_Known_Mislabels()
     {
-        // The canonical mislabel: the cleric hammer pet's ability logs under
-        // the owner and is absent from census, so the map said Item.
         var identifier = new ClassIdentifier(SpellClassMap.LoadEmbedded(), SourceOverrides.LoadEmbedded());
+        // Templar hammer pet's ability logs under the owner and is absent
+        // from census, so the map said Item. Inquisitors don't get the
+        // hammer — for them the map fallback (Item) is the right answer.
         Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Divine Smash", "Templar"));
-        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Divine Smash", "Inquisitor"));
-        // Not a cleric → the override doesn't apply; map fallback (absent → Item).
+        Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Divine Smash", "Inquisitor"));
         Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Divine Smash", "Wizard"));
         Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Divine Smash", null));
+        // Tunare's Wrath bow proc — shares a name with a Fury/Warden spell,
+        // so non-druids were mislabelled Raid.
+        Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Tunare's Grace", "Templar"));
+        Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Tunare's Grace", "Fury"));
+        // Heroic Opportunity finisher + Freeblood racial proc — the
+        // character's own play, not items (absent from census → Item before).
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Ringing Blow", "Wizard"));
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Bloodletting", null));
     }
 
     [Fact]

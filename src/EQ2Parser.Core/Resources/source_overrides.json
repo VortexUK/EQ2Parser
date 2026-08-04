@@ -2,9 +2,24 @@
   "overrides": [
     {
       "ability": "Divine Smash",
-      "classes": ["Templar", "Inquisitor"],
+      "classes": ["Templar"],
       "source": "class",
-      "note": "Cleric hammer temp-pet ability - the pet swings log under the owner's own name, and the name is absent from census spell lists, so the map called it an item proc."
+      "note": "Templar hammer temp-pet ability (Inquisitors do NOT get the hammer) - the pet swings log under the owner's own name, and the name is absent from census spell lists, so the map called it an item proc."
+    },
+    {
+      "ability": "Tunare's Grace",
+      "source": "item",
+      "note": "Proc from the Tunare's Wrath bow. The map knows a Fury/Warden spell of the same name, so on non-druids it was mislabelled a granted raid buff."
+    },
+    {
+      "ability": "Ringing Blow",
+      "source": "class",
+      "note": "Heroic Opportunity finisher - part of the character's own play, not an item proc (absent from census, so the map defaulted to item)."
+    },
+    {
+      "ability": "Bloodletting",
+      "source": "class",
+      "note": "Freeblood racial proc - intrinsic to the character, not an item proc (absent from census, so the map defaulted to item)."
     }
   ]
 }
