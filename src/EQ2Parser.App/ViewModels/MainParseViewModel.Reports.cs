@@ -1230,6 +1230,7 @@ public sealed partial class MainParseViewModel
             case 1: DeathReport(proxy); break;
             case 2: AvoidanceReport(proxy); break;
             case 3: SpecialReport(proxy); break;
+            case 4: SourcesReport(proxy); break;
         }
     }
 
