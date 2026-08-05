@@ -161,13 +161,6 @@ public sealed class AlertAudioService : IDisposable
 
     private async Task<byte[]?> SynthesizeAsync(string text)
     {
-        var key = $"{VoiceId}|{SpeakingRate:0.##}|{text}";
-        lock (_cacheGate)
-        {
-            if (_ttsCache.TryGetValue(key, out var cached))
-                return cached;
-        }
-
         // Neural voice: synthesize on this pump thread (~100 ms warm).
         // Missing/broken model falls through to the Windows backend so an
         // alert mid-download still speaks — but never SILENTLY: a tester
@@ -175,6 +168,12 @@ public sealed class AlertAudioService : IDisposable
         // chain was swallowed.
         if (PiperVoiceCatalog.Find(VoiceId) is { } neural && PiperVoiceCatalog.IsInstalled(neural))
         {
+            var key = $"{VoiceId}|{SpeakingRate:0.##}|{text}";
+            lock (_cacheGate)
+            {
+                if (_ttsCache.TryGetValue(key, out var cached))
+                    return cached;
+            }
             var neuralWav = _piper.Synthesize(neural, text, SpeakingRate);
             if (neuralWav is not null)
             {
@@ -194,6 +193,19 @@ public sealed class AlertAudioService : IDisposable
             }
         }
 
+        // Windows path — cached under a BACKEND-scoped key, never the
+        // neural voice's. A fallback WAV cached under the neural key used
+        // to pin every early-spoken phrase (trigger/timer lines, typically
+        // first uttered while the pack was still downloading) to the
+        // Windows voice for the whole session, while the later-spoken Test
+        // phrase came out neural.
+        var winKey = $"win|{VoiceId}|{SpeakingRate:0.##}|{text}";
+        lock (_cacheGate)
+        {
+            if (_ttsCache.TryGetValue(winKey, out var cached))
+                return cached;
+        }
+
         try
         {
             using var synth = new SpeechSynthesizer();
@@ -210,7 +222,7 @@ public sealed class AlertAudioService : IDisposable
             {
                 if (_ttsCache.Count >= CacheCap)
                     _ttsCache.Clear();
-                _ttsCache[key] = wav;
+                _ttsCache[winKey] = wav;
             }
             return wav;
         }
