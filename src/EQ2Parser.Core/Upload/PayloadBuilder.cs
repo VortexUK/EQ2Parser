@@ -28,13 +28,18 @@ public static class PayloadBuilder
             var outgoingDamage = combatant.OutgoingBuckets.GetValueOrDefault(BucketConfig.OutgoingDamage)?.All;
             var healedOut = combatant.OutgoingBuckets.GetValueOrDefault(BucketConfig.HealedOut)?.All;
             var personalSeconds = combatant.Duration.TotalSeconds;
+            // Victim-only combatants (an add that died without acting) have
+            // sentinel MaxValue/MinValue windows — clamp to the fight, or
+            // the site stores year-9999/year-1 garbage.
+            var start = combatant.StartTime == DateTimeOffset.MaxValue ? encounter.StartTime : combatant.StartTime;
+            var end = combatant.EndTime == DateTimeOffset.MinValue ? start : combatant.EndTime;
 
             combatants.Add(new PayloadCombatant
             {
                 Name = combatant.Name,
                 Ally = isAlly ? "T" : "F",
-                StartTime = Ts(combatant.StartTime),
-                EndTime = Ts(combatant.EndTime),
+                StartTime = Ts(start),
+                EndTime = Ts(end),
                 Duration = (int)personalSeconds,
                 Damage = combatant.Damage,
                 Kills = combatant.GetKills(isAlly),
@@ -82,8 +87,16 @@ public static class PayloadBuilder
                     Misses = all.Misses,
                     Swings = all.SwingCount,
                 });
+            }
 
-                foreach (var (abilityName, ability) in bucket.Abilities)
+            // attack_types come from the REFERENCE bucket — every outgoing
+            // swing exactly once per ability. Building them per category
+            // bucket shipped duplicates (a melee swing feeds Outgoing Damage
+            // AND Auto-Attack (Out)) and tripped the site's
+            // UNIQUE(combatant_id, swing_type, attack_name) with a 500.
+            if (combatant.OutgoingBuckets.GetValueOrDefault(BucketConfig.AllOutgoingRef) is { } reference)
+            {
+                foreach (var (abilityName, ability) in reference.Abilities)
                 {
                     if (abilityName == Bucket.AllAbility || ability.Swings.Count == 0)
                         continue;

@@ -76,6 +76,32 @@ public class UploadClientTests
         Assert.Equal(PayloadBuilder.ComputeEncId(BuildEncounter()), PayloadBuilder.ComputeEncId(BuildEncounter()));
     }
 
+    [Fact]
+    public void Attack_Types_Are_Unique_Per_Combatant_And_Ability()
+    {
+        // Regression: per-BUCKET emission duplicated any ability feeding two
+        // buckets (melee → Outgoing Damage + Auto-Attack (Out)) and the
+        // site's UNIQUE(combatant_id, swing_type, attack_name) turned every
+        // real upload into a 500.
+        var payload = PayloadBuilder.Build(BuildEncounter(), "Varsoon");
+        var keys = payload.AttackTypes.Select(a => (a.Attacker, a.SwingType, a.Type)).ToList();
+        Assert.Equal(keys.Count, keys.Distinct().Count());
+    }
+
+    [Fact]
+    public void VictimOnly_Combatants_Get_Fight_Times_Not_Sentinels()
+    {
+        // An add that dies without ever acting has MaxValue/MinValue
+        // windows — the payload must clamp them to the fight, not ship
+        // year-9999/year-1 timestamps.
+        var payload = PayloadBuilder.Build(BuildEncounter(), "Varsoon");
+        foreach (var combatant in payload.Combatants)
+        {
+            Assert.DoesNotContain("9999", combatant.StartTime);
+            Assert.DoesNotContain("0001", combatant.EndTime);
+        }
+    }
+
     private sealed class CapturingHandler(HttpStatusCode status, string body) : HttpMessageHandler
     {
         public HttpRequestMessage? Request;
