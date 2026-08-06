@@ -6,6 +6,14 @@ namespace EQ2Parser.App.Views;
 
 public partial class TimersView
 {
+    /// <summary>Click the timer text → load it into the editor panel.</summary>
+    private void TimerBody_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is TimersViewModel vm
+            && (sender as FrameworkElement)?.DataContext is TimerDefRow row)
+            vm.EditRowCommand.Execute(row);
+    }
+
     private readonly CategoryDragDrop _dragDrop;
 
     public TimersView()

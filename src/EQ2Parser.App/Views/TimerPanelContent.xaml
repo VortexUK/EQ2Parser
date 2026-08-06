@@ -171,6 +171,25 @@
                                         <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
                                     </TextBlock.Effect>
                                 </TextBlock>
+                                <!-- Swipe marker: this timer was STRETCHED by a
+                                     recast debuff (Traumatic Swipe) — the long
+                                     recast is real, not mis-curated. -->
+                                <TextBlock Text="{Binding SwipeText}" FontSize="10" FontWeight="Bold" FontFamily="Segoe UI"
+                                           Foreground="#FBBF24" VerticalAlignment="Center" Margin="5,0,0,0"
+                                           ToolTip="Stretched by a recast debuff (e.g. Traumatic Swipe)">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SwipeText}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                                    </TextBlock.Effect>
+                                </TextBlock>
                             </StackPanel>
                             <TextBlock Grid.Column="2" Text="{Binding SecondsText}" FontSize="12"
                                        VerticalAlignment="Center" FontFamily="Consolas" FontWeight="Bold">

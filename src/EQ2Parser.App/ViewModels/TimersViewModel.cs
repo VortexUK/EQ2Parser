@@ -42,6 +42,11 @@ public sealed partial class TimerDefRow : ObservableObject, ICategoryDropTarget
     [ObservableProperty]
     private bool _isDropTarget;
 
+    /// <summary>This row is loaded in the editor — highlighted so what's
+    /// being edited is unmistakable.</summary>
+    [ObservableProperty]
+    private bool _isEditing;
+
     partial void OnEnabledChanged(bool value) => _owner.SetRowEnabled(this, value);
 
     public string DetailLabel
@@ -151,6 +156,11 @@ public sealed partial class TimerBarRow : ObservableObject
     /// small for "Prone to Corruption · Othysis Muravian".</summary>
     [ObservableProperty]
     private string _nameOnly = "";
+
+    /// <summary>"⇑50%" when recast debuffs (Traumatic Swipe) stretched this
+    /// timer past its base duration; "" when unmodified.</summary>
+    [ObservableProperty]
+    private string _swipeText = "";
 }
 
 /// <summary>
@@ -213,6 +223,18 @@ public sealed partial class TimersViewModel : ObservableObject
         var all = _manager.SpellTimers.Definitions;
         _tree.Rebuild(all, MatchesFilter, FilterText.Length > 0);
         HasTimers = all.Count > 0;
+        MarkEditingRow();
+    }
+
+    /// <summary>Sync the editing highlight to _editingKey — rows are
+    /// recreated on every rebuild, so the flag must be re-applied.</summary>
+    private void MarkEditingRow()
+    {
+        foreach (var item in Rows)
+        {
+            if (item is TimerDefRow row)
+                row.IsEditing = _editingKey is not null && row.Key == _editingKey;
+        }
     }
 
     [RelayCommand]
@@ -490,6 +512,7 @@ public sealed partial class TimersViewModel : ObservableObject
         StartSound = "";
         WarningSound = "";
         EditorError = "";
+        MarkEditingRow();
     }
 
     [RelayCommand]
@@ -525,6 +548,7 @@ public sealed partial class TimersViewModel : ObservableObject
         StartSound = d.StartSoundData;
         WarningSound = d.WarningSoundData;
         EditorError = "";
+        MarkEditingRow();
     }
 
     [RelayCommand]
@@ -576,9 +600,12 @@ public sealed partial class TimersViewModel : ObservableObject
             WarningSoundData = WarningSound.Trim(),
         };
         _manager.SpellTimers.AddOrUpdate(definition, _editingKey);
-        _editingKey = null;
+        // Stay ON the saved timer — the editor emptying itself after every
+        // save read as the work vanishing. "New timer" is the way out.
+        _editingKey = definition.Key;
+        EditorTitle = "Edit timer";
         _tree.Reveal(definition.Zone, definition.Category);
-        NewTimer();
+        EditorError = "";
         RebuildRows();
     }
 
@@ -589,6 +616,50 @@ public sealed partial class TimersViewModel : ObservableObject
 
     [ObservableProperty]
     private string _importResult = "";
+
+    /// <summary>Import a FULL ACT settings export file (Config with
+    /// CustomTriggers + SpellTimers — hundreds of entries).</summary>
+    [RelayCommand]
+    private void ImportXmlFile()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Import ACT settings XML",
+            Filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*",
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+        string xml;
+        try
+        {
+            xml = System.IO.File.ReadAllText(dialog.FileName);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            ImportResult = $"Couldn't read the file: {ex.Message}";
+            return;
+        }
+        var result = ActConfigImport.TryImport(xml);
+        if (result is null)
+        {
+            ImportResult = "Not a recognisable ACT XML export (no Trigger/Spell entries found).";
+            return;
+        }
+        _manager.SpellTimers.ImportMany(result.Timers);
+        _manager.Triggers.AddOrUpdateMany(result.Triggers);
+        var linked = _manager.SpellTimers.EnsureLinkedTimers(result.Triggers);
+        List<string> parts = [];
+        if (result.Timers.Count > 0)
+            parts.Add($"{result.Timers.Count} spell timer{(result.Timers.Count == 1 ? "" : "s")} imported");
+        if (result.Triggers.Count > 0)
+            parts.Add($"{result.Triggers.Count} trigger{(result.Triggers.Count == 1 ? "" : "s")} imported (see Triggers page)");
+        if (linked > 0)
+            parts.Add($"{linked} linked timer{(linked == 1 ? "" : "s")} created with 30s defaults");
+        if (result.Skipped > 0)
+            parts.Add($"{result.Skipped} entr{(result.Skipped == 1 ? "y" : "ies")} skipped (bad regex or missing name)");
+        ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : "The file contained no importable entries.";
+        RebuildRows();
+    }
 
     [RelayCommand]
     private void ImportXml()
@@ -666,6 +737,8 @@ public sealed partial class TimersViewModel : ObservableObject
         // Above the style short-circuit: the key doesn't include the name,
         // so a recycled radial row kept showing the previous timer's name.
         row.NameOnly = bar.Name;
+        // Also per-tick (a swipe can land mid-timer on a recycled row).
+        row.SwipeText = bar.SwipedPercent > 0 ? $"⇑{bar.SwipedPercent}%" : "";
         var styleKey = $"{bar.FillColorArgb}|{bar.DamageType}|{bar.ControlEffect}";
         if (row.StyleKey == styleKey)
             return;

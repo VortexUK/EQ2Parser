@@ -15,7 +15,10 @@ public sealed record TimerBarSnapshot(
     int FillColorArgb,
     bool Radial,
     string DamageType = "",
-    string ControlEffect = "");
+    string ControlEffect = "",
+    /// <summary>Percent the timer was STRETCHED by recast debuffs
+    /// (Traumatic Swipe): 50 for base×1.5. 0 = unmodified.</summary>
+    int SwipedPercent = 0);
 
 /// <summary>
 /// The app-side owner of spell timers: ONE shared Core SpellTimerService
@@ -233,6 +236,12 @@ public sealed class TimerService
                     continue;
                 foreach (var timer in frame.Timers)
                 {
+                    // A swiped timer runs LONGER than its base — surface by
+                    // how much, so the raid knows the recast they're staring
+                    // at was stretched, not mis-curated.
+                    var swiped = timer.BaseDurationSeconds > 0 && timer.DurationSeconds != timer.BaseDurationSeconds
+                        ? (int)Math.Round(100.0 * (timer.DurationSeconds - timer.BaseDurationSeconds) / timer.BaseDurationSeconds)
+                        : 0;
                     bars.Add(new TimerBarSnapshot(
                         frame.Definition.Name,
                         frame.Combatant,
@@ -242,7 +251,8 @@ public sealed class TimerService
                         frame.Definition.FillColorArgb,
                         frame.Definition.RadialDisplay,
                         frame.Definition.DamageType,
-                        frame.Definition.ControlEffect));
+                        frame.Definition.ControlEffect,
+                        swiped));
                 }
             }
         }

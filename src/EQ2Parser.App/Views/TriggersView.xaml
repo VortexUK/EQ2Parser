@@ -25,10 +25,14 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
                          VerticalContentAlignment="Center" Padding="8,4" FontSize="13" />
-                <Button Grid.Column="1" Content="Copy all as XML" Style="{StaticResource GoldButton}"
+                <Button Grid.Column="1" Content="+ New trigger" Style="{StaticResource GoldButton}"
+                        Margin="8,0,0,0" Command="{Binding NewTriggerCommand}"
+                        ToolTip="Clear the editor to create a fresh trigger" />
+                <Button Grid.Column="2" Content="Copy all as XML" Style="{StaticResource GoldButton}"
                         Margin="8,0,0,0" Command="{Binding CopyAllXmlCommand}" />
             </Grid>
 
@@ -159,6 +163,9 @@
                                         <Style TargetType="Border">
                                             <Setter Property="Background" Value="Transparent" />
                                             <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                    <Setter Property="Background" Value="#1AC8A96E" />
+                                                </DataTrigger>
                                                 <DataTrigger Binding="{Binding IsDropTarget}" Value="True">
                                                     <Setter Property="Background" Value="#26C8A96E" />
                                                 </DataTrigger>
@@ -180,7 +187,9 @@
                                                    PreviewMouseMove="DragGrip_MouseMove"
                                                    PreviewMouseLeftButtonUp="DragGrip_MouseUp" />
                                         <CheckBox Grid.Column="1" IsChecked="{Binding Enabled}" VerticalAlignment="Top" Margin="0,2,10,0" />
-                                        <StackPanel Grid.Column="2">
+                                        <StackPanel Grid.Column="2" Background="Transparent" Cursor="Hand"
+                                                    MouseLeftButtonUp="TriggerBody_Click"
+                                                    ToolTip="Click to edit in the panel on the right">
                                             <TextBlock Text="{Binding RegexText}" FontFamily="Consolas" FontSize="13"
                                                        Foreground="{StaticResource GoldBrightBrush}" TextWrapping="Wrap" />
                                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
@@ -204,12 +213,8 @@
                                             </StackPanel>
                                         </StackPanel>
                                         <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Top">
-                                            <Button Content="Edit" Style="{StaticResource GoldButton}" Padding="10,3"
-                                                    Visibility="{Binding IsLexicon, Converter={StaticResource InverseBoolToVis}}"
-                                                    Command="{Binding DataContext.EditRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}" />
                                             <Button Content="⧉" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
-                                                    ToolTip="Copy as ACT share XML"
+                                                    ToolTip="Copy share XML — send it to a friend, they paste it into their Import box"
                                                     Command="{Binding DataContext.CopyRowXmlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}" />
                                             <Button Content="✕" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
@@ -335,18 +340,22 @@
                 <Border Style="{StaticResource Card}" Padding="14" Margin="0,12,0,0">
                     <StackPanel>
                         <TextBlock Text="Import from ACT" Style="{StaticResource SectionLabel}" />
-                        <TextBlock Text="Paste ACT share XML — one &lt;Trigger … /&gt; per line."
-                                   Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,6" />
+                        <TextBlock Text="Paste ACT share XML — one &lt;Trigger … /&gt; per line — or import a full ACT settings export file."
+                                   Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,6" TextWrapping="Wrap" />
                         <TextBox Text="{Binding ImportText, UpdateSourceTrigger=PropertyChanged}"
                                  FontFamily="Consolas" FontSize="12" Padding="8,5" AcceptsReturn="True"
                                  MinHeight="72" MaxHeight="160" VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap" />
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <Button Content="Import" Style="{StaticResource GoldButton}" Command="{Binding ImportXmlCommand}" />
-                            <TextBlock Grid.Column="1" Text="{Binding ImportResult}" Style="{StaticResource MutedText}"
+                            <Button Grid.Column="1" Content="Import XML file…" Style="{StaticResource GoldButton}" Margin="8,0,0,0"
+                                    ToolTip="Import an ACT settings export (Config with CustomTriggers + SpellTimers)"
+                                    Command="{Binding ImportXmlFileCommand}" />
+                            <TextBlock Grid.Column="2" Text="{Binding ImportResult}" Style="{StaticResource MutedText}"
                                        FontSize="12" Margin="10,5,0,0" TextWrapping="Wrap" />
                         </Grid>
                     </StackPanel>

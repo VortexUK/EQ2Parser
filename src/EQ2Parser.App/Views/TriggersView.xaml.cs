@@ -54,6 +54,14 @@ public partial class TriggersView
     private void DropTarget_DragLeave(object sender, DragEventArgs e) => _dragDrop.DragLeave(sender, e);
     private void DropTarget_Drop(object sender, DragEventArgs e) => _dragDrop.Drop(sender, e);
 
+    /// <summary>Click the trigger text → load it into the editor panel.</summary>
+    private void TriggerBody_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is TriggersViewModel vm
+            && (sender as FrameworkElement)?.DataContext is TriggerRow row)
+            vm.EditRowCommand.Execute(row);
+    }
+
     private void CategoryHeader_Click(object sender, MouseButtonEventArgs e)
     {
         if (DataContext is TriggersViewModel vm

@@ -38,6 +38,16 @@ public partial class App : Application
         // leaves the app running headless behind any open overlay.
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         window.Show();
+        // First run: a fresh install has no folders or sources — offer the
+        // log-folder wizard once (accepted or skipped, never nag again).
+        if (!_manager.Settings.FirstRunShown
+            && _manager.Settings.WatchedFolders.Count == 0
+            && _manager.Settings.Sources.Count == 0)
+        {
+            new Views.FirstRunWindow(_manager) { Owner = window }.ShowDialog();
+            _manager.Settings = _manager.Settings with { FirstRunShown = true };
+            _manager.Settings.Save();
+        }
         overlay.RestoreFromSettings();
         _ = _manager.Updates.CheckAndDownloadAsync();
         _ = _manager.Lexicon.StartupAsync();

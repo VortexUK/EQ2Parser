@@ -99,6 +99,10 @@ public sealed record AppSettings
     /// last pick). Null = first source in combat.</summary>
     public string? LivePerspectiveOwner { get; init; }
 
+    /// <summary>The first-run wizard has been offered (accepted OR skipped)
+    /// — never nag twice.</summary>
+    public bool FirstRunShown { get; init; }
+
     /// <summary>Mass-detriment callouts ("8 players stunned").</summary>
     public bool CalloutsEnabled { get; init; } = true;
     public int CalloutMinPlayers { get; init; } = 3;

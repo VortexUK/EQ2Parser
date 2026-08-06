@@ -61,6 +61,11 @@ public sealed partial class TriggerRow : ObservableObject, ICategoryDropTarget
     [ObservableProperty]
     private bool _isDropTarget;
 
+    /// <summary>This row is loaded in the editor — highlighted so what's
+    /// being edited is unmistakable.</summary>
+    [ObservableProperty]
+    private bool _isEditing;
+
     partial void OnEnabledChanged(bool value) => _owner.SetRowEnabled(this, value);
 }
 
@@ -140,6 +145,18 @@ public sealed partial class TriggersViewModel : ObservableObject
         var all = _manager.Triggers.Definitions;
         _tree.Rebuild(all, MatchesFilter, FilterText.Length > 0);
         HasTriggers = all.Count > 0;
+        MarkEditingRow();
+    }
+
+    /// <summary>Sync the editing highlight to _editingKey — rows are
+    /// recreated on every rebuild, so the flag must be re-applied.</summary>
+    private void MarkEditingRow()
+    {
+        foreach (var item in Rows)
+        {
+            if (item is TriggerRow row)
+                row.IsEditing = _editingKey is not null && row.Key == _editingKey;
+        }
     }
 
     [RelayCommand]
@@ -348,6 +365,7 @@ public sealed partial class TriggersViewModel : ObservableObject
         RebuildTimerChoices();
         EditorError = "";
         EditorInfo = "";
+        MarkEditingRow();
     }
 
     [RelayCommand]
@@ -358,6 +376,7 @@ public sealed partial class TriggersViewModel : ObservableObject
         var t = row.Trigger;
         _editingKey = t.Key;
         EditorTitle = "Edit trigger";
+        MarkEditingRow();
         RegexText = t.RegexText;
         Category = t.Category;
         ZoneText = t.Zone;
@@ -412,13 +431,16 @@ public sealed partial class TriggersViewModel : ObservableObject
             return;
         }
         _manager.Triggers.AddOrUpdate(trigger, _editingKey);
-        _editingKey = null;
         var linked = _manager.SpellTimers.EnsureLinkedTimers([trigger]);
+        // Stay ON the saved trigger — the editor emptying itself after every
+        // save read as the work vanishing. "New trigger" is the way out.
+        _editingKey = trigger.Key;
+        EditorTitle = "Edit trigger";
         _tree.Reveal(trigger.Zone, category);
-        NewTrigger(); // clears the banner — set THIS save's message after
+        EditorError = "";
         EditorInfo = linked > 0
-            ? $"Also created spell timer “{trigger.TimerName}” (30s default) — set its real length on the Timers page."
-            : "";
+            ? $"Saved. Also created spell timer “{trigger.TimerName}” (30s default) — set its real length on the Timers page."
+            : "Saved.";
         RebuildRows();
     }
 
@@ -505,6 +527,52 @@ public sealed partial class TriggersViewModel : ObservableObject
             ImportText = "";
             RebuildRows();
         }
+    }
+
+    /// <summary>Import a FULL ACT settings export file (Config with
+    /// CustomTriggers + SpellTimers — hundreds of entries).</summary>
+    [RelayCommand]
+    private void ImportXmlFile()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Import ACT settings XML",
+            Filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*",
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+        string xml;
+        try
+        {
+            xml = System.IO.File.ReadAllText(dialog.FileName);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            ImportResult = $"Couldn't read the file: {ex.Message}";
+            return;
+        }
+        var result = ActConfigImport.TryImport(xml);
+        if (result is null)
+        {
+            ImportResult = "Not a recognisable ACT XML export (no Trigger/Spell entries found).";
+            return;
+        }
+        _manager.Triggers.AddOrUpdateMany(result.Triggers);
+        _manager.SpellTimers.ImportMany(result.Timers);
+        // AFTER the explicit spells land — the linked-timer default must not
+        // shadow a real definition arriving in the same file.
+        var linked = _manager.SpellTimers.EnsureLinkedTimers(result.Triggers);
+        List<string> parts = [];
+        if (result.Triggers.Count > 0)
+            parts.Add($"{result.Triggers.Count} trigger{(result.Triggers.Count == 1 ? "" : "s")} imported");
+        if (result.Timers.Count > 0)
+            parts.Add($"{result.Timers.Count} spell timer{(result.Timers.Count == 1 ? "" : "s")} imported (see Timers page)");
+        if (linked > 0)
+            parts.Add($"{linked} linked timer{(linked == 1 ? "" : "s")} created with 30s defaults");
+        if (result.Skipped > 0)
+            parts.Add($"{result.Skipped} entr{(result.Skipped == 1 ? "y" : "ies")} skipped (bad regex or missing name)");
+        ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : "The file contained no importable entries.";
+        RebuildRows();
     }
 
     // ---- recent fires ----
