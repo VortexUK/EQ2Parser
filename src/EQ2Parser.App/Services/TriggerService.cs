@@ -262,11 +262,33 @@ public sealed class TriggerService
         Source = t.Source,
     };
 
+    /// <summary>Cross-source dedupe: every live log in the same raid sees
+    /// the same emote line, and every source's engine fires — the player
+    /// must hear it ONCE. Keyed by trigger + matched text so two DIFFERENT
+    /// matches of one trigger ("cure Alice" vs "cure Bob") both announce.
+    /// The per-trigger AudioCooldown lives per-engine and can't help here.
+    /// (Trigger-started timers dedupe separately in SpellTimerService.)</summary>
+    private readonly Dictionary<string, long> _recentFireMs = new(StringComparer.Ordinal);
+
+    private const long CrossSourceDedupeMs = 2000;
+
     private void HandleFired(TriggerFired fired)
     {
         // Runs under the manager's sync lock on the log pump thread — every
         // audio call hands off to the audio service's own tasks/queue, so
         // nothing here blocks the parse.
+        var dedupeKey = $"{fired.Trigger.Key}{fired.Match.Value}";
+        var now = Environment.TickCount64;
+        if (_recentFireMs.TryGetValue(dedupeKey, out var last) && now - last < CrossSourceDedupeMs)
+            return; // a mirror log already announced this exact event
+        if (_recentFireMs.Count > 256)
+        {
+            // Bound the map — drop anything already outside the window.
+            foreach (var stale in _recentFireMs.Where(kv => now - kv.Value >= CrossSourceDedupeMs).Select(kv => kv.Key).ToList())
+                _recentFireMs.Remove(stale);
+        }
+        _recentFireMs[dedupeKey] = now;
+
         if (fired.PlayBeep)
             _audio.PlayChime();
         else if (fired.WavFile is { Length: > 0 } wav)
