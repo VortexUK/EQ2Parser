@@ -17,7 +17,9 @@ public enum NeuralVoiceKind
 /// ("piper:"/"kokoro:" prefixes keep them distinct from WinRT voice ids).
 /// Kokoro voices share one archive — eleven speakers in a single model,
 /// selected by <paramref name="SpeakerId"/> — so installing any of them
-/// installs them all.</summary>
+/// installs them all. Piper voices are language-specific: the ru_RU set
+/// speaks Cyrillic trigger text natively (each archive bundles its own
+/// espeak-ng data), while Kokoro is English-only.</summary>
 public sealed record PiperVoice(
     string Key, string DisplayName, string Archive, string ModelFile, int SizeMb,
     NeuralVoiceKind Kind = NeuralVoiceKind.PiperVits, int SpeakerId = 0);
@@ -42,15 +44,21 @@ public static class PiperVoiceCatalog
         new("piper:en_GB-jenny_dioco-medium", "Neural — Jenny (British)", "vits-piper-en_GB-jenny_dioco-medium", "en_GB-jenny_dioco-medium.onnx", 65),
         new("piper:en_GB-northern_english_male-medium", "Neural — Male (Northern English)", "vits-piper-en_GB-northern_english_male-medium", "en_GB-northern_english_male-medium.onnx", 65),
         new("piper:en_US-amy-medium", "Neural — Amy (American)", "vits-piper-en_US-amy-medium", "en_US-amy-medium.onnx", 65),
+        new("piper:ru_RU-ruslan-medium", "Neural — Ruslan (Russian male)", "vits-piper-ru_RU-ruslan-medium", "ru_RU-ruslan-medium.onnx", 65),
+        new("piper:ru_RU-dmitri-medium", "Neural — Dmitri (Russian male)", "vits-piper-ru_RU-dmitri-medium", "ru_RU-dmitri-medium.onnx", 65),
+        new("piper:ru_RU-irina-medium", "Neural — Irina (Russian female)", "vits-piper-ru_RU-irina-medium", "ru_RU-irina-medium.onnx", 65),
         new("kokoro:af_bella", "Neural — Bella (warm & sultry)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 1),
         new("kokoro:af_nicole", "Neural — Nicole (breathy whisper)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 2),
         new("kokoro:am_adam", "Neural — Adam (deep American)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 5),
+        new("kokoro:am_michael", "Neural — Michael (warm American)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 6),
         new("kokoro:bf_emma", "Neural — Emma (British)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 7),
         new("kokoro:bf_isabella", "Neural — Isabella (posh British)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 8),
+        new("kokoro:bm_george", "Neural — George (deep British)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 9),
+        new("kokoro:bm_lewis", "Neural — Lewis (gravelly British)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 10),
     ];
 
     /// <summary>Downloadable units: one pack per archive (each Piper voice
-    /// is its own pack; the Kokoro pack carries five voices).</summary>
+    /// is its own pack; the Kokoro pack carries eight voices).</summary>
     public static IReadOnlyList<NeuralPack> Packs { get; } =
         [.. Voices
             .GroupBy(v => v.Archive)

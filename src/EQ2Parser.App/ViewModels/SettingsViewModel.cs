@@ -370,7 +370,11 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     [RelayCommand]
     private void TestVoice() =>
-        _manager.Audio.Speak("Fire circle — move out of the raid.");
+        // A Russian model reading the English phrase comes out garbled and
+        // reads as a broken install — test it in its own language.
+        _manager.Audio.Speak(SelectedVoice?.Id?.StartsWith("piper:ru_RU", StringComparison.Ordinal) == true
+            ? "Огненный круг — отойдите от рейда."
+            : "Fire circle — move out of the raid.");
 
     [RelayCommand]
     private void TestChime() =>
