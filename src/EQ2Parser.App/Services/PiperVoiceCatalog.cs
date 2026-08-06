@@ -42,20 +42,14 @@ public static class PiperVoiceCatalog
     public static readonly IReadOnlyList<PiperVoice> Voices =
     [
         new("piper:en_GB-alba-medium", "Neural — Alba (British)", "vits-piper-en_GB-alba-medium", "en_GB-alba-medium.onnx", 65),
-        new("piper:en_GB-jenny_dioco-medium", "Neural — Jenny (British)", "vits-piper-en_GB-jenny_dioco-medium", "en_GB-jenny_dioco-medium.onnx", 65),
-        new("piper:en_GB-northern_english_male-medium", "Neural — Male (Northern English)", "vits-piper-en_GB-northern_english_male-medium", "en_GB-northern_english_male-medium.onnx", 65),
-        new("piper:en_US-amy-medium", "Neural — Amy (American)", "vits-piper-en_US-amy-medium", "en_US-amy-medium.onnx", 65),
         // VCTK is a 109-speaker corpus model (Edinburgh-recorded, real UK
-        // accents); one 76 MB archive carries all four picks below. Speaker
-        // ids come from the model's own speaker_id_map (p226=95, p254=76,
-        // p241=98, p237=102), cross-checked against the corpus speaker
-        // table for gender + accent + region.
-        new("piper:en_GB-vctk-p226", "Neural — Henry (deep English)", "vits-piper-en_GB-vctk-medium", "en_GB-vctk-medium.onnx", 76, SpeakerId: 95),
+        // accents); one 76 MB archive carries both picks below. Speaker ids
+        // come from the model's own speaker_id_map (p254=76, p241=98),
+        // cross-checked against the corpus speaker table for gender +
+        // accent + region. Auditioned 2026-08: p226/p237 were cut.
         new("piper:en_GB-vctk-p254", "Neural — Arthur (refined English)", "vits-piper-en_GB-vctk-medium", "en_GB-vctk-medium.onnx", 76, SpeakerId: 76),
         new("piper:en_GB-vctk-p241", "Neural — Ewan (Scottish, Perth)", "vits-piper-en_GB-vctk-medium", "en_GB-vctk-medium.onnx", 76, SpeakerId: 98),
-        new("piper:en_GB-vctk-p237", "Neural — Angus (Scottish, Fife)", "vits-piper-en_GB-vctk-medium", "en_GB-vctk-medium.onnx", 76, SpeakerId: 102),
         new("piper:ru_RU-ruslan-medium", "Neural — Ruslan (Russian male)", "vits-piper-ru_RU-ruslan-medium", "ru_RU-ruslan-medium.onnx", 65),
-        new("piper:ru_RU-dmitri-medium", "Neural — Dmitri (Russian male)", "vits-piper-ru_RU-dmitri-medium", "ru_RU-dmitri-medium.onnx", 65),
         new("piper:ru_RU-irina-medium", "Neural — Irina (Russian female)", "vits-piper-ru_RU-irina-medium", "ru_RU-irina-medium.onnx", 65),
         new("kokoro:af_bella", "Neural — Bella (warm & sultry)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 1),
         new("kokoro:af_nicole", "Neural — Nicole (breathy whisper)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 2),
@@ -65,16 +59,15 @@ public static class PiperVoiceCatalog
         new("kokoro:bf_isabella", "Neural — Isabella (posh British)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 8),
         new("kokoro:bm_george", "Neural — George (deep British)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 9),
         new("kokoro:bm_lewis", "Neural — Lewis (gravelly British)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 10),
-        // Kokoro v1.0 (53-speaker multi-lang archive): the two deepest
-        // males, for the "Geralt" register — pair with the Depth slider.
-        // Ids from the sherpa-onnx speaker table, both smoke-synthesized.
-        new("kokoro:v1:am_fenrir", "Neural — Fenrir (deep, rough American)", KokoroV1Archive, "model.onnx", 333, NeuralVoiceKind.Kokoro, 14),
+        // Kokoro v1.0 (53-speaker multi-lang archive): the deepest male,
+        // for the "Geralt" register — pair with the Depth slider. Id from
+        // the sherpa-onnx speaker table, smoke-synthesized. Auditioned
+        // 2026-08: am_fenrir (14) was cut.
         new("kokoro:v1:am_onyx", "Neural — Onyx (very deep American)", KokoroV1Archive, "model.onnx", 333, NeuralVoiceKind.Kokoro, 17),
     ];
 
-    /// <summary>Downloadable units: one pack per archive (most Piper voices
-    /// are their own pack; the VCTK pack carries four speakers and the
-    /// Kokoro pack eight).</summary>
+    /// <summary>Downloadable units: one pack per archive (single-voice Piper
+    /// packs, plus the multi-speaker VCTK and Kokoro archives).</summary>
     public static IReadOnlyList<NeuralPack> Packs { get; } =
         [.. Voices
             .GroupBy(v => v.Archive)
