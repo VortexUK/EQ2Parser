@@ -142,6 +142,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
                             <TextBlock Text="Voice" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
@@ -156,12 +157,20 @@
                             <Slider Grid.Row="1" Grid.Column="1" Minimum="0.5" Maximum="2" TickFrequency="0.1"
                                     IsSnapToTickEnabled="True" Value="{Binding TtsRate}" VerticalAlignment="Center" Margin="0,6" />
 
-                            <TextBlock Grid.Row="2" Style="{StaticResource MutedText}" VerticalAlignment="Center">
+                            <TextBlock Grid.Row="2" Style="{StaticResource MutedText}" VerticalAlignment="Center"
+                                       ToolTip="Neural voices only — drags the pitch down for a deeper, bigger voice.">
+                                <Run Text="Depth " /><Run Text="{Binding VoiceDepthLabel, Mode=OneWay}" Foreground="{StaticResource GoldBrush}" />
+                            </TextBlock>
+                            <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="0.3" TickFrequency="0.05"
+                                    IsSnapToTickEnabled="True" Value="{Binding VoiceDepthAmount}" VerticalAlignment="Center" Margin="0,6"
+                                    ToolTip="Neural voices only — drags the pitch down for a deeper, bigger voice." />
+
+                            <TextBlock Grid.Row="3" Style="{StaticResource MutedText}" VerticalAlignment="Center">
                                 <Run Text="Volume " /><Run Text="{Binding AlertVolumeLabel, Mode=OneWay}" Foreground="{StaticResource GoldBrush}" />
                             </TextBlock>
-                            <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="1" TickFrequency="0.05"
+                            <Slider Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="1" TickFrequency="0.05"
                                     IsSnapToTickEnabled="True" Value="{Binding AlertVolume}" VerticalAlignment="Center" Margin="0,6" />
-                            <Button Grid.Row="2" Grid.Column="2" Content="♪" Style="{StaticResource GoldButton}" Margin="8,2,0,2"
+                            <Button Grid.Row="3" Grid.Column="2" Content="♪" Style="{StaticResource GoldButton}" Margin="8,2,0,2"
                                     Padding="12,3" ToolTip="Test the chime" Command="{Binding TestChimeCommand}" />
                         </Grid>
                         <TextBlock Text="{Binding VoiceStatus}" Foreground="{StaticResource GoldBrush}" FontSize="12"

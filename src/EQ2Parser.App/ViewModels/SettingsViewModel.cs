@@ -59,13 +59,26 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private string? _downloadingArchive;
 
+    /// <summary>Slider-friendly inverse of the stored depth factor:
+    /// 0 = natural, 0.3 = deepest (factor 0.7 ≈ six semitones down).</summary>
+    [ObservableProperty]
+    private double _voiceDepthAmount;
+
     public string TtsRateLabel => $"{TtsRate:0.0}×";
+    public string VoiceDepthLabel => VoiceDepthAmount < 0.005 ? "off" : $"{VoiceDepthAmount:P0}";
     public string AlertVolumeLabel => $"{AlertVolume:P0}";
 
     partial void OnTtsRateChanged(double value)
     {
         _manager.Audio.SpeakingRate = value;
         OnPropertyChanged(nameof(TtsRateLabel));
+        PersistAudio();
+    }
+
+    partial void OnVoiceDepthAmountChanged(double value)
+    {
+        _manager.Audio.VoiceDepth = 1 - value;
+        OnPropertyChanged(nameof(VoiceDepthLabel));
         PersistAudio();
     }
 
@@ -86,6 +99,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             TtsVoiceId = SelectedVoice?.Id,
             TtsRate = TtsRate,
+            TtsDepth = 1 - VoiceDepthAmount,
             AlertVolume = AlertVolume,
         };
         AppSettings.SaveSoon(() => _manager.Settings);
@@ -237,6 +251,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         PackRows = [.. PiperVoiceCatalog.Packs.Select(p => new VoicePackRow(p))];
         RefreshPackRows();
         _ttsRate = manager.Settings.TtsRate;
+        _voiceDepthAmount = Math.Clamp(1 - manager.Settings.TtsDepth, 0, 0.3);
         _alertVolume = manager.Settings.AlertVolume;
         // Set via the property (not the field) so the piper install check +
         // status line run for the persisted selection too.

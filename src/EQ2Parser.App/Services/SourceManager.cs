@@ -56,6 +56,7 @@ public sealed class SourceManager : IDisposable
         {
             Volume = Settings.AlertVolume,
             SpeakingRate = Settings.TtsRate,
+            VoiceDepth = Settings.TtsDepth,
             VoiceId = Settings.TtsVoiceId,
         };
         Triggers = new TriggerService(Audio, Sync);

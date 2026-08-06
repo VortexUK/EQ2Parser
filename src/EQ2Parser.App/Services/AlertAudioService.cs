@@ -41,6 +41,10 @@ public sealed class AlertAudioService : IDisposable
     /// <summary>Speaking rate multiplier (0.5 = half speed, 2 = double).</summary>
     public double SpeakingRate { get; set; } = 1.0;
 
+    /// <summary>Neural pitch factor, 1.0 = natural, 0.7 = deepest. Only the
+    /// Piper/Kokoro backend honours it — Windows voices can't shift.</summary>
+    public double VoiceDepth { get; set; } = 1.0;
+
     /// <summary>WinRT voice Id; null picks the best default (natural voice
     /// when the system exposes one, else the system default).</summary>
     public string? VoiceId { get; set; }
@@ -168,13 +172,13 @@ public sealed class AlertAudioService : IDisposable
         // chain was swallowed.
         if (PiperVoiceCatalog.Find(VoiceId) is { } neural && PiperVoiceCatalog.IsInstalled(neural))
         {
-            var key = $"{VoiceId}|{SpeakingRate:0.##}|{text}";
+            var key = $"{VoiceId}|{SpeakingRate:0.##}|{VoiceDepth:0.##}|{text}";
             lock (_cacheGate)
             {
                 if (_ttsCache.TryGetValue(key, out var cached))
                     return cached;
             }
-            var neuralWav = _piper.Synthesize(neural, text, SpeakingRate);
+            var neuralWav = _piper.Synthesize(neural, text, SpeakingRate, VoiceDepth);
             if (neuralWav is not null)
             {
                 _reportedNeuralFailure = null; // recovered

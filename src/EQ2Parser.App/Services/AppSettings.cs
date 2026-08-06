@@ -56,6 +56,11 @@ public sealed record AppSettings
     // Alert audio: null voice = best available (natural voice if exposed).
     public string? TtsVoiceId { get; init; }
     public double TtsRate { get; init; } = 1.0;
+
+    /// <summary>Neural pitch factor: 1.0 = natural, lower = deeper
+    /// (0.7 ≈ six semitones down). Windows voices ignore it.</summary>
+    public double TtsDepth { get; init; } = 1.0;
+
     public double AlertVolume { get; init; } = 1.0;
 
     // Legacy single-overlay fields (pre-Overlays-page) — migrated into

@@ -27,8 +27,12 @@ public sealed class PiperTtsEngine : IDisposable
     public string? LastError { get; private set; }
 
     /// <summary>Synthesize to 16-bit WAV bytes, or null when the model
-    /// can't load or produces nothing.</summary>
-    public byte[]? Synthesize(PiperVoice voice, string text, double rate)
+    /// can't load or produces nothing. <paramref name="depth"/> below 1.0
+    /// deepens the voice: VITS can't shift pitch natively, so we synthesize
+    /// proportionally faster and stamp a proportionally lower sample rate on
+    /// the WAV — pitch drops by the factor, net duration stays at
+    /// <paramref name="rate"/> (0.85 ≈ three semitones down).</summary>
+    public byte[]? Synthesize(PiperVoice voice, string text, double rate, double depth = 1.0)
     {
         lock (_gate)
         {
@@ -56,6 +60,15 @@ public sealed class PiperTtsEngine : IDisposable
                         config.Model.Kokoro.Tokens = Path.Combine(modelDir, "tokens.txt");
                         if (Directory.Exists(espeakData))
                             config.Model.Kokoro.DataDir = espeakData;
+                        // Kokoro v1.0 archives phonemize via a lexicon +
+                        // dict dir on top of espeak; v0.19 ships neither,
+                        // so absence leaves the old config untouched.
+                        var lexicon = Path.Combine(modelDir, "lexicon-us-en.txt");
+                        if (File.Exists(lexicon))
+                            config.Model.Kokoro.Lexicon = lexicon;
+                        var dictDir = Path.Combine(modelDir, "dict");
+                        if (Directory.Exists(dictDir))
+                            config.Model.Kokoro.DictDir = dictDir;
                     }
                     else
                     {
@@ -70,14 +83,15 @@ public sealed class PiperTtsEngine : IDisposable
                 }
 
                 stage = "synthesis";
-                var audio = _tts!.Generate(text, (float)Math.Clamp(rate, 0.5, 3.0), voice.SpeakerId);
+                var d = Math.Clamp(depth, 0.7, 1.0);
+                var audio = _tts!.Generate(text, (float)Math.Clamp(rate / d, 0.5, 3.0), voice.SpeakerId);
                 if (audio?.Samples is not { Length: > 0 } samples)
                 {
                     LastError = "the model produced no audio";
                     return null;
                 }
                 using var ms = new MemoryStream();
-                using (var writer = new WaveFileWriter(new IgnoreDisposeStream(ms), new WaveFormat(audio.SampleRate, 16, 1)))
+                using (var writer = new WaveFileWriter(new IgnoreDisposeStream(ms), new WaveFormat((int)Math.Round(audio.SampleRate * d), 16, 1)))
                 {
                     writer.WriteSamples(samples, 0, samples.Length);
                 }

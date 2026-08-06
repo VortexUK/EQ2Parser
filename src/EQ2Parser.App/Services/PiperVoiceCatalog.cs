@@ -37,6 +37,7 @@ public sealed record NeuralPack(string Archive, string DisplayName, int SizeMb, 
 public static class PiperVoiceCatalog
 {
     private const string KokoroArchive = "kokoro-en-v0_19";
+    private const string KokoroV1Archive = "kokoro-multi-lang-v1_0";
 
     public static readonly IReadOnlyList<PiperVoice> Voices =
     [
@@ -64,6 +65,11 @@ public static class PiperVoiceCatalog
         new("kokoro:bf_isabella", "Neural — Isabella (posh British)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 8),
         new("kokoro:bm_george", "Neural — George (deep British)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 9),
         new("kokoro:bm_lewis", "Neural — Lewis (gravelly British)", KokoroArchive, "model.onnx", 305, NeuralVoiceKind.Kokoro, 10),
+        // Kokoro v1.0 (53-speaker multi-lang archive): the two deepest
+        // males, for the "Geralt" register — pair with the Depth slider.
+        // Ids from the sherpa-onnx speaker table, both smoke-synthesized.
+        new("kokoro:v1:am_fenrir", "Neural — Fenrir (deep, rough American)", KokoroV1Archive, "model.onnx", 333, NeuralVoiceKind.Kokoro, 14),
+        new("kokoro:v1:am_onyx", "Neural — Onyx (very deep American)", KokoroV1Archive, "model.onnx", 333, NeuralVoiceKind.Kokoro, 17),
     ];
 
     /// <summary>Downloadable units: one pack per archive (most Piper voices
