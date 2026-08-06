@@ -86,6 +86,16 @@
       "note": "Swarm-pet attack. The log line is a DOUBLE possessive (Martyn's blighted horde's Grave Decay hits ...) and the grammar - ACT-identically - splits at the first 's, so the pet entity becomes part of the ability name. Grammar stays ACT-parity; the label is fixed here."
     },
     {
+      "ability": "Leg Bleed",
+      "classes": [
+        "Defiler",
+        "Mystic"
+      ],
+      "source": "class",
+      "note": "Shaman spirit-companion (dog pet) ability - pet attacks log under the owner's name. Census maps it Defiler/Mystic only, so on any other class it is a renamed pet's kit (seen live: 64 hits under a Templar alongside a foreign piercing auto-attack stream).",
+      "pet": true
+    },
+    {
       "ability": "Aery Whip",
       "classes": [
         "Conjuror"

@@ -38,7 +38,24 @@ public sealed class Combatant(string name)
             }
         }
         GetOrCreate(_outgoing, BucketConfig.AllOutgoingRef).Add(swing);
+        if (swing.Ability == Grammar.EnglishGrammar.AutoAttackAbility
+            && swing.DamageType.Length > 0
+            && swing.Damage.Number > 0)
+        {
+            _autoAttackBySchool.TryGetValue(swing.DamageType, out var acc);
+            _autoAttackBySchool[swing.DamageType] = (acc.Damage + swing.Damage.Number, acc.Hits + 1);
+        }
     }
+
+    private readonly Dictionary<string, (long Damage, int Hits)> _autoAttackBySchool =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Landed auto-attack damage + hits per damage school
+    /// ("piercing", "crushing", …). Feeds the Sources report's
+    /// impossible-weapon check: a school the detected class cannot equip
+    /// (<see cref="Analysis.MeleeCapabilities"/>) is a renamed pet's
+    /// swings merged into this player.</summary>
+    public IReadOnlyDictionary<string, (long Damage, int Hits)> AutoAttackBySchool => _autoAttackBySchool;
 
     /// <summary>Victim-side insertion (the mirror image).</summary>
     public void AddIncoming(Swing swing)

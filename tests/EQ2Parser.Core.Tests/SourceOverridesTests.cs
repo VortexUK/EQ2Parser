@@ -71,6 +71,11 @@ public class SourceOverridesTests
         Assert.Equal(AbilitySource.Pet, identifier.ClassifySource("Aery Whip", "Wizard"));
         // Cross-summoner counts too — a necro can't own the conjy pet.
         Assert.Equal(AbilitySource.Pet, identifier.ClassifySource("Aery Whip", "Necromancer"));
+        // The shaman dog kit: legit on shamans, renamed-pet on anyone else
+        // (seen live: 64 Leg Bleed hits under a Templar).
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Leg Bleed", "Mystic"));
+        Assert.Equal(AbilitySource.Class, identifier.ClassifySource("Leg Bleed", "Defiler"));
+        Assert.Equal(AbilitySource.Pet, identifier.ClassifySource("Leg Bleed", "Templar"));
         // No detected class → no claim; map fallback (Item) as before.
         Assert.Equal(AbilitySource.Item, identifier.ClassifySource("Throat Gash", null));
         // Swarm composites carry the CASTER's name and can't be renamed

@@ -73,9 +73,32 @@ public sealed partial class MainParseViewModel
                 tally.ByAbility.TryGetValue(ability, out var acc);
                 tally.ByAbility[ability] = (source, acc.Damage + stats.Damage, acc.Hits + stats.Hits);
             }
+
+            // Impossible-weapon check: an auto-attack school this class
+            // cannot equip (a piercing stream under a Templar) is a renamed
+            // pet's melee merged into this player — reclassify that slice
+            // of the Auto bucket to Pet so the padding alarm fires on it.
+            if (detectedClass is null)
+                continue;
+            foreach (var (school, (damage, hits)) in combatant.AutoAttackBySchool)
+            {
+                if (damage <= 0 || hits < MinImpossibleSchoolHits)
+                    continue;
+                if (!MeleeCapabilities.IsImpossibleSchool(detectedClass, school))
+                    continue;
+                tally.BySource[(int)AbilitySource.System] -= damage;
+                tally.BySource[(int)AbilitySource.Pet] += damage;
+                var label = $"{school} auto-attack";
+                tally.ByAbility.TryGetValue(label, out var acc);
+                tally.ByAbility[label] = (AbilitySource.Pet, acc.Damage + damage, acc.Hits + hits);
+            }
         }
         return tally;
     }
+
+    /// <summary>A couple of stray swings never trip the alarm — a verdict
+    /// that accuses a player of padding needs a sustained stream.</summary>
+    private const int MinImpossibleSchoolHits = 5;
 
     private Dictionary<string, CombatantTag> SourceReportTags(object? fight) => fight switch
     {
@@ -181,7 +204,7 @@ public sealed partial class MainParseViewModel
                         ("⚠ possible renamed-pet padding: ", Services.ClassColors.SourcePet),
                         ($"{name} ({tally.DetectedClass}) +{CombatantRow.Compact(tally.BySource[(int)AbilitySource.Pet])}",
                             Services.ClassColors.SourcePet),
-                        ($" — {petAbilities} — summoner pet kit this class cannot own", Services.ClassColors.Neutral));
+                        ($" — {petAbilities} — pet abilities or weapon types this class cannot use", Services.ClassColors.Neutral));
                 }
             }
 
