@@ -64,12 +64,29 @@ public sealed class LogSource : IDisposable
         Engine = new ParserEngine(path, Owner, engineOptions);
         TriggerEngine = triggers;
         Processor = new LogLineProcessor(Engine, triggers, timers);
+        _startOffset = parseFromStart ? null : startOffset;
         _reader = new LogTailReader(path, new LogTailOptions
         {
             StartAtEnd = !parseFromStart,
-            StartOffset = parseFromStart ? null : startOffset,
+            StartOffset = _startOffset,
             PollInterval = pollInterval,
         });
+    }
+
+    private readonly long? _startOffset;
+
+    /// <summary>Current length for the StartAtEnd case (no saved offset) —
+    /// 0 on any IO failure so the look-behind is skipped, never fatal.</summary>
+    private long TryFileLength()
+    {
+        try
+        {
+            return new FileInfo(Path).Length;
+        }
+        catch (Exception)
+        {
+            return 0;
+        }
     }
 
     /// <summary>Begin pumping. The manager calls this AFTER attaching the
@@ -86,6 +103,23 @@ public sealed class LogSource : IDisposable
     {
         try
         {
+            // Tailing mid-file means the "You have entered …" line is
+            // behind the start offset — look back for it so zone-scoped
+            // spell timers know the zone before the next zoning. Runs
+            // before the first pumped line, so a live zone line still
+            // overrides the seed in order.
+            if (!ParseFromStart)
+            {
+                var behind = _startOffset ?? TryFileLength();
+                if (behind > 0 && ZoneLookbehind.FindLastZone(Path, behind) is { } zone)
+                {
+                    lock (_sync)
+                    {
+                        Engine.ChangeZone(zone);
+                    }
+                }
+            }
+
             await foreach (var tailed in reader.ReadLinesAsync(ct))
             {
                 if (!LogLine.TryParse(tailed.Raw, out var line))

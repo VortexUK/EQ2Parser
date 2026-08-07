@@ -137,10 +137,14 @@ public sealed class SpellTimerService(TimerOptions? options = null)
         var zone = currentZone.ToLowerInvariant();
 
         // Candidate selection: category-restricted definitions must match
-        // attacker/victim/zone and beat unrestricted ones (ACT semantics);
-        // within each kind, a definition whose Zone matches the current
-        // zone beats zone-less/other-zone twins — the same boss recurs
-        // across zones with retuned abilities. Last wins within a tier.
+        // attacker/victim/zone and beat unrestricted ones (ACT semantics).
+        // Within the unrestricted kind, a category match — the acting boss
+        // IS the category name — is the strongest evidence for which
+        // zone's retuning of a same-named ability applies, and works even
+        // when the current zone is unknown (source attached mid-session,
+        // no zone line seen yet); a current-zone match ranks next. Without
+        // either preference, two curated twins tied and "last wins" picked
+        // an arbitrary zone's duration. Last wins within a tier.
         TimerDefinition? chosen = null;
         var chosenTier = -1;
         foreach (var def in candidates)
@@ -148,16 +152,23 @@ public sealed class SpellTimerService(TimerOptions? options = null)
             if (!def.Enabled)
                 continue;
             var zoneHit = def.Zone.Length > 0 && def.Zone.ToLowerInvariant() == zone;
+            var categoryHit = def.CategoryMatches(attacker, victim, zone);
             int tier;
             if (def.RestrictToCategory)
             {
-                if (!def.CategoryMatches(attacker, victim, zone))
+                if (!categoryHit)
                     continue;
-                tier = zoneHit ? 3 : 2;
+                tier = zoneHit ? 5 : 4;
             }
             else
             {
-                tier = zoneHit ? 1 : 0;
+                tier = (categoryHit, zoneHit) switch
+                {
+                    (true, true) => 3,
+                    (true, false) => 2,
+                    (false, true) => 1,
+                    _ => 0,
+                };
             }
             if (tier >= chosenTier)
             {

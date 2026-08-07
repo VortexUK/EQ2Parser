@@ -398,4 +398,91 @@ public class SpellTimerServiceTests
         Assert.True(service.Notify("the earth rumbler", "Rumbling of Earth", self: false, "sofja", T0.AddSeconds(40)));
         Assert.False(service.Notify("a lava rumbler", "Rumbling of Earth", self: false, "sofja", T0.AddSeconds(80)));
     }
+
+    // ── Same-named timers across zones (the Soul Paralysis bug) ────────────
+
+    /// <summary>The live report: Soul Paralysis is 42s on Mayong Mistmoore
+    /// (Mistmoore's Inner Sanctum) and 69s on Vampire Lord Mayong Mistmoore
+    /// (Throne of New Tunaria), both curated UNRESTRICTED. The service
+    /// must pick by the acting boss's name (the category) even when the
+    /// current zone is unknown — source attached mid-session.</summary>
+    private static SpellTimerService TwinBossService()
+    {
+        var service = new SpellTimerService();
+        service.AddOrUpdateDefinition(new TimerDefinition
+        {
+            Name = "Soul Paralysis",
+            Category = "Mayong Mistmoore",
+            Zone = "Mistmoore's Inner Sanctum",
+            DurationSeconds = 42,
+        });
+        service.AddOrUpdateDefinition(new TimerDefinition
+        {
+            Name = "Soul Paralysis",
+            Category = "Vampire Lord Mayong Mistmoore",
+            Zone = "Throne of New Tunaria",
+            DurationSeconds = 69,
+        });
+        return service;
+    }
+
+    [Fact]
+    public void Category_Match_Picks_The_Right_Zone_Twin_With_Zone_Unknown()
+    {
+        var service = TwinBossService();
+        var started = new List<(TimerFrame Frame, ActiveTimer Timer)>();
+        service.TimerStarted += (f, t) => started.Add((f, t));
+
+        // No zone line seen yet (app launched mid-session): the attacker
+        // name must disambiguate. Pre-fix, "last wins" always chose 69s.
+        Assert.True(service.Notify("Mayong Mistmoore", "Soul Paralysis", self: false, "sofja", T0, currentZone: ""));
+        Assert.Equal(42, started[^1].Timer.SecondsLeft(T0), precision: 3);
+
+        Assert.True(service.Notify("Vampire Lord Mayong Mistmoore", "Soul Paralysis", self: false, "sofja", T0.AddSeconds(120), currentZone: ""));
+        Assert.Equal(69, started[^1].Timer.SecondsLeft(T0.AddSeconds(120)), precision: 3);
+    }
+
+    [Fact]
+    public void Zone_Match_Still_Disambiguates_When_No_Category_Matches()
+    {
+        var service = TwinBossService();
+        var started = new List<(TimerFrame Frame, ActiveTimer Timer)>();
+        service.TimerStarted += (f, t) => started.Add((f, t));
+
+        // A pet/add casts it — attacker matches neither category, so the
+        // current zone decides.
+        Assert.True(service.Notify("a mistmoore thrall", "Soul Paralysis", self: false, "sofja", T0, currentZone: "Throne of New Tunaria"));
+        Assert.Equal(69, started[^1].Timer.SecondsLeft(T0), precision: 3);
+    }
+
+    [Fact]
+    public void Category_Match_Outranks_A_Different_Twins_Zone_Match()
+    {
+        var service = TwinBossService();
+        var started = new List<(TimerFrame Frame, ActiveTimer Timer)>();
+        service.TimerStarted += (f, t) => started.Add((f, t));
+
+        // The acting boss is direct evidence for which retuning applies —
+        // it beats a zone-name hit on the other twin.
+        Assert.True(service.Notify("Mayong Mistmoore", "Soul Paralysis", self: false, "sofja", T0, currentZone: "Throne of New Tunaria"));
+        Assert.Equal(42, started[^1].Timer.SecondsLeft(T0), precision: 3);
+    }
+
+    [Fact]
+    public void Restricted_Definition_Still_Outranks_Unrestricted()
+    {
+        var service = TwinBossService();
+        service.AddOrUpdateDefinition(new TimerDefinition
+        {
+            Name = "Soul Paralysis",
+            Category = "Mayong Mistmoore",
+            RestrictToCategory = true,
+            DurationSeconds = 55,
+        });
+        var started = new List<(TimerFrame Frame, ActiveTimer Timer)>();
+        service.TimerStarted += (f, t) => started.Add((f, t));
+
+        Assert.True(service.Notify("Mayong Mistmoore", "Soul Paralysis", self: false, "sofja", T0, currentZone: ""));
+        Assert.Equal(55, started[^1].Timer.SecondsLeft(T0), precision: 3);
+    }
 }

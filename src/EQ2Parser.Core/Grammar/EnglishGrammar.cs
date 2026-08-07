@@ -213,6 +213,16 @@ public static partial class EnglishGrammar
     [GeneratedRegex(@"^You have entered (?<zone>.+?)\.$")]
     private static partial Regex ZoneEntered();
 
+    /// <summary>The zone name when <paramref name="message"/> is a
+    /// "You have entered …" line, else null. Exposed for the attach-time
+    /// zone look-behind (<see cref="Logs.ZoneLookbehind"/>), which scans
+    /// raw history the normal parse pipeline never sees.</summary>
+    public static string? TryParseZoneEntered(string message)
+    {
+        var m = ZoneEntered().Match(message);
+        return m.Success ? m.Groups["zone"].Value : null;
+    }
+
     /// <summary>Parse one log message. Null = not a line this grammar knows.</summary>
     public static GrammarEvent? TryParse(string message)
     {
