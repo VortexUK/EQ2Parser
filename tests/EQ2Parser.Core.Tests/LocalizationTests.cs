@@ -92,4 +92,26 @@ public class LocalizationTests
 
     private static HashSet<string> Placeholders(string s) =>
         [.. Regex.Matches(s, @"\{(\d+)[^}]*\}").Select(m => m.Groups[1].Value)];
+
+    // ── OS-language defaulting (the out-of-box rule) ───────────────────────
+
+    private static readonly string[] Supported = ["en", "de", "fr", "ru"];
+
+    [Theory]
+    // No explicit setting: follow the OS when we ship that language...
+    [InlineData("", "ru", "ru")]
+    [InlineData("", "de", "de")]
+    [InlineData("", "fr", "fr")]
+    [InlineData("", "en", "en")]
+    [InlineData(null, "ru", "ru")]
+    // ...and fall back to English when we don't (Croatian, Japanese, ...).
+    [InlineData("", "hr", "en")]
+    [InlineData("", "ja", "en")]
+    // An explicit user choice always wins over the OS.
+    [InlineData("de", "ru", "de")]
+    [InlineData("en", "ru", "en")]
+    // A stale/unknown persisted code degrades to English.
+    [InlineData("xx", "ru", "en")]
+    public void Os_Language_Defaults_Are_Honoured(string? requested, string os, string expected) =>
+        Assert.Equal(expected, UiLanguage.Resolve(requested, os, Supported));
 }

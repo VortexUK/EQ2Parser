@@ -41,14 +41,15 @@ public static class Loc
 
     /// <summary>Load the language dictionaries. Call once, before any
     /// window is constructed — the XAML markup extension resolves at load
-    /// time. <paramref name="languageCode"/> "" follows the OS UI culture.</summary>
+    /// time. <paramref name="languageCode"/> "" follows the OS UI culture
+    /// when supported (Russian Windows → Russian), else English (Croatian
+    /// Windows → English). Rule lives in Core.UiLanguage for testability.</summary>
     public static void Initialize(string languageCode)
     {
-        var code = languageCode;
-        if (string.IsNullOrEmpty(code))
-            code = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-        if (!Languages.Any(l => l.Code == code))
-            code = "en";
+        var code = Core.UiLanguage.Resolve(
+            languageCode,
+            System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName,
+            [.. Languages.Select(l => l.Code).Where(c => c.Length > 0)]);
         ActiveLanguage = code;
         _english = LoadEmbedded("en");
         _strings = code == "en" ? _english : LoadEmbedded(code);
