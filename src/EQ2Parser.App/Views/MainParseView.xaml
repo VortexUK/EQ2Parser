@@ -325,6 +325,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
@@ -400,8 +401,22 @@
                 </Popup>
             </Grid>
 
+            <!-- Encounter-summary bars + average line (follows the sorted
+                 column). Pinned ABOVE the column headers so the headers sit
+                 directly on top of the rows they label — headers separated
+                 from their rows by a 260px chart read as the chart's axis. -->
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="8" Margin="0,0,18,10" Height="260"
+                    Visibility="{Binding ChartVisible, Converter={StaticResource BoolToVis}}">
+                <lvc:CartesianChart Series="{Binding ChartSeries}"
+                                    XAxes="{Binding ChartXAxes}"
+                                    YAxes="{Binding ChartYAxes}"
+                                    LegendPosition="Hidden"
+                                    TooltipPosition="Top"
+                                    AnimationsSpeed="0:0:0.35" />
+            </Border>
+
             <!-- Column headers -->
-            <Grid Grid.Row="1" Margin="8,0,26,4">
+            <Grid Grid.Row="2" Margin="8,0,26,4">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="{Binding Data.ByKey[Class].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=118}" />
@@ -495,19 +510,8 @@
 
             <!-- Allies, then pets/enemies flowing directly beneath the last
                  ally row (one shared scroll — nothing pinned to the bottom). -->
-            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <!-- Encounter-summary bars + average line (follows the sorted column) -->
-                    <Border Style="{StaticResource Card}" Padding="8" Margin="0,0,0,10" Height="260"
-                            Visibility="{Binding ChartVisible, Converter={StaticResource BoolToVis}}">
-                        <lvc:CartesianChart Series="{Binding ChartSeries}"
-                                            XAxes="{Binding ChartXAxes}"
-                                            YAxes="{Binding ChartYAxes}"
-                                            LegendPosition="Hidden"
-                                            TooltipPosition="Top"
-                                            AnimationsSpeed="0:0:0.35" />
-                    </Border>
-
                     <Border Style="{StaticResource Card}" Padding="6">
                         <ItemsControl ItemsSource="{Binding AllyRows}" ItemTemplate="{StaticResource GridRowTemplate}" />
                     </Border>
@@ -537,7 +541,7 @@
             <!-- Zone summary: one row per encounter (zone header selected).
                  Covers the combatant headers + tables; click a row to open
                  that fight. -->
-            <Grid Grid.Row="1" Grid.RowSpan="2" Background="{StaticResource BgBrush}"
+            <Grid Grid.Row="1" Grid.RowSpan="3" Background="{StaticResource BgBrush}"
                   Visibility="{Binding ZoneSummaryOpen, Converter={StaticResource BoolToVis}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -618,7 +622,7 @@
             </Grid>
 
             <!-- Drill-down overlay (covers everything below the breadcrumb) -->
-            <Grid Grid.Row="1" Grid.RowSpan="2" Background="{StaticResource BgBrush}"
+            <Grid Grid.Row="1" Grid.RowSpan="3" Background="{StaticResource BgBrush}"
                   Visibility="{Binding DetailOpen, Converter={StaticResource BoolToVis}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
