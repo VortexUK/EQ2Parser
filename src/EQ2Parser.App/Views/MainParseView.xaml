@@ -229,9 +229,12 @@
                         <Setter Property="ContextMenu">
                             <Setter.Value>
                                 <ContextMenu>
+                                    <!-- Quick picker: submenu children (current settings +
+                                         saved presets) are rebuilt in code-behind on open. -->
                                     <MenuItem Header="{loc:Tr Main_CopyForDiscord}"
-                                              Command="{Binding PlacementTarget.Tag.CopyDiscordCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                              SubmenuOpened="CopyDiscordMenu_SubmenuOpened">
+                                        <MenuItem Header="{loc:Tr Export_CurrentSettings}" />
+                                    </MenuItem>
                                     <MenuItem Header="{loc:Tr Main_CustomExport}"
                                               Command="{Binding PlacementTarget.Tag.OpenExportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />

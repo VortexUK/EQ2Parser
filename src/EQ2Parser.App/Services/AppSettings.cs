@@ -31,6 +31,11 @@ public sealed record OverlayWindowSettings
     public double ToastSeconds { get; init; } = 6;
 }
 
+/// <summary>A named export configuration ("Healer Parse"): columns, sort
+/// column, and archetype filter, snapshotted from the export window.</summary>
+public sealed record ExportPreset(
+    string Name, List<string> Columns, string? SortKey, List<string>? Archetypes);
+
 /// <summary>Persisted app settings — %LocalAppData%\EQ2Parser\settings.json.</summary>
 public sealed record AppSettings
 {
@@ -93,6 +98,18 @@ public sealed record AppSettings
     /// <summary>Column keys for the Discord clipboard export (null = the
     /// default set). Order follows the export catalogue, not this list.</summary>
     public List<string>? ExportColumns { get; init; }
+
+    /// <summary>Export sort column key (null = Damage). Numeric columns
+    /// sort descending; Name/Class ascending.</summary>
+    public string? ExportSortKey { get; init; }
+
+    /// <summary>Archetypes included in exports (Fighter/Priest/Scout/Mage).
+    /// Null or all four = no filtering (unknown classes included too).</summary>
+    public List<string>? ExportArchetypes { get; init; }
+
+    /// <summary>Named export presets ("Healer Parse") — snapshots of
+    /// columns + sort + archetype filter.</summary>
+    public List<ExportPreset>? ExportPresets { get; init; }
 
     /// <summary>Where the Lexicon trigger/timer pack syncs from. Point at a
     /// local dev server to test curation before it ships.</summary>

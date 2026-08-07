@@ -17,6 +17,38 @@ public partial class MainParseView : System.Windows.Controls.UserControl
         };
     }
 
+    /// <summary>The Copy-for-Discord quick picker: rebuild the submenu on
+    /// open — "current settings" first, then every saved preset by name.</summary>
+    private void CopyDiscordMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem parent
+            || DataContext is not MainParseViewModel vm)
+            return;
+        var node = (parent.Parent as System.Windows.Controls.ContextMenu)?.PlacementTarget
+            is FrameworkElement target ? target.DataContext as ParseNode : null;
+        if (node is null)
+            return;
+
+        parent.Items.Clear();
+        var current = new System.Windows.Controls.MenuItem
+        {
+            Header = Localization.Loc.Get("Export_CurrentSettings"),
+        };
+        current.Click += (_, _) => vm.CopyDiscordCommand.Execute(node);
+        parent.Items.Add(current);
+        if (vm.ExportPresets.Count > 0)
+            parent.Items.Add(new System.Windows.Controls.Separator());
+        foreach (var preset in vm.ExportPresets)
+        {
+            // Double the underscores: MenuItem treats "_" as an access-key
+            // marker and would swallow it from a user's preset name.
+            var item = new System.Windows.Controls.MenuItem { Header = preset.Name.Replace("_", "__") };
+            var name = preset.Name;
+            item.Click += (_, _) => vm.CopyDiscordPreset(node, name);
+            parent.Items.Add(item);
+        }
+    }
+
     private void ColumnsToggle_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         // StaysOpen=False closes the popup on the mousedown, then the click

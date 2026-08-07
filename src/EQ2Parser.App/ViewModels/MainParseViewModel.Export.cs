@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.Input;
+using EQ2Parser.App.Services;
 using EQ2Parser.App.Localization;
 using EQ2Parser.Core.Analysis;
 using EQ2Parser.Core.Combat;
@@ -56,21 +57,107 @@ public sealed partial class MainParseViewModel
 
     private static readonly string[] DefaultExportKeys = ["Class", "Dps", "Hps", "Percent", "Deaths"];
 
-    /// <summary>The persisted export column selection (falls back to the
-    /// default set; unknown saved keys are dropped).</summary>
-    public IReadOnlyList<string> ExportColumnKeys =>
-        (manager.Settings.ExportColumns ?? [.. DefaultExportKeys])
-            .Where(k => ExportColumnDefs.Any(d => d.Key == k)).ToArray();
+    /// <summary>One export configuration: column keys, sort column (null =
+    /// Damage), included archetypes (null/all-four = everyone, unknown
+    /// classes included).</summary>
+    public sealed record ExportSpec(
+        IReadOnlyList<string> Columns, string? SortKey, IReadOnlyList<string>? Archetypes);
 
-    public void SaveExportColumns(IReadOnlyList<string> keys)
+    /// <summary>The persisted working configuration — what "Copy for
+    /// Discord" uses (unknown saved keys dropped).</summary>
+    public ExportSpec CurrentExportSpec => new(
+        (manager.Settings.ExportColumns ?? [.. DefaultExportKeys])
+            .Where(k => ExportColumnDefs.Any(d => d.Key == k)).ToArray(),
+        manager.Settings.ExportSortKey,
+        manager.Settings.ExportArchetypes);
+
+    public void SaveExportSpec(ExportSpec spec)
     {
-        manager.Settings = manager.Settings with { ExportColumns = [.. keys] };
+        manager.Settings = manager.Settings with
+        {
+            ExportColumns = [.. spec.Columns],
+            ExportSortKey = spec.SortKey,
+            ExportArchetypes = spec.Archetypes is null ? null : [.. spec.Archetypes],
+        };
         manager.Settings.Save();
+    }
+
+    // ── Presets ─────────────────────────────────────────────────────────────
+
+    public IReadOnlyList<ExportPreset> ExportPresets => manager.Settings.ExportPresets ?? [];
+
+    public void SaveExportPreset(string name, ExportSpec spec)
+    {
+        List<ExportPreset> presets = [.. ExportPresets.Where(p => !string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))];
+        presets.Add(new ExportPreset(name, [.. spec.Columns], spec.SortKey,
+            spec.Archetypes is null ? null : [.. spec.Archetypes]));
+        presets.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+        manager.Settings = manager.Settings with { ExportPresets = presets };
+        manager.Settings.Save();
+    }
+
+    public void DeleteExportPreset(string name)
+    {
+        List<ExportPreset> presets = [.. ExportPresets.Where(p => !string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))];
+        manager.Settings = manager.Settings with { ExportPresets = presets.Count == 0 ? null : presets };
+        manager.Settings.Save();
+    }
+
+    public static ExportSpec SpecOf(ExportPreset preset) => new(
+        preset.Columns.Where(k => ExportColumnDefs.Any(d => d.Key == k)).ToArray(),
+        preset.SortKey, preset.Archetypes);
+
+    /// <summary>Quick-picker copy: a preset by name straight from the
+    /// context menu, without opening the export window.</summary>
+    public void CopyDiscordPreset(ParseNode? node, string presetName)
+    {
+        var preset = ExportPresets.FirstOrDefault(p =>
+            string.Equals(p.Name, presetName, StringComparison.OrdinalIgnoreCase));
+        if (preset is null)
+            return;
+        SetClipboard(BuildDiscordExport(node, SpecOf(preset)));
+    }
+
+    /// <summary>Sort order per column key; unknown/null = Damage.
+    /// Name/Class ascend, numbers descend.</summary>
+    private static IEnumerable<ExportRow> SortRows(IEnumerable<ExportRow> rows, string? sortKey) => sortKey switch
+    {
+        "Name" => rows.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase),
+        "Class" => rows.OrderBy(r => r.Cls, StringComparer.OrdinalIgnoreCase).ThenByDescending(r => r.Damage),
+        "Time" => rows.OrderByDescending(r => r.Seconds),
+        "Percent" => rows.OrderByDescending(r => r.Share),
+        "Dps" => rows.OrderByDescending(r => r.Dps),
+        "Hps" => rows.OrderByDescending(r => r.Hps),
+        "Heals" => rows.OrderByDescending(r => r.Healed),
+        "CritHeals" => rows.OrderByDescending(r => r.CritHeals),
+        "Cures" => rows.OrderByDescending(r => r.Cures),
+        "PowerDrain" => rows.OrderByDescending(r => r.PowerDrain),
+        "PowerRep" => rows.OrderByDescending(r => r.PowerRep),
+        "Swings" => rows.OrderByDescending(r => r.Swings),
+        "Hits" => rows.OrderByDescending(r => r.Hits),
+        "Crits" => rows.OrderByDescending(r => r.Crits),
+        "Misses" => rows.OrderByDescending(r => r.Misses),
+        "Avoids" => rows.OrderByDescending(r => r.Avoids),
+        "ToHit" => rows.OrderByDescending(r => r.Swings > 0 ? (double)r.Hits / r.Swings : 0),
+        "CritPct" => rows.OrderByDescending(r => r.Hits > 0 ? (double)r.Crits / r.Hits : 0),
+        "Taken" => rows.OrderByDescending(r => r.Taken),
+        "HealsTaken" => rows.OrderByDescending(r => r.HealsTaken),
+        "Deaths" => rows.OrderByDescending(r => r.Deaths),
+        _ => rows.OrderByDescending(r => r.Damage),
+    };
+
+    /// <summary>Null or all-four archetypes = no filter (unknown classes
+    /// pass); an active filter admits only mapped, selected archetypes.</summary>
+    private static bool PassesArchetypes(ExportRow row, IReadOnlyList<string>? archetypes)
+    {
+        if (archetypes is null || archetypes.Count == 0 || archetypes.Count >= Archetype.All.Count)
+            return true;
+        return Archetype.Of(row.Cls) is { } a && archetypes.Contains(a);
     }
 
     /// <summary>Build the Discord table for a tree node with the given
     /// column selection. Null when the node has nothing to export.</summary>
-    public string? BuildDiscordExport(ParseNode? node, IReadOnlyList<string> keys)
+    public string? BuildDiscordExport(ParseNode? node, ExportSpec spec)
     {
         if (node is null)
             return null;
@@ -79,9 +166,9 @@ public sealed partial class MainParseViewModel
             return node switch
             {
                 { GroupFights: { Count: > 0 } group } => FightsTable(node.Title, group),
-                { Fight: CorrelatedEncounter fight } => CombatantTable(fight, keys),
+                { Fight: CorrelatedEncounter fight } => CombatantTable(fight, spec),
                 { Fight: AggregateFights aggregate } => FightsTable($"{aggregate.Zone} — {aggregate.Label}", aggregate.Fights),
-                { Fight: LiveFollow } => LiveTable(keys),
+                { Fight: LiveFollow } => LiveTable(spec),
                 _ => null,
             };
         }
@@ -89,7 +176,7 @@ public sealed partial class MainParseViewModel
 
     [RelayCommand]
     private void CopyDiscord(ParseNode? node) =>
-        SetClipboard(BuildDiscordExport(node, ExportColumnKeys));
+        SetClipboard(BuildDiscordExport(node, CurrentExportSpec));
 
     [RelayCommand]
     private void OpenExport(ParseNode? node)
@@ -100,7 +187,7 @@ public sealed partial class MainParseViewModel
             .ShowDialog();
     }
 
-    private string CombatantTable(CorrelatedEncounter fight, IReadOnlyList<string> keys)
+    private string CombatantTable(CorrelatedEncounter fight, ExportSpec spec)
     {
         var tags = manager.Classifier.Classify(fight.Primary);
         var seconds = Math.Max(1, fight.Duration.TotalSeconds);
@@ -110,10 +197,10 @@ public sealed partial class MainParseViewModel
             .Select(kv => (kv.Value.Combatant, Cls: tags[kv.Key].Class.ClassName ?? ""));
         var summary = Loc.Format("Export_FightSummary",
             fight.Title, FmtSpan(fight.Duration), CombatantRow.Compact(fight.EncDps));
-        return RenderTable(summary, allies, seconds, keys);
+        return RenderTable(summary, allies, seconds, spec);
     }
 
-    private string? LiveTable(IReadOnlyList<string> keys)
+    private string? LiveTable(ExportSpec spec)
     {
         foreach (var source in manager.Sources)
         {
@@ -125,14 +212,14 @@ public sealed partial class MainParseViewModel
                 .Select(a => (Combatant: a, Cls: tags.GetValueOrDefault(a.Key)?.Class.ClassName ?? ""));
             var summary = Loc.Format("Export_FightSummary",
                 encounter.Title, FmtSpan(encounter.Duration), CombatantRow.Compact(encounter.EncDps));
-            return RenderTable(summary, allies, seconds, keys);
+            return RenderTable(summary, allies, seconds, spec);
         }
         return null;
     }
 
     private string RenderTable(
         string summary, IEnumerable<(Combatant Combatant, string Cls)> allies,
-        double seconds, IReadOnlyList<string> keys)
+        double seconds, ExportSpec spec)
     {
         List<ExportRow> rows = [];
         long total = 0;
@@ -155,12 +242,12 @@ public sealed partial class MainParseViewModel
                 damage?.SwingCount ?? 0, damage?.Hits ?? 0, damage?.CritHits ?? 0,
                 damage?.Misses ?? 0, damage?.Avoids ?? 0, combatant.HealsTaken));
         }
-        var ordered = rows
-            .Select(r => r with { Share = total > 0 ? (double)r.Damage / total : 0 })
-            .OrderByDescending(r => r.Damage)
+        var ordered = SortRows(rows
+                .Select(r => r with { Share = total > 0 ? (double)r.Damage / total : 0 })
+                .Where(r => PassesArchetypes(r, spec.Archetypes)), spec.SortKey)
             .ToList();
 
-        var defs = keys.Select(k => ExportColumnDefs.First(d => d.Key == k)).ToList();
+        var defs = spec.Columns.Select(k => ExportColumnDefs.First(d => d.Key == k)).ToList();
         List<ExportColumn> columns = [new(Loc.Get("Main_ColNAME"), RightAlign: false)];
         columns.AddRange(defs.Select(d => new ExportColumn(d.Header, d.Right)));
         var cells = ordered
