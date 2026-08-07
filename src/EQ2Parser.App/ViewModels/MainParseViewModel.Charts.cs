@@ -48,6 +48,8 @@ public sealed partial class MainParseViewModel
         var now = Environment.TickCount64;
         if (!keyChanged && (version == _chartVersion || now - _lastChartBuildMs < 1000))
             return null;
+        if (keyChanged)
+            _chartOrder = null;
         _chartKey = (fight, metric);
         _chartVersion = version;
         _lastChartBuildMs = now;
@@ -84,20 +86,85 @@ public sealed partial class MainParseViewModel
             var media = ((System.Windows.Media.SolidColorBrush)row.Brush).Color;
             columns.Add((row.Name, value, new SKColor(media.R, media.G, media.B, 0xC8)));
         }
+        // Rank hysteresis: a reorder is a structural change (full rebuild,
+        // bars re-enter), and close DPSers trade places every tick on live
+        // — hold the previous order for a few seconds so the chart tweens
+        // values at 1 Hz and re-sorts at most every 5 s.
+        if (_chartOrder is { } held && held.Count == columns.Count
+            && now - _lastChartReorderMs < 5000
+            && columns.All(c => held.Contains(c.Item1)))
+        {
+            columns = [.. columns.OrderBy(c => held.IndexOf(c.Item1))];
+        }
+        else
+        {
+            _chartOrder = [.. columns.Select(c => c.Item1)];
+            _lastChartReorderMs = now;
+        }
         return new ChartData(metric, IsRollup: false, columns);
     }
+
+    private List<string>? _chartOrder;
+    private long _lastChartReorderMs;
 
     // LiveCharts paints carry per-canvas state — every axis/legend needs its
     // own instance, never a shared static (sharing silently drops labels).
     private static SolidColorPaint MutedPaint() => new(new SKColor(0x8B, 0x90, 0xAB));
     private static SolidColorPaint SeparatorPaint() => new(new SKColor(0x2E, 0x31, 0x50, 0x90));
 
+    // Live-refresh stability: the series/axis objects survive between
+    // refreshes and only their VALUES change, so columns tween smoothly to
+    // new heights. Replacing ChartSeries wholesale every second made
+    // LiveCharts tear down and re-enter every bar from zero — the
+    // "epileptic" live chart. A structural change (bars added/removed,
+    // rank order shift, metric change) still rebuilds.
+    private string? _chartSignature;
+    private readonly Dictionary<SKColor, ColumnSeries<double?>> _chartSeriesByColor = [];
+    private LineSeries<double>? _chartAverageSeries;
+
     private void ApplyChart(ChartData chart)
+    {
+        var signature = $"{chart.MetricLabel}\u0001{chart.IsRollup}\u0001"
+            + string.Join("\u0001", chart.Columns.Select(c => $"{c.Label}#{(uint)c.Color}"));
+        if (signature == _chartSignature && ChartSeries.Length > 0)
+        {
+            MutateChartValues(chart);
+            return;
+        }
+        _chartSignature = signature;
+        RebuildChart(chart);
+    }
+
+    /// <summary>Same bars, same order, same metric — pour the new numbers
+    /// into the existing series so the chart animates deltas.</summary>
+    private void MutateChartValues(ChartData chart)
+    {
+        var count = chart.Columns.Count;
+        foreach (var (color, series) in _chartSeriesByColor)
+        {
+            var values = new double?[count];
+            for (var i = 0; i < count; i++)
+            {
+                if (chart.Columns[i].Color == color)
+                    values[i] = Math.Round(chart.Columns[i].Value);
+            }
+            series.Values = values;
+        }
+        if (_chartAverageSeries is not null && count > 1)
+        {
+            var average = Math.Round(chart.Columns.Average(c => c.Value));
+            _chartAverageSeries.Values = [.. Enumerable.Repeat(average, count)];
+        }
+    }
+
+    private void RebuildChart(ChartData chart)
     {
         // Per-column colours: one full-width series per distinct colour with
         // nulls elsewhere (IgnoresBarPosition keeps every bar centred), plus
         // a dashed gold average line across the set.
         var count = chart.Columns.Count;
+        _chartSeriesByColor.Clear();
+        _chartAverageSeries = null;
         List<ISeries> series = [.. chart.Columns
             .Select((c, i) => (c, i))
             .GroupBy(t => t.c.Color)
@@ -106,7 +173,7 @@ public sealed partial class MainParseViewModel
                 var values = new double?[count];
                 foreach (var (c, i) in group)
                     values[i] = Math.Round(c.Value);
-                return new ColumnSeries<double?>
+                var columnSeries = new ColumnSeries<double?>
                 {
                     Values = values,
                     Name = chart.MetricLabel,
@@ -116,11 +183,13 @@ public sealed partial class MainParseViewModel
                     Rx = 3,
                     Ry = 3,
                 };
+                _chartSeriesByColor[group.Key] = columnSeries;
+                return columnSeries;
             })];
         if (count > 1)
         {
             var average = Math.Round(chart.Columns.Average(c => c.Value));
-            series.Add(new LineSeries<double>
+            series.Add(_chartAverageSeries = new LineSeries<double>
             {
                 Values = [.. Enumerable.Repeat(average, count)],
                 Name = "average",
