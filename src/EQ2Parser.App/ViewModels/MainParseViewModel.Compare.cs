@@ -1,4 +1,5 @@
 using EQ2Parser.Core.Analysis;
+using EQ2Parser.Core.Combat;
 using EQ2Parser.Core.Correlation;
 
 namespace EQ2Parser.App.ViewModels;
@@ -11,21 +12,37 @@ public sealed partial class MainParseViewModel
 {
     /// <summary>Earlier/other loaded fights comparable to
     /// <paramref name="fight"/>: same title AND zone (the same boss name
-    /// can exist in two zones with different tuning), newest first. The
+    /// can exist in two zones with different tuning), the SAME OUTCOME
+    /// (a kill only compares against kills, a wipe against wipes — a 7s
+    /// faceplant against a 6-minute kill is noise), and at least a
+    /// quarter of the fight's duration (drops instant resets even when
+    /// the outcome heuristic reads them the same). Newest first. The
     /// archive isn't searched — pull an old kill back into the parser
     /// from the Archive window first and it appears here.</summary>
     public IReadOnlyList<CorrelatedEncounter> ComparableFights(CorrelatedEncounter fight)
     {
         lock (manager.Sync)
         {
+            var outcome = fight.GetSuccessLevel();
+            var floor = TimeSpan.FromTicks(fight.Duration.Ticks / 4);
             return [.. manager.Correlator.History
                 .Where(f => !ReferenceEquals(f, fight)
                     && string.Equals(f.Title, fight.Title, StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(f.Zone, fight.Zone, StringComparison.OrdinalIgnoreCase))
+                    && string.Equals(f.Zone, fight.Zone, StringComparison.OrdinalIgnoreCase)
+                    && SameOutcome(f.GetSuccessLevel(), outcome)
+                    && f.Duration >= floor)
                 .OrderByDescending(f => f.StartTime)
                 .Take(10)];
         }
     }
+
+    /// <summary>Win only pairs with Win, Loss with Loss; Indeterminate and
+    /// Partial pair with anything (old logs and messy pulls shouldn't
+    /// empty the picker).</summary>
+    private static bool SameOutcome(SuccessLevel a, SuccessLevel b) =>
+        a is SuccessLevel.Indeterminate or SuccessLevel.Partial
+        || b is SuccessLevel.Indeterminate or SuccessLevel.Partial
+        || a == b;
 
     /// <summary>Menu label for one comparable fight — date, duration, raid DPS.</summary>
     public static string CompareLabel(CorrelatedEncounter fight) =>
