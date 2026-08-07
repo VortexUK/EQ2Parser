@@ -51,6 +51,11 @@ public sealed class LogLineProcessor
     /// history never raises it (same freshness rule as triggers).</summary>
     public event Action<string, string, DateTimeOffset>? StatusApplied;
 
+    /// <summary>Raised (log-pump thread) when a LIVE chat line carries an
+    /// ACT trigger-share snippet from ANOTHER player — the app offers to
+    /// add it. Never fires during catch-up/replay or for own pastes.</summary>
+    public event Action<Triggers.SharedTrigger>? TriggerShared;
+
     /// <summary>Lines seen / lines that produced a grammar event — the golden
     /// harness's coverage counters.</summary>
     public long LinesSeen { get; private set; }
@@ -71,6 +76,16 @@ public sealed class LogLineProcessor
         var live = line.ObservedAt is null || line.ObservedAt.Value - line.Timestamp < TriggerFreshness;
         if (live)
             _triggers?.Process(line.Message, anchor);
+
+        // Trigger shares pasted into chat (the ACT community convention).
+        // Live-only for the same reason as alerts: replaying an old log
+        // must not re-offer every share ever seen. Own pastes are skipped —
+        // the sharer obviously has the trigger.
+        if (live && TriggerShared is not null && line.Message.Contains("<Trigger", StringComparison.Ordinal)
+            && Triggers.ChatTriggerShare.TryExtract(line.Message) is { Self: false } share)
+        {
+            TriggerShared.Invoke(share);
+        }
 
         // Scripted-win say lines (bosses that end by script, not death) —
         // only consulted while a fight is live; StartsWith early-out keeps

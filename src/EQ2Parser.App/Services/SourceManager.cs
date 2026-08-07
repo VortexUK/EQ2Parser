@@ -45,6 +45,13 @@ public sealed class SourceManager : IDisposable
     /// <summary>A mass-detriment callout was announced (already spoken) —
     /// the Notifications overlay toasts it too.</summary>
     public event Action<string>? CalloutAnnounced;
+
+    /// <summary>Post a line to the Notifications overlay (same channel the
+    /// callouts use) — trigger-share outcomes ride it too.</summary>
+    public void AnnounceNotification(string text) => CalloutAnnounced?.Invoke(text);
+
+    /// <summary>Chat trigger-share handler (dedupe + offer window).</summary>
+    public SharedTriggerPrompter SharedTriggers { get; }
     public HistoryService History { get; } = new();
     public UpdateService Updates { get; } = new();
     public UploadService Uploads { get; } = new();
@@ -61,6 +68,7 @@ public sealed class SourceManager : IDisposable
         };
         Triggers = new TriggerService(Audio, Sync);
         SpellTimers = new TimerService(Audio, Sync);
+        SharedTriggers = new SharedTriggerPrompter(this);
         Lexicon = new LexiconSyncService(Triggers, SpellTimers, Settings.LexiconBaseUrl);
         Callouts.MinVictims = Settings.CalloutMinPlayers;
         Callouts.Cooldown = TimeSpan.FromSeconds(Settings.CalloutCooldownSeconds);
@@ -154,6 +162,7 @@ public sealed class SourceManager : IDisposable
                 source.Engine.EncounterEnded += History.QueueSave;
                 source.Engine.EncounterEnded += Uploads.OnEncounterEnded;
                 source.Processor.StatusApplied += Callouts.OnStatusApplied;
+                source.Processor.TriggerShared += SharedTriggers.OnShared;
                 _sources.Add(source);
             }
             // Pump only once fully wired — starting in the LogSource
@@ -173,6 +182,7 @@ public sealed class SourceManager : IDisposable
             source.Engine.EncounterEnded -= History.QueueSave;
             source.Engine.EncounterEnded -= Uploads.OnEncounterEnded;
             source.Processor.StatusApplied -= Callouts.OnStatusApplied;
+            source.Processor.TriggerShared -= SharedTriggers.OnShared;
             _removedPaths.Add(source.Path);
         }
         if (source.TriggerEngine is { } engine)
