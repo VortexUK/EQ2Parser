@@ -145,6 +145,8 @@
   "Main_ColTYPE": "TYPE",
   "Main_Columns": "☰ COLONNES",
   "Main_CombatantColumns": "COLONNES COMBATTANT",
+  "Main_CompareNone": "Aucun autre kill de ce boss chargé",
+  "Main_CompareWith": "Comparer avec…",
   "Main_CopyForDiscord": "Copier pour Discord",
   "Main_CopyLine": "Copier la ligne de log",
   "Main_CopyReport": "Copier le rapport",

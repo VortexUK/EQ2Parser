@@ -145,6 +145,8 @@
   "Main_ColTYPE": "ТИП",
   "Main_Columns": "☰ СТОЛБЦЫ",
   "Main_CombatantColumns": "СТОЛБЦЫ УЧАСТНИКОВ",
+  "Main_CompareNone": "Другие килы этого босса не загружены",
+  "Main_CompareWith": "Сравнить с…",
   "Main_CopyForDiscord": "Скопировать для Discord",
   "Main_CopyLine": "Копировать строку",
   "Main_CopyReport": "Копировать отчёт",

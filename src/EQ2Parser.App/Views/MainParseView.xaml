@@ -238,6 +238,10 @@
                                     <MenuItem Tag="discord-picker" Header="{loc:Tr Main_CopyForDiscord}">
                                         <MenuItem Header="{loc:Tr Export_CurrentSettings}" />
                                     </MenuItem>
+                                    <MenuItem Tag="compare-picker" Header="{loc:Tr Main_CompareWith}"
+                                              Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}">
+                                        <MenuItem Header="{loc:Tr Main_CompareNone}" />
+                                    </MenuItem>
                                     <MenuItem Header="{loc:Tr Main_CustomExport}"
                                               Command="{Binding PlacementTarget.Tag.OpenExportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />

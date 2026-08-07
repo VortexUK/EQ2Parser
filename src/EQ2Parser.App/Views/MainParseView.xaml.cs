@@ -55,6 +55,41 @@ public partial class MainParseView : System.Windows.Controls.UserControl
             item.Click += (_, _) => vm.CopyDiscordPreset(node, name);
             parent.Items.Add(item);
         }
+
+        // The same-boss comparison picker, rebuilt the same way.
+        if (menu.Items.OfType<System.Windows.Controls.MenuItem>()
+            .FirstOrDefault(m => m.Tag as string == "compare-picker") is not { } compare)
+            return;
+        compare.Items.Clear();
+        if (node.Fight is not EQ2Parser.Core.Correlation.CorrelatedEncounter fight)
+        {
+            compare.Items.Add(new System.Windows.Controls.MenuItem
+            {
+                Header = Localization.Loc.Get("Main_CompareNone"),
+                IsEnabled = false,
+            });
+            return;
+        }
+        var candidates = vm.ComparableFights(fight);
+        if (candidates.Count == 0)
+        {
+            compare.Items.Add(new System.Windows.Controls.MenuItem
+            {
+                Header = Localization.Loc.Get("Main_CompareNone"),
+                IsEnabled = false,
+            });
+            return;
+        }
+        foreach (var candidate in candidates)
+        {
+            var item = new System.Windows.Controls.MenuItem
+            {
+                Header = MainParseViewModel.CompareLabel(candidate),
+            };
+            var other = candidate;
+            item.Click += (_, _) => vm.CompareFights(fight, other);
+            compare.Items.Add(item);
+        }
     }
 
     private void ColumnsToggle_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
