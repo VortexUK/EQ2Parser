@@ -1,0 +1,19 @@
+{
+  "rules": [
+    {
+      "speakers": ["Palace Overseer"],
+      "phrase": "This cannot be!!",
+      "note": "Throne of New Tunaria - the Overseer never dies; this say line is the scripted end. Verified in live Wuoshi logs (Jun-Jul 2026), spoken twice per win."
+    },
+    {
+      "speakers": ["Queen Lenya Thex", "a weakened Lenya Thex"],
+      "phrase": "They are just too powerful, my lord! My only hope rests with you, my love, Mayong.",
+      "note": "Throne of New Tunaria - the Queen surrenders instead of dying. She renames to 'a weakened Lenya Thex' for the final phase and BOTH identities speak the surrender lines (verified across four separate wins)."
+    },
+    {
+      "speakers": ["Queen Lenya Thex", "a weakened Lenya Thex"],
+      "phrase": "I cannot believe I have been overwhelmed",
+      "note": "The Queen's earlier surrender line (~14s before the final one) - a second marker in case the encounter idles out between the two."
+    }
+  ]
+}

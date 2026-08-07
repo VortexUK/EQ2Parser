@@ -259,8 +259,17 @@ public sealed class Encounter(string sourceId, string ownerName, string zone)
         return strongest?.Name;
     }
 
+    /// <summary>Set when a curated scripted-win say line was seen during
+    /// this encounter (ScriptedWins) — some bosses end by script, not by a
+    /// death, so the death-based heuristic below would call the win a
+    /// Loss. Also set on restore when the archived verdict was Win (the
+    /// swing replay can't reproduce a say line).</summary>
+    public bool ScriptedWin { get; set; }
+
     public SuccessLevel GetSuccessLevel()
     {
+        if (ScriptedWin)
+            return SuccessLevel.Win;
         var allies = GetAllies();
         if (allies.Count == 0)
             return SuccessLevel.Indeterminate;

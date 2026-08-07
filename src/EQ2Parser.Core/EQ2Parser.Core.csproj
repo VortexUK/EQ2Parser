@@ -14,6 +14,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\spell_classes.json" />
     <EmbeddedResource Include="Resources\source_overrides.json" />
+    <EmbeddedResource Include="Resources\scripted_wins.json" />
   </ItemGroup>
 
 </Project>

@@ -72,6 +72,12 @@ public sealed class LogLineProcessor
         if (live)
             _triggers?.Process(line.Message, anchor);
 
+        // Scripted-win say lines (bosses that end by script, not death) —
+        // only consulted while a fight is live; StartsWith early-out keeps
+        // the per-line cost at a single character compare.
+        if (Engine.ActiveEncounter is { } scriptedActive && ScriptedWins.Default.TryMatch(line.Message))
+            scriptedActive.ScriptedWin = true;
+
         var parsed = EnglishGrammar.TryParse(line.Message);
         if (parsed is null)
             return;

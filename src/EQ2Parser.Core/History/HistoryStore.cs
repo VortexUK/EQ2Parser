@@ -350,6 +350,12 @@ public sealed class HistoryStore : IDisposable
         foreach (var swing in LoadSwings(summary.Id))
             encounter.AddSwing(swing);
         encounter.End();
+        // A scripted win was decided by a say line the swing replay can't
+        // reproduce — carry the verdict that was stored at save time.
+        // (For ordinary wins this is a no-op: the replayed deaths produce
+        // Win again anyway.)
+        if (summary.Success == SuccessLevel.Win)
+            encounter.ScriptedWin = true;
         return encounter;
     }
 

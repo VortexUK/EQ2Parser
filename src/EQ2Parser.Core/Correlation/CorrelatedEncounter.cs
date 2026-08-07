@@ -45,7 +45,11 @@ public sealed class CorrelatedEncounter
 
     public string Zone => Primary.Zone;
     public string Title => Primary.Title;
-    public SuccessLevel GetSuccessLevel() => Primary.GetSuccessLevel();
+    /// <summary>Any source that saw a scripted-win say line wins the whole
+    /// merged fight — the speaker's line may only appear in one log's
+    /// chat range.</summary>
+    public SuccessLevel GetSuccessLevel() =>
+        _sources.Any(e => e.ScriptedWin) ? SuccessLevel.Win : Primary.GetSuccessLevel();
 
     public DateTimeOffset StartTime => _sources.Min(e => e.StartTime);
     public DateTimeOffset EndTime => _sources.Max(e => e.EndTime);
