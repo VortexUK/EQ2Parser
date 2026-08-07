@@ -221,6 +221,7 @@
                      Background="Transparent" BorderThickness="0"
                      HorizontalContentAlignment="Stretch"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ContextMenuOpening="Tree_ContextMenuOpening"
                      VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
@@ -229,10 +230,12 @@
                         <Setter Property="ContextMenu">
                             <Setter.Value>
                                 <ContextMenu>
-                                    <!-- Quick picker: submenu children (current settings +
-                                         saved presets) are rebuilt in code-behind on open. -->
-                                    <MenuItem Header="{loc:Tr Main_CopyForDiscord}"
-                                              SubmenuOpened="CopyDiscordMenu_SubmenuOpened">
+                                    <!-- Quick picker: children (current settings + saved
+                                         presets) are rebuilt by Tree_ContextMenuOpening —
+                                         wired on the ListBox, NOT here: an event handler on
+                                         an element inside a Style Setter corrupts the XAML
+                                         connector ids (InvalidCastException at startup). -->
+                                    <MenuItem Tag="discord-picker" Header="{loc:Tr Main_CopyForDiscord}">
                                         <MenuItem Header="{loc:Tr Export_CurrentSettings}" />
                                     </MenuItem>
                                     <MenuItem Header="{loc:Tr Main_CustomExport}"

@@ -17,16 +17,24 @@ public partial class MainParseView : System.Windows.Controls.UserControl
         };
     }
 
-    /// <summary>The Copy-for-Discord quick picker: rebuild the submenu on
-    /// open — "current settings" first, then every saved preset by name.</summary>
-    private void CopyDiscordMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+    /// <summary>The Copy-for-Discord quick picker: rebuild the submenu just
+    /// before the tree's context menu opens — "current settings" first,
+    /// then every saved preset. Wired at the ListBox (a normal element);
+    /// handlers on elements INSIDE the ItemContainerStyle's ContextMenu
+    /// corrupt the XAML connector ids and crash at first item render.</summary>
+    private void Tree_ContextMenuOpening(object sender, System.Windows.Controls.ContextMenuEventArgs e)
     {
-        if (sender is not System.Windows.Controls.MenuItem parent
-            || DataContext is not MainParseViewModel vm)
+        if (DataContext is not MainParseViewModel vm
+            || sender is not System.Windows.Controls.ItemsControl list
+            || e.OriginalSource is not DependencyObject origin)
             return;
-        var node = (parent.Parent as System.Windows.Controls.ContextMenu)?.PlacementTarget
-            is FrameworkElement target ? target.DataContext as ParseNode : null;
-        if (node is null)
+        if (System.Windows.Controls.ItemsControl.ContainerFromElement(list, origin)
+            is not FrameworkElement container
+            || container.DataContext is not ParseNode node
+            || container.ContextMenu is not { } menu)
+            return;
+        if (menu.Items.OfType<System.Windows.Controls.MenuItem>()
+            .FirstOrDefault(m => m.Tag as string == "discord-picker") is not { } parent)
             return;
 
         parent.Items.Clear();
