@@ -29,7 +29,7 @@ public sealed partial class MainViewModel : ObservableObject
         Sources = new SourcesViewModel(manager);
         Triggers = new TriggersViewModel(manager);
         Timers = new TimersViewModel(manager);
-        Overlays = new OverlaysViewModel(overlay);
+        Overlays = new OverlaysViewModel(overlay, manager);
         Settings = new SettingsViewModel(manager);
 
         NavItems =

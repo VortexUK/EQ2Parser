@@ -138,6 +138,11 @@ public sealed record AppSettings
     public int CalloutMinPlayers { get; init; } = 3;
     public int CalloutCooldownSeconds { get; init; } = 12;
 
+    /// <summary>Hide the overlay windows while neither EQ2 nor the parser
+    /// owns the foreground (Discord over the meters). Opt-in — multi-screen
+    /// users want overlays visible regardless of focus.</summary>
+    public bool OverlayAutoHide { get; init; }
+
     // The overlay windows. Null = never configured (defaults apply; timer
     // panel A seeds from the legacy fields, the DPS meter from the old
     // single mini parse).

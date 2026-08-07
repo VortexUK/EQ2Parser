@@ -107,6 +107,26 @@ public sealed class OverlayController(SourceManager manager)
         Update(kind, s => s with { Visible = false });
     }
 
+    private bool _suppressed;
+
+    /// <summary>Focus auto-hide: temporarily hide/show every open overlay
+    /// WINDOW without touching the persisted Visible flags — restoring
+    /// focus (or unticking the option) brings back exactly what the user
+    /// had. Distinct from Hide(kind), which closes and persists.</summary>
+    public void SetSuppressed(bool suppressed)
+    {
+        if (_suppressed == suppressed)
+            return;
+        _suppressed = suppressed;
+        foreach (var window in _windows.Values)
+        {
+            if (suppressed)
+                window.Hide();
+            else
+                window.Show();
+        }
+    }
+
     public void SetLocked(OverlayKind kind, bool locked) =>
         Update(kind, s => s with { Locked = locked });
 

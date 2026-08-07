@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using EQ2Parser.App.Localization;
 using EQ2Parser.App.Services;
 
 namespace EQ2Parser.App.ViewModels;
@@ -137,16 +138,35 @@ public sealed class OverlaysViewModel
 {
     public IReadOnlyList<OverlayConfigVm> Cards { get; }
 
-    public OverlaysViewModel(OverlayController overlay)
+    private readonly SourceManager _manager;
+    private readonly OverlayController _overlay;
+
+    public OverlaysViewModel(OverlayController overlay, SourceManager manager)
     {
+        _manager = manager;
+        _overlay = overlay;
         Cards =
         [
-            new OverlayConfigVm(overlay, OverlayKind.MiniParseDps, "DPS meter", "rows"),
-            new OverlayConfigVm(overlay, OverlayKind.MiniParseHps, "Healing meter", "rows"),
-            new OverlayConfigVm(overlay, OverlayKind.MiniParseTank, "Tanking meter", "rows"),
-            new OverlayConfigVm(overlay, OverlayKind.TimerA, "Timer panel A", "bars"),
-            new OverlayConfigVm(overlay, OverlayKind.TimerB, "Timer panel B", "bars"),
-            new OverlayConfigVm(overlay, OverlayKind.Notifications, "Notifications", "toasts"),
+            new OverlayConfigVm(overlay, OverlayKind.MiniParseDps, Loc.Get("Overlays_TitleDps"), Loc.Get("Overlays_ItemsRows")),
+            new OverlayConfigVm(overlay, OverlayKind.MiniParseHps, Loc.Get("Overlays_TitleHps"), Loc.Get("Overlays_ItemsRows")),
+            new OverlayConfigVm(overlay, OverlayKind.MiniParseTank, Loc.Get("Overlays_TitleTank"), Loc.Get("Overlays_ItemsRows")),
+            new OverlayConfigVm(overlay, OverlayKind.TimerA, Loc.Get("Overlays_TitleTimerA"), Loc.Get("Overlays_ItemsBars")),
+            new OverlayConfigVm(overlay, OverlayKind.TimerB, Loc.Get("Overlays_TitleTimerB"), Loc.Get("Overlays_ItemsBars")),
+            new OverlayConfigVm(overlay, OverlayKind.Notifications, Loc.Get("Overlays_TitleNotifications"), Loc.Get("Overlays_ItemsToasts")),
         ];
+    }
+
+    /// <summary>The focus auto-hide toggle. Applies live: unticking
+    /// un-suppresses immediately (no waiting for the next alt-tab).</summary>
+    public bool AutoHide
+    {
+        get => _manager.Settings.OverlayAutoHide;
+        set
+        {
+            _manager.Settings = _manager.Settings with { OverlayAutoHide = value };
+            _manager.Settings.Save();
+            if (!value)
+                _overlay.SetSuppressed(false);
+        }
     }
 }

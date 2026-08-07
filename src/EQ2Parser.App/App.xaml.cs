@@ -9,6 +9,7 @@ namespace EQ2Parser.App;
 public partial class App : Application
 {
     private SourceManager? _manager;
+    private FocusWatcher? _focusWatcher;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -35,6 +36,12 @@ public partial class App : Application
         _manager.RestoreFromSettings();
         _manager.StartFolderWatch();
         var overlay = new OverlayController(_manager);
+        // Overlay auto-hide: event-driven foreground tracking (no polling).
+        // The setting is read per event so the Overlays-page toggle applies
+        // without a restart; the callback arrives on this UI thread.
+        _focusWatcher = new FocusWatcher();
+        _focusWatcher.ForegroundFriendlyChanged += friendly =>
+            overlay.SetSuppressed(_manager!.Settings.OverlayAutoHide && !friendly);
         var window = new MainWindow(new MainViewModel(_manager, overlay));
         MainWindow = window;
         // Overlays are windows too — without this, closing the main window
@@ -58,6 +65,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _focusWatcher?.Dispose();
         _manager?.PersistSources();
         _manager?.Dispose();
         base.OnExit(e);
