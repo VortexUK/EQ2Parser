@@ -44,13 +44,23 @@ public static class PersistedJsonFile
 
     public static void Save<T>(string path, T value, JsonSerializerOptions? options = null)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var tmp = path + ".tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(value, options ?? Indented));
-        if (File.Exists(path))
-            File.Replace(tmp, path, destinationBackupFileName: null);
-        else
-            File.Move(tmp, path);
+        // Serialize outside the lock (cheap but why hold it), write inside:
+        // a synchronous Save racing the SaveSoon timer thread used to
+        // collide on the FIXED .tmp name (IOException at startup when the
+        // overlay restore saved while a debounced write was in flight).
+        // The unique tmp suffix is belt-and-braces for anything outside
+        // this process.
+        var json = JsonSerializer.Serialize(value, options ?? Indented);
+        lock (Gate)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var tmp = $"{path}.{Environment.CurrentManagedThreadId}.tmp";
+            File.WriteAllText(tmp, json);
+            if (File.Exists(path))
+                File.Replace(tmp, path, destinationBackupFileName: null);
+            else
+                File.Move(tmp, path);
+        }
     }
 
     /// <summary>Coalesce rapid calls onto one write ~500ms after the last.

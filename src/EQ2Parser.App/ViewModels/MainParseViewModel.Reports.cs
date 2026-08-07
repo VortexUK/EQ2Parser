@@ -39,10 +39,10 @@ public sealed partial class MainParseViewModel
     private ISeries[] _reportCartesianSeries = [];
 
     [ObservableProperty]
-    private Axis[] _reportCartesianXAxes = [];
+    private Axis[] _reportCartesianXAxes = [new Axis()]; // never empty: LiveCharts throws on measure with zero axes
 
     [ObservableProperty]
-    private Axis[] _reportCartesianYAxes = [];
+    private Axis[] _reportCartesianYAxes = [new Axis()]; // never empty: LiveCharts throws on measure with zero axes
 
     /// <summary>What the open report is bound to: 0 none/fight-independent,
     /// -1 a specific fight (close on switch), 1/2/3 death/avoidance/specials

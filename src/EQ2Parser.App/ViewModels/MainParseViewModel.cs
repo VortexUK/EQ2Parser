@@ -253,10 +253,10 @@ public sealed partial class MainParseViewModel : ObservableObject
     private ISeries[] _chartSeries = [];
 
     [ObservableProperty]
-    private Axis[] _chartXAxes = [];
+    private Axis[] _chartXAxes = [new Axis()]; // never empty: LiveCharts throws on measure with zero axes
 
     [ObservableProperty]
-    private Axis[] _chartYAxes = [];
+    private Axis[] _chartYAxes = [new Axis()]; // never empty: LiveCharts throws on measure with zero axes
 
     private (object? Fight, string Metric) _chartKey;
     private long _chartVersion;
@@ -277,10 +277,10 @@ public sealed partial class MainParseViewModel : ObservableObject
     private ISeries[] _drillCartesianSeries = [];
 
     [ObservableProperty]
-    private Axis[] _drillXAxes = [];
+    private Axis[] _drillXAxes = [new Axis()]; // never empty: LiveCharts throws on measure with zero axes
 
     [ObservableProperty]
-    private Axis[] _drillYAxes = [];
+    private Axis[] _drillYAxes = [new Axis()]; // never empty: LiveCharts throws on measure with zero axes
 
     [ObservableProperty]
     private ISeries[] _drillDonutSeries = [];
