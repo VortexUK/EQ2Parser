@@ -78,7 +78,11 @@ public sealed class CategoryTree<TItem>
     {
         foreach (var zoneGroup in items
                      .GroupBy(ZoneKeyOf, StringComparer.OrdinalIgnoreCase)
-                     .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+                     // "General" (the site's cross-boss categories + local
+                     // uncategorised triggers) pins to the top — it was
+                     // getting lost alphabetically among the boss zones.
+                     .OrderBy(g => string.Equals(g.Key, "General", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                     .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
         {
             List<TItem> zoneMembers = [.. zoneGroup.Where(matchesFilter)];
             if (zoneMembers.Count == 0)
