@@ -1,6 +1,7 @@
 <UserControl x:Class="EQ2Parser.App.Views.NotificationsContent"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:EQ2Parser.App.Localization">
     <StackPanel>
         <ItemsControl x:Name="Items">
             <ItemsControl.ItemTemplate>
@@ -41,7 +42,7 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <TextBlock x:Name="EmptyHint" Text="Trigger alerts pop up here for a few seconds."
+        <TextBlock x:Name="EmptyHint" Text="{loc:Tr Notifications_EmptyHint}"
                    FontSize="11" Foreground="#8B90AB" Margin="1,2" FontFamily="Segoe UI" />
     </StackPanel>
 </UserControl>

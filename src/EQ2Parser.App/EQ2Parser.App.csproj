@@ -34,6 +34,7 @@
   <ItemGroup>
     <Resource Include="Fonts\*.ttf" />
     <Resource Include="Assets\EQ2Parser.ico" />
+    <EmbeddedResource Include="Localization\strings.*.json" />
   </ItemGroup>
 
 </Project>

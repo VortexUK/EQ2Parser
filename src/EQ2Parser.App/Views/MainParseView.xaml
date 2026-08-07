@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:EQ2Parser.App.Views"
              xmlns:vm="clr-namespace:EQ2Parser.App.ViewModels"
-             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF">
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+             xmlns:loc="clr-namespace:EQ2Parser.App.Localization">
     <UserControl.Resources>
         <views:BarWidthConverter x:Key="BarWidth" />
         <views:ColumnWidthConverter x:Key="ColWidth" />
@@ -44,25 +45,25 @@
                   Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
                 <Grid.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="Drill down"
+                        <MenuItem Header="{loc:Tr Main_DrillDown}"
                                   Command="{Binding PlacementTarget.Tag.OpenDetailCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                        <MenuItem Header="Export to clipboard"
+                        <MenuItem Header="{loc:Tr Main_ExportToClipboard}"
                                   Command="{Binding PlacementTarget.Tag.CopyCombatantCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                        <MenuItem Header="Export ability breakdown"
+                        <MenuItem Header="{loc:Tr Main_ExportAbilityBreakdown}"
                                   Command="{Binding PlacementTarget.Tag.CopyBreakdownCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                        <MenuItem Header="Death report"
+                        <MenuItem Header="{loc:Tr Main_DeathReport}"
                                   Command="{Binding PlacementTarget.Tag.DeathReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                        <MenuItem Header="Avoidance report"
+                        <MenuItem Header="{loc:Tr Main_AvoidanceReport}"
                                   Command="{Binding PlacementTarget.Tag.AvoidanceReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                        <MenuItem Header="Sources report"
+                        <MenuItem Header="{loc:Tr Main_SourcesReport}"
                                   Command="{Binding PlacementTarget.Tag.SourcesReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                        <MenuItem Header="Lookup across fights"
+                        <MenuItem Header="{loc:Tr Main_LookupAcrossFights}"
                                   Command="{Binding PlacementTarget.Tag.LookupCombatantCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                     </ContextMenu>
@@ -206,13 +207,13 @@
             <!-- WrapPanel, not StackPanel: at higher text scaling the row can
                  outgrow the tree column — wrapping beats clipping. -->
             <WrapPanel Margin="2,0,0,4">
-                <ToggleButton Content="Bosses only" Style="{StaticResource PillToggle}" Margin="0,0,6,4"
+                <ToggleButton Content="{loc:Tr Main_BossesOnly}" Style="{StaticResource PillToggle}" Margin="0,0,6,4"
                               IsChecked="{Binding BossesOnly, Mode=TwoWay}" />
-                <Button Content="Archive" Style="{StaticResource GoldButton}" Margin="0,0,6,4" Padding="10,3"
-                        ToolTip="Search every stored fight (bosses never age out) and pull them back into the parser"
+                <Button Content="{loc:Tr Main_Archive}" Style="{StaticResource GoldButton}" Margin="0,0,6,4" Padding="10,3"
+                        ToolTip="{loc:Tr Main_TooltipArchive}"
                         Click="Archive_Click" />
-                <Button Content="Curation" Style="{StaticResource GoldButton}" Margin="0,0,0,4" Padding="10,3"
-                        ToolTip="Mine archived fights: what each mob casts, measured recast timings, and which abilities still need timers"
+                <Button Content="{loc:Tr Main_Curation}" Style="{StaticResource GoldButton}" Margin="0,0,0,4" Padding="10,3"
+                        ToolTip="{loc:Tr Main_TooltipCuration}"
                         Click="Curation_Click" />
             </WrapPanel>
             <Border Grid.Row="1" Style="{StaticResource Card}" Padding="4">
@@ -228,34 +229,34 @@
                         <Setter Property="ContextMenu">
                             <Setter.Value>
                                 <ContextMenu>
-                                    <MenuItem Header="Export to clipboard"
+                                    <MenuItem Header="{loc:Tr Main_ExportToClipboard}"
                                               Command="{Binding PlacementTarget.Tag.CopyNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                    <MenuItem Header="View log"
+                                    <MenuItem Header="{loc:Tr Main_ViewLog}"
                                               Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
                                               Command="{Binding PlacementTarget.Tag.ViewFightLogCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                    <MenuItem Header="Death report"
+                                    <MenuItem Header="{loc:Tr Main_DeathReport}"
                                               Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
                                               Command="{Binding PlacementTarget.Tag.DeathReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                    <MenuItem Header="Avoidance report"
+                                    <MenuItem Header="{loc:Tr Main_AvoidanceReport}"
                                               Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
                                               Command="{Binding PlacementTarget.Tag.AvoidanceReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                    <MenuItem Header="Special attacks report"
+                                    <MenuItem Header="{loc:Tr Main_SpecialAttacksReport}"
                                               Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
                                               Command="{Binding PlacementTarget.Tag.SpecialReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                    <MenuItem Header="Sources report"
+                                    <MenuItem Header="{loc:Tr Main_SourcesReport}"
                                               Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
                                               Command="{Binding PlacementTarget.Tag.SourcesReportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                    <MenuItem Header="Upload to EQ2Lexicon"
+                                    <MenuItem Header="{loc:Tr Main_UploadToEQ2Lexicon}"
                                               Visibility="{Binding PlacementTarget.DataContext.IsFight, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
                                               Command="{Binding PlacementTarget.Tag.UploadNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                    <MenuItem Header="Delete"
+                                    <MenuItem Header="{loc:Tr Main_Delete}"
                                               Visibility="{Binding PlacementTarget.DataContext.IsDeletable, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BoolToVis}}"
                                               Command="{Binding PlacementTarget.Tag.DeleteNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
@@ -338,7 +339,7 @@
                     <Border Margin="10,0,0,0" VerticalAlignment="Center" CornerRadius="99"
                             Background="#334ADE80" Padding="8,2"
                             Visibility="{Binding InCombat, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="LIVE" FontSize="10" Foreground="{StaticResource SuccessBrush}"
+                        <TextBlock Text="{loc:Tr Main_Live}" FontSize="10" Foreground="{StaticResource SuccessBrush}"
                                    FontFamily="{StaticResource BodySemiBoldFont}" />
                     </Border>
                     <!-- Which log's view of the fight — only when there is
@@ -347,10 +348,10 @@
                               DisplayMemberPath="Label" MinWidth="130" Margin="12,0,0,0" FontSize="12"
                               VerticalAlignment="Center"
                               Visibility="{Binding PerspectiveVisible, Converter={StaticResource BoolToVis}}"
-                              ToolTip="Perspective: whose log this view is built from. Combined merges every witness (each character's own log wins for their numbers)." />
+                              ToolTip="{loc:Tr Main_TooltipPerspective}" />
                 </StackPanel>
                 <ToggleButton x:Name="ColumnsToggle"
-                              Content="☰ COLUMNS" HorizontalAlignment="Right" VerticalAlignment="Center"
+                              Content="{loc:Tr Main_Columns}" HorizontalAlignment="Right" VerticalAlignment="Center"
                               PreviewMouseLeftButtonDown="ColumnsToggle_PreviewMouseLeftButtonDown">
                     <ToggleButton.Style>
                         <!-- Configures the combatant grid — hidden while the
@@ -378,7 +379,7 @@
                     <Border Background="{StaticResource SurfaceRaisedBrush}" BorderBrush="{StaticResource BorderBrush}"
                             BorderThickness="1" CornerRadius="8" Padding="14,12">
                         <StackPanel>
-                            <TextBlock Text="ENCOUNTER COLUMNS" Style="{StaticResource SectionLabel}" Margin="0,0,0,8" />
+                            <TextBlock Text="{loc:Tr Main_EncounterColumns}" Style="{StaticResource SectionLabel}" Margin="0,0,0,8" />
                             <ItemsControl ItemsSource="{Binding Columns.Toggles}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
@@ -393,7 +394,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <Button Content="Reset to default" Style="{StaticResource GoldButton}"
+                            <Button Content="{loc:Tr Main_ResetToDefault}" Style="{StaticResource GoldButton}"
                                     Margin="0,10,0,0" HorizontalAlignment="Left"
                                     Command="{Binding Columns.ResetCommand}" />
                         </StackPanel>
@@ -441,69 +442,69 @@
                     <ColumnDefinition Width="{Binding Data.ByKey[HealsTaken].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=80}" />
                     <ColumnDefinition Width="{Binding Data.ByKey[Deaths].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=50}" />
                 </Grid.ColumnDefinitions>
-                <Button Content="NAME" Style="{StaticResource HeaderButton}" HorizontalContentAlignment="Left"
+                <Button Content="{loc:Tr Main_ColNAME}" Style="{StaticResource HeaderButton}" HorizontalContentAlignment="Left"
                         Command="{Binding SortByCommand}" CommandParameter="Name" />
-                <Button Grid.Column="1" Content="CLASS" Style="{StaticResource HeaderButton}" HorizontalContentAlignment="Left"
+                <Button Grid.Column="1" Content="{loc:Tr Main_ColCLASS}" Style="{StaticResource HeaderButton}" HorizontalContentAlignment="Left"
                         Command="{Binding SortByCommand}" CommandParameter="Class"
                         Visibility="{Binding Data.ByKey[Class].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="2" Content="TIME" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="2" Content="{loc:Tr Main_ColTIME}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Duration"
                         Visibility="{Binding Data.ByKey[Time].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="3" Content="DAMAGE" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="3" Content="{loc:Tr Main_ColDAMAGE}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Damage"
                         Visibility="{Binding Data.ByKey[Damage].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
                 <Button Grid.Column="4" Content="%" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Damage"
                         Visibility="{Binding Data.ByKey[Percent].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="5" Content="ENCDPS" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="5" Content="{loc:Tr Main_ColENCDPS}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Dps"
                         Visibility="{Binding Data.ByKey[Dps].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="6" Content="ENCHPS" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="6" Content="{loc:Tr Main_ColENCHPS}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Hps"
                         Visibility="{Binding Data.ByKey[Hps].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="7" Content="HEALS" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="7" Content="{loc:Tr Main_ColHEALS}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Heals"
                         Visibility="{Binding Data.ByKey[Heals].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="8" Content="CRITHEAL" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="8" Content="{loc:Tr Main_ColCRITHEAL}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="CritHeals"
                         Visibility="{Binding Data.ByKey[CritHeals].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="9" Content="CURES" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="9" Content="{loc:Tr Main_ColCURES}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Cures"
                         Visibility="{Binding Data.ByKey[Cures].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="10" Content="PWR DRN" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="10" Content="{loc:Tr Main_ColPWRDRN}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="PowerDrain"
                         Visibility="{Binding Data.ByKey[PowerDrain].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="11" Content="PWR REP" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="11" Content="{loc:Tr Main_ColPWRREP}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="PowerRep"
                         Visibility="{Binding Data.ByKey[PowerRep].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="12" Content="SWINGS" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="12" Content="{loc:Tr Main_ColSWINGS}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Swings"
                         Visibility="{Binding Data.ByKey[Swings].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="13" Content="HITS" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="13" Content="{loc:Tr Main_ColHITS}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Hits"
                         Visibility="{Binding Data.ByKey[Hits].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="14" Content="CRITS" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="14" Content="{loc:Tr Main_ColCRITS}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Crits"
                         Visibility="{Binding Data.ByKey[Crits].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="15" Content="MISS" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="15" Content="{loc:Tr Main_ColMISS}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Misses"
                         Visibility="{Binding Data.ByKey[Misses].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="16" Content="AVOID" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="16" Content="{loc:Tr Main_ColAVOID}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Avoids"
                         Visibility="{Binding Data.ByKey[Avoids].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="17" Content="TOHIT%" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="17" Content="{loc:Tr Main_ColTOHITPCT}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="ToHit"
                         Visibility="{Binding Data.ByKey[ToHit].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="18" Content="CRIT%" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="18" Content="{loc:Tr Main_ColCRITPCT}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="CritPct"
                         Visibility="{Binding Data.ByKey[CritPct].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="19" Content="TAKEN" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="19" Content="{loc:Tr Main_ColTAKEN}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Taken"
                         Visibility="{Binding Data.ByKey[Taken].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="20" Content="H.TAKEN" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="20" Content="{loc:Tr Main_ColHTAKEN}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="HealsTaken"
                         Visibility="{Binding Data.ByKey[HealsTaken].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
-                <Button Grid.Column="21" Content="DEATHS" Style="{StaticResource HeaderButton}"
+                <Button Grid.Column="21" Content="{loc:Tr Main_ColDEATHS}" Style="{StaticResource HeaderButton}"
                         Command="{Binding SortByCommand}" CommandParameter="Deaths"
                         Visibility="{Binding Data.ByKey[Deaths].Visible, Source={StaticResource ColsProxy}, Converter={StaticResource BoolToVis}}" />
             </Grid>
@@ -557,13 +558,13 @@
                         <ColumnDefinition Width="56" />
                         <ColumnDefinition Width="60" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="ENCOUNTER" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" Padding="2,4" />
-                    <TextBlock Grid.Column="1" Text="START" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
-                    <TextBlock Grid.Column="2" Text="TIME" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
-                    <TextBlock Grid.Column="3" Text="DAMAGE" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
-                    <TextBlock Grid.Column="4" Text="ENCDPS" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
-                    <TextBlock Grid.Column="5" Text="KILLS" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
-                    <TextBlock Grid.Column="6" Text="DEATHS" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
+                    <TextBlock Text="{loc:Tr Main_ColENCOUNTER}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" Padding="2,4" />
+                    <TextBlock Grid.Column="1" Text="{loc:Tr Main_ColSTART}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
+                    <TextBlock Grid.Column="2" Text="{loc:Tr Main_ColTIME}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
+                    <TextBlock Grid.Column="3" Text="{loc:Tr Main_ColDAMAGE}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
+                    <TextBlock Grid.Column="4" Text="{loc:Tr Main_ColENCDPS}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
+                    <TextBlock Grid.Column="5" Text="{loc:Tr Main_ColKILLS}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
+                    <TextBlock Grid.Column="6" Text="{loc:Tr Main_ColDEATHS}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="11" TextAlignment="Right" Padding="2,4" />
                 </Grid>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <Border Style="{StaticResource Card}" Padding="6">
@@ -631,20 +632,20 @@
                 </Grid.RowDefinitions>
                 <Grid Margin="0,0,0,10">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,120,0">
-                        <Button Content="← Back" Style="{StaticResource GoldButton}" Command="{Binding CloseDetailCommand}" />
+                        <Button Content="{loc:Tr Main_Back}" Style="{StaticResource GoldButton}" Command="{Binding CloseDetailCommand}" />
                         <TextBlock Text="{Binding DetailTitle}" Foreground="{StaticResource GoldBrightBrush}"
                                    FontFamily="{StaticResource HeadingFont}" FontSize="16"
                                    VerticalAlignment="Center" Margin="14,0,0,0" />
-                        <Button Content="Copy report" Style="{StaticResource GoldButton}" Margin="16,0,0,0"
+                        <Button Content="{loc:Tr Main_CopyReport}" Style="{StaticResource GoldButton}" Margin="16,0,0,0"
                                 Command="{Binding CopyReportCommand}"
                                 Visibility="{Binding ReportLevel, Converter={StaticResource BoolToVis}}" />
                     </StackPanel>
                     <ToggleButton x:Name="DrillColumnsToggle" Style="{StaticResource PillToggle}"
-                                  Content="☰ COLUMNS" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                  Content="{loc:Tr Main_Columns}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                   Visibility="{Binding DrillTableVisible, Converter={StaticResource BoolToVis}}"
                                   PreviewMouseLeftButtonDown="DrillColumnsToggle_PreviewMouseLeftButtonDown" />
                     <ToggleButton x:Name="SwingColumnsToggle" Style="{StaticResource PillToggle}"
-                                  Content="☰ COLUMNS" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                  Content="{loc:Tr Main_Columns}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                   Visibility="{Binding SwingTableVisible, Converter={StaticResource BoolToVis}}"
                                   PreviewMouseLeftButtonDown="SwingColumnsToggle_PreviewMouseLeftButtonDown" />
                     <Popup x:Name="SwingColumnsPopup" PlacementTarget="{Binding ElementName=SwingColumnsToggle}"
@@ -654,7 +655,7 @@
                         <Border Background="{StaticResource SurfaceRaisedBrush}" BorderBrush="{StaticResource BorderBrush}"
                                 BorderThickness="1" CornerRadius="8" Padding="14,12">
                             <StackPanel>
-                                <TextBlock Text="SWING LOG COLUMNS" Style="{StaticResource SectionLabel}" Margin="0,0,0,8" />
+                                <TextBlock Text="{loc:Tr Main_SwingLogColumns}" Style="{StaticResource SectionLabel}" Margin="0,0,0,8" />
                                 <ItemsControl ItemsSource="{Binding SwingColumns.Toggles}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
@@ -669,7 +670,7 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <Button Content="Reset to default" Style="{StaticResource GoldButton}"
+                                <Button Content="{loc:Tr Main_ResetToDefault}" Style="{StaticResource GoldButton}"
                                         Margin="0,10,0,0" HorizontalAlignment="Left"
                                         Command="{Binding SwingColumns.ResetCommand}" />
                             </StackPanel>
@@ -682,7 +683,7 @@
                         <Border Background="{StaticResource SurfaceRaisedBrush}" BorderBrush="{StaticResource BorderBrush}"
                                 BorderThickness="1" CornerRadius="8" Padding="14,12">
                             <StackPanel>
-                                <TextBlock Text="COMBATANT COLUMNS" Style="{StaticResource SectionLabel}" Margin="0,0,0,8" />
+                                <TextBlock Text="{loc:Tr Main_CombatantColumns}" Style="{StaticResource SectionLabel}" Margin="0,0,0,8" />
                                 <ItemsControl ItemsSource="{Binding DrillColumns.Toggles}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
@@ -697,7 +698,7 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <Button Content="Reset to default" Style="{StaticResource GoldButton}"
+                                <Button Content="{loc:Tr Main_ResetToDefault}" Style="{StaticResource GoldButton}"
                                         Margin="0,10,0,0" HorizontalAlignment="Left"
                                         Command="{Binding DrillColumns.ResetCommand}" />
                             </StackPanel>
@@ -749,26 +750,26 @@
                             <ColumnDefinition Width="{Binding Data.ByKey[Percent].Visible, Source={StaticResource DrillColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=40}" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="{Binding DrillNameHeader}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" />
-                        <TextBlock Grid.Column="1" Text="DAMAGE" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
+                        <TextBlock Grid.Column="1" Text="{loc:Tr Main_ColDAMAGE}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
                                    Visibility="{Binding Data.ByKey[Damage].Visible, Source={StaticResource DrillColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="2" Text="ENCDPS" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
+                        <TextBlock Grid.Column="2" Text="{loc:Tr Main_ColENCDPS}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
                                    Visibility="{Binding Data.ByKey[Dps].Visible, Source={StaticResource DrillColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="3" Text="TYPE" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" Margin="12,0,0,0"
+                        <TextBlock Grid.Column="3" Text="{loc:Tr Main_ColTYPE}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" Margin="12,0,0,0"
                                    Visibility="{Binding Data.ByKey[Types].Visible, Source={StaticResource DrillColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="4" Text="SOURCE" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5"
+                        <TextBlock Grid.Column="4" Text="{loc:Tr Main_ColSOURCE}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5"
                                    Visibility="{Binding Data.ByKey[Source].Visible, Source={StaticResource DrillColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="5" Text="SWINGS" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
+                        <TextBlock Grid.Column="5" Text="{loc:Tr Main_ColSWINGS}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
                                    Visibility="{Binding Data.ByKey[Swings].Visible, Source={StaticResource DrillColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="6" Text="FREQ" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
-                                   ToolTip="Mean time between uses (multi-hit volleys count once)"
+                        <TextBlock Grid.Column="6" Text="{loc:Tr Main_ColFREQ}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
+                                   ToolTip="{loc:Tr Main_TooltipFreq}"
                                    Visibility="{Binding Data.ByKey[Freq].Visible, Source={StaticResource DrillColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="7" Text="HITS" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
+                        <TextBlock Grid.Column="7" Text="{loc:Tr Main_ColHITS}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
                                    Visibility="{Binding Data.ByKey[Hits].Visible, Source={StaticResource DrillColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="8" Text="CRIT%" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
+                        <TextBlock Grid.Column="8" Text="{loc:Tr Main_ColCRITPCT}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
                                    Visibility="{Binding Data.ByKey[CritPct].Visible, Source={StaticResource DrillColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="9" Text="AVG" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
+                        <TextBlock Grid.Column="9" Text="{loc:Tr Main_ColAVG}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
                                    Visibility="{Binding Data.ByKey[Avg].Visible, Source={StaticResource DrillColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="10" Text="MAX" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
+                        <TextBlock Grid.Column="10" Text="{loc:Tr Main_ColMAX}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
                                    Visibility="{Binding Data.ByKey[Max].Visible, Source={StaticResource DrillColsProxy}, Converter={StaticResource BoolToVis}}" />
                         <TextBlock Grid.Column="11" Text="%" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
                                    Visibility="{Binding Data.ByKey[Percent].Visible, Source={StaticResource DrillColsProxy}, Converter={StaticResource BoolToVis}}" />
@@ -782,10 +783,10 @@
                                               Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                             <Grid.ContextMenu>
                                                 <ContextMenu>
-                                                <MenuItem Header="Lookup by combatant"
+                                                <MenuItem Header="{loc:Tr Main_LookupByCombatant}"
                                                           Command="{Binding PlacementTarget.Tag.LookupBucketByCombatantCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                                <MenuItem Header="Copy row"
+                                                <MenuItem Header="{loc:Tr Main_CopyRow}"
                                                           Command="{Binding PlacementTarget.Tag.CopyAbilityCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                           CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                                 </ContextMenu>
@@ -893,17 +894,17 @@
                             <ColumnDefinition Width="{Binding Data.ByKey[Type].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource ColWidth}, ConverterParameter=100}" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="TIME" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5"
+                        <TextBlock Text="{loc:Tr Main_ColTIME}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5"
                                    Visibility="{Binding Data.ByKey[Time].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="1" Text="RESULT" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
+                        <TextBlock Grid.Column="1" Text="{loc:Tr Main_ColRESULT}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" TextAlignment="Right"
                                    Visibility="{Binding Data.ByKey[Result].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="2" Text="CRIT" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" Margin="12,0,0,0"
+                        <TextBlock Grid.Column="2" Text="{loc:Tr Main_ColCRIT}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" Margin="12,0,0,0"
                                    Visibility="{Binding Data.ByKey[Crit].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="3" Text="SPECIAL" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5"
+                        <TextBlock Grid.Column="3" Text="{loc:Tr Main_ColSPECIAL}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5"
                                    Visibility="{Binding Data.ByKey[Special].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="4" Text="TYPE" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5"
+                        <TextBlock Grid.Column="4" Text="{loc:Tr Main_ColTYPE}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5"
                                    Visibility="{Binding Data.ByKey[Type].Visible, Source={StaticResource SwingColsProxy}, Converter={StaticResource BoolToVis}}" />
-                        <TextBlock Grid.Column="5" Text="TARGET" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" />
+                        <TextBlock Grid.Column="5" Text="{loc:Tr Main_ColTARGET}" Foreground="{StaticResource GoldBrush}" FontFamily="{StaticResource HeadingFont}" FontSize="10.5" />
                     </Grid>
                     <Border Grid.Row="1" Style="{StaticResource Card}" Padding="6">
                         <ListBox ItemsSource="{Binding SwingRows}" Background="Transparent" BorderThickness="0"
@@ -930,10 +931,10 @@
                                           Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                         <Grid.ContextMenu>
                                             <ContextMenu>
-                                            <MenuItem Header="View log"
+                                            <MenuItem Header="{loc:Tr Main_ViewLog}"
                                                       Command="{Binding PlacementTarget.Tag.OpenSwingLogCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="Copy line"
+                                            <MenuItem Header="{loc:Tr Main_CopyLine}"
                                                       Command="{Binding PlacementTarget.Tag.CopySwingCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                             </ContextMenu>

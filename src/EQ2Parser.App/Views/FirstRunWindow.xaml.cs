@@ -1,4 +1,5 @@
 using System.Windows;
+using EQ2Parser.App.Localization;
 using EQ2Parser.App.Services;
 
 namespace EQ2Parser.App.Views;
@@ -45,7 +46,7 @@ public partial class FirstRunWindow : Window
     {
         var dialog = new Microsoft.Win32.OpenFolderDialog
         {
-            Title = "Choose the EQ2 logs folder (server subfolders are scanned too)",
+            Title = Loc.Get("FirstRunVm_ChooseLogsFolderTitle"),
         };
         if (dialog.ShowDialog(this) == true)
         {

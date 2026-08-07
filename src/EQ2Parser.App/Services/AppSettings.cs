@@ -53,6 +53,10 @@ public sealed record AppSettings
     /// the window, hard-deleted past it.</summary>
     public int HistoryTrashDays { get; init; } = 1;
 
+    /// <summary>UI language code ("en"/"de"/"fr"/"ru"); "" follows the OS.
+    /// Applied by Loc.Initialize at startup — restart to change.</summary>
+    public string LanguageCode { get; init; } = "";
+
     // Alert audio: null voice = best available (natural voice if exposed).
     public string? TtsVoiceId { get; init; }
     public double TtsRate { get; init; } = 1.0;

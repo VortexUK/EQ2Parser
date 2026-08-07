@@ -1,0 +1,95 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+namespace EQ2Parser.Core.Tests;
+
+/// <summary>
+/// Interface-localization integrity. The dictionaries live in the App
+/// project (Localization/strings.{lang}.json); these tests reach them via
+/// the repo tree so a missing key or a typo'd {loc:Tr …} reference fails
+/// CI instead of silently rendering the raw key at runtime.
+/// </summary>
+public class LocalizationTests
+{
+    private static readonly string[] LanguageCodes = ["en", "de", "fr", "ru"];
+
+    private static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "EQ2Parser.slnx")))
+            dir = dir.Parent!;
+        Assert.NotNull(dir);
+        return dir.FullName;
+    }
+
+    private static string AppDir() => Path.Combine(RepoRoot(), "src", "EQ2Parser.App");
+
+    private static Dictionary<string, string> LoadLanguage(string code)
+    {
+        var path = Path.Combine(AppDir(), "Localization", $"strings.{code}.json");
+        Assert.True(File.Exists(path), $"missing dictionary: {path}");
+        var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path));
+        Assert.NotNull(parsed);
+        return parsed;
+    }
+
+    [Fact]
+    public void Every_Language_Has_Exactly_The_English_Key_Set()
+    {
+        var english = LoadLanguage("en");
+        Assert.NotEmpty(english);
+        foreach (var code in LanguageCodes.Skip(1))
+        {
+            var lang = LoadLanguage(code);
+            var missing = english.Keys.Except(lang.Keys).ToList();
+            var extra = lang.Keys.Except(english.Keys).ToList();
+            Assert.True(missing.Count == 0, $"{code} missing keys: {string.Join(", ", missing.Take(10))}");
+            Assert.True(extra.Count == 0, $"{code} extra keys: {string.Join(", ", extra.Take(10))}");
+        }
+    }
+
+    [Fact]
+    public void Placeholders_Match_English_In_Every_Language()
+    {
+        var english = LoadLanguage("en");
+        foreach (var code in LanguageCodes.Skip(1))
+        {
+            var lang = LoadLanguage(code);
+            foreach (var (key, en) in english)
+            {
+                if (!lang.TryGetValue(key, out var translated))
+                    continue; // covered by the key-set test
+                var enSlots = Placeholders(en);
+                var trSlots = Placeholders(translated);
+                Assert.True(enSlots.SetEquals(trSlots),
+                    $"{code}:{key} placeholders {{{string.Join(",", trSlots)}}} != english {{{string.Join(",", enSlots)}}}");
+            }
+        }
+    }
+
+    [Fact]
+    public void Every_Referenced_Key_Exists_In_English()
+    {
+        var english = LoadLanguage("en");
+        var referenced = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var xaml in Directory.EnumerateFiles(AppDir(), "*.xaml", SearchOption.AllDirectories))
+        {
+            foreach (Match m in Regex.Matches(File.ReadAllText(xaml), @"\{loc:Tr\s+([A-Za-z0-9_]+)\}"))
+                referenced.Add(m.Groups[1].Value);
+        }
+        foreach (var cs in Directory.EnumerateFiles(AppDir(), "*.cs", SearchOption.AllDirectories))
+        {
+            foreach (Match m in Regex.Matches(File.ReadAllText(cs), @"Loc\.(?:Get|Format)\(\s*""([^""]+)"""))
+                referenced.Add(m.Groups[1].Value);
+        }
+
+        Assert.NotEmpty(referenced);
+        var unknown = referenced.Except(english.Keys).OrderBy(k => k).ToList();
+        Assert.True(unknown.Count == 0,
+            $"referenced but not in strings.en.json: {string.Join(", ", unknown.Take(15))}");
+    }
+
+    private static HashSet<string> Placeholders(string s) =>
+        [.. Regex.Matches(s, @"\{(\d+)[^}]*\}").Select(m => m.Groups[1].Value)];
+}

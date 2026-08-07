@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using EQ2Parser.App.Localization;
 using EQ2Parser.App.Services;
 using EQ2Parser.Core.Analysis;
 using EQ2Parser.Core.Combat;
@@ -112,14 +113,15 @@ public sealed partial class MainParseViewModel
                     var seconds = Math.Max(1, SumDuration(aggregate.Fights).TotalSeconds);
                     var allyDamage = allies.Sum(r => r.Damage) + pets.Sum(r => r.Damage);
                     breadcrumb = Describe(
-                        aggregate.Zone, $"{aggregate.Label} ({aggregate.Fights.Count} fights)",
+                        aggregate.Zone,
+                        Loc.Format("MainVm_AggregateTitle", LocalizeAggregateLabel(aggregate.Label), aggregate.Fights.Count),
                         SumDuration(aggregate.Fights), allyDamage / seconds, live: false);
                     break;
                 }
                 case ZoneFights zone:
                 {
                     var zoneFights = ResolveZoneFights(zone);
-                    breadcrumb = $"{zone.Zone}  ·  {zoneFights.Count} encounters  ·  {FmtSpan(SumDuration(zoneFights))}";
+                    breadcrumb = Loc.Format("MainVm_ZoneBreadcrumb", zone.Zone, zoneFights.Count, FmtSpan(SumDuration(zoneFights)));
                     // Correlator.Version catches in-place merges; Count still
                     // matters because the Bosses-only filter changes the list
                     // without touching the correlator.
@@ -145,8 +147,8 @@ public sealed partial class MainParseViewModel
         ZoneSummaryOpen = resolvedFight is ZoneFights;
         if (zoneRows is not null)
             ZoneSummaryRows.ReplaceAll(zoneRows);
-        PetHeader = $"Pets ({pets.Count})";
-        EnemyHeader = $"Enemies ({enemies.Count})";
+        PetHeader = Loc.Format("MainVm_PetsHeader", pets.Count);
+        EnemyHeader = Loc.Format("MainVm_EnemiesHeader", enemies.Count);
         if (chart is not null)
             ApplyChart(chart);
         Apply(AllyRows, Sort(allies));
@@ -155,7 +157,7 @@ public sealed partial class MainParseViewModel
 
         if (detail is not null)
         {
-            DetailTitle = LogLevel ? $"{detail.Title} › log" : detail.Title;
+            DetailTitle = LogLevel ? Loc.Format("MainVm_DetailTitleLog", detail.Title) : detail.Title;
             DrillNameHeader = detail.NameHeader;
             SwingLevel = detail.IsSwingLevel;
             if (detail.Table is not null)
@@ -254,7 +256,7 @@ public sealed partial class MainParseViewModel
     /// finished view — the SourceIds match).</summary>
     private (List<PerspectiveOption> Options, PerspectiveOption? Chosen) MergedOptions(CorrelatedEncounter merged)
     {
-        List<PerspectiveOption> options = [new("Combined", null), .. OptionsFor(merged.Sources)];
+        List<PerspectiveOption> options = [new(Loc.Get("MainVm_PerspectiveCombined"), null), .. OptionsFor(merged.Sources)];
         var chosen = SelectedPerspective is { } current && options.Contains(current)
             ? current
             : options[0];
@@ -306,11 +308,21 @@ public sealed partial class MainParseViewModel
         }
     }
 
+    /// <summary>Rollup labels ("All" / "All Bosses") are stored English —
+    /// they feed clipboard/report output, which deliberately stays English —
+    /// so the on-screen breadcrumb localizes them at display time.</summary>
+    private static string LocalizeAggregateLabel(string label) => label switch
+    {
+        "All" => Loc.Get("MainVm_LabelAll"),
+        "All Bosses" => Loc.Get("MainVm_LabelAllBosses"),
+        _ => label,
+    };
+
     private static string Describe(string zone, string title, TimeSpan duration, double dps, bool live)
     {
-        var shownTitle = title == Encounter.PlaceholderTitle && live ? "Combat…" : title;
+        var shownTitle = title == Encounter.PlaceholderTitle && live ? Loc.Get("MainVm_CombatInProgress") : title;
         var zonePart = string.IsNullOrEmpty(zone) ? "" : $"{zone}  |  ";
-        return $"{zonePart}{shownTitle}  ·  {duration.TotalSeconds:F0}s  ·  raid {CombatantRow.Compact(dps)} dps";
+        return Loc.Format("MainVm_FightBreadcrumb", zonePart, shownTitle, duration.TotalSeconds, CombatantRow.Compact(dps));
     }
 
     private void SnapshotEncounter(Encounter encounter, List<RowData> allies, List<RowData> pets, List<RowData> enemies)
@@ -432,7 +444,7 @@ public sealed partial class MainParseViewModel
     {
         var isPet = tag.Kind == CombatantKind.Pet;
         var cls = isPet
-            ? (tag.PetOwner is not null ? $"pet · {tag.PetOwner}" : "pet")
+            ? (tag.PetOwner is not null ? Loc.Format("MainVm_PetClassOwned", tag.PetOwner) : Loc.Get("MainVm_PetClass"))
             : tag.Class.ClassName ?? "";
         var brush = isPet ? ClassColors.Neutral : ClassColors.For(tag.Class.ClassName);
         return new RowData(key, name, cls, brush, isPet, seconds, damage, dps, hps, taken, deaths, ext);

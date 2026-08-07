@@ -1,6 +1,7 @@
 <UserControl x:Class="EQ2Parser.App.Views.TimersView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:EQ2Parser.App.Localization"
              xmlns:vm="clr-namespace:EQ2Parser.App.ViewModels">
     <Grid>
         <Grid.RowDefinitions>
@@ -12,7 +13,7 @@
             <ColumnDefinition Width="400" />
         </Grid.ColumnDefinitions>
 
-        <TextBlock Text="Timers" Style="{StaticResource PageTitle}" Grid.ColumnSpan="2" />
+        <TextBlock Text="{loc:Tr Timers_Title}" Style="{StaticResource PageTitle}" Grid.ColumnSpan="2" />
 
         <!-- ============ left: definitions ============ -->
         <Grid Grid.Row="1" Margin="0,0,12,0">
@@ -29,10 +30,10 @@
                 </Grid.ColumnDefinitions>
                 <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
                          VerticalContentAlignment="Center" Padding="8,4" FontSize="13" />
-                <Button Grid.Column="1" Content="+ New timer" Style="{StaticResource GoldButton}"
+                <Button Grid.Column="1" Content="{loc:Tr Timers_NewTimer}" Style="{StaticResource GoldButton}"
                         Margin="8,0,0,0" Command="{Binding NewTimerCommand}"
-                        ToolTip="Clear the editor to create a fresh timer" />
-                <Button Grid.Column="2" Content="Copy all as XML" Style="{StaticResource GoldButton}"
+                        ToolTip="{loc:Tr Timers_NewTimerTip}" />
+                <Button Grid.Column="2" Content="{loc:Tr Timers_CopyAllXml}" Style="{StaticResource GoldButton}"
                         Margin="8,0,0,0" Command="{Binding CopyAllXmlCommand}" />
             </Grid>
 
@@ -95,7 +96,7 @@
                                                    FontFamily="{StaticResource HeadingFont}"
                                                    Foreground="{StaticResource GoldBrush}" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="2" Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center">
-                                            <Run Text="{Binding EnabledCount, Mode=OneWay}" /><Run Text="/" /><Run Text="{Binding Count, Mode=OneWay}" /><Run Text=" on" />
+                                            <Run Text="{Binding EnabledCount, Mode=OneWay}" /><Run Text="/" /><Run Text="{Binding Count, Mode=OneWay}" /><Run Text="{loc:Tr Timers_OnSuffix}" />
                                         </TextBlock>
                                     </Grid>
                                 </Border>
@@ -143,7 +144,7 @@
                                                    FontFamily="{StaticResource BodySemiBoldFont}"
                                                    Foreground="{StaticResource GoldBrightBrush}" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="2" Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center">
-                                            <Run Text="{Binding EnabledCount, Mode=OneWay}" /><Run Text="/" /><Run Text="{Binding Count, Mode=OneWay}" /><Run Text=" on" />
+                                            <Run Text="{Binding EnabledCount, Mode=OneWay}" /><Run Text="/" /><Run Text="{Binding Count, Mode=OneWay}" /><Run Text="{loc:Tr Timers_OnSuffix}" />
                                         </TextBlock>
                                     </Grid>
                                 </Border>
@@ -177,7 +178,7 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="⠿" FontSize="13" Foreground="{StaticResource TextMutedBrush}"
                                                    VerticalAlignment="Center" Margin="0,0,8,0" Cursor="SizeAll"
-                                                   ToolTip="Drag to another category" Background="Transparent"
+                                                   ToolTip="{loc:Tr Timers_DragTip}" Background="Transparent"
                                                    Visibility="{Binding IsLexicon, Converter={StaticResource InverseBoolToVis}}"
                                                    PreviewMouseLeftButtonDown="DragGrip_MouseDown"
                                                    PreviewMouseMove="DragGrip_MouseMove"
@@ -187,7 +188,7 @@
                                                 VerticalAlignment="Top" Margin="0,5,10,0" />
                                         <StackPanel Grid.Column="3" Background="Transparent" Cursor="Hand"
                                                     MouseLeftButtonUp="TimerBody_Click"
-                                                    ToolTip="Click to edit in the panel on the right">
+                                                    ToolTip="{loc:Tr Timers_EditTip}">
                                             <TextBlock Text="{Binding Name}" FontSize="14"
                                                        FontFamily="{StaticResource BodySemiBoldFont}"
                                                        Foreground="{StaticResource GoldBrightBrush}" />
@@ -196,15 +197,15 @@
                                         </StackPanel>
                                         <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Top">
                                             <Button Content="▶" Style="{StaticResource GoldButton}" Padding="8,3"
-                                                    ToolTip="Test: start this timer now (watch the preview / overlay)"
+                                                    ToolTip="{loc:Tr Timers_TestTip}"
                                                     Command="{Binding DataContext.TestRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}" />
                                             <Button Content="⧉" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
-                                                    ToolTip="Copy share XML — send it to a friend, they paste it into their Import box"
+                                                    ToolTip="{loc:Tr Timers_CopyShareTip}"
                                                     Command="{Binding DataContext.CopyRowXmlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}" />
                                             <Button Content="✕" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
-                                                    ToolTip="Delete timer"
+                                                    ToolTip="{loc:Tr Timers_DeleteTip}"
                                                     Visibility="{Binding IsLexicon, Converter={StaticResource InverseBoolToVis}}"
                                                     Command="{Binding DataContext.DeleteRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}" />
@@ -216,9 +217,9 @@
                     </ListBox>
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                                 Visibility="{Binding HasTimers, Converter={StaticResource InverseBoolToVis}}">
-                        <TextBlock Text="No spell timers yet" FontFamily="{StaticResource HeadingFont}" FontSize="18"
+                        <TextBlock Text="{loc:Tr Timers_EmptyTitle}" FontFamily="{StaticResource HeadingFont}" FontSize="18"
                                    Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" />
-                        <TextBlock Text="Create one on the right, or paste ACT share XML (&lt;Spell … /&gt; lines) into the import box. Triggers with a timer hook start these bars by name."
+                        <TextBlock Text="{loc:Tr Timers_EmptyBody}"
                                    Style="{StaticResource MutedText}" FontSize="12" TextWrapping="Wrap" MaxWidth="360"
                                    TextAlignment="Center" Margin="0,6,0,0" />
                     </StackPanel>
@@ -233,18 +234,18 @@
                     <StackPanel>
                         <TextBlock Text="{Binding EditorTitle}" Style="{StaticResource SectionLabel}" />
 
-                        <TextBlock Text="Name (matches the ability / trigger timer name)" Style="{StaticResource MutedText}"
+                        <TextBlock Text="{loc:Tr Timers_NameLabel}" Style="{StaticResource MutedText}"
                                    FontSize="11" Margin="0,10,0,3"
-                                   ToolTip="The ability name exactly as the log spells it — any cast of it (re)starts the countdown.&#10;A trigger with 'starts timer' set to this name starts it too, e.g. off a boss emote." />
+                                   ToolTip="{loc:Tr Timers_NameTip}" />
                         <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
 
-                        <TextBlock Text="Zone (grouping only)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,10,0,3"
-                                   ToolTip="Files the timer under this zone in the tree — and breaks ties: when the same mob + ability has a timer in two zones (Mayong in MMIS vs Castle Mistmoore), the zone you're standing in wins.&#10;Leave blank for timers that apply anywhere." />
+                        <TextBlock Text="{loc:Tr Timers_ZoneLabel}" Style="{StaticResource MutedText}" FontSize="11" Margin="0,10,0,3"
+                                   ToolTip="{loc:Tr Timers_ZoneTip}" />
                         <TextBox Text="{Binding ZoneText, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
 
-                        <TextBlock Text="Damage type (toggle all that apply — first picked leads)" Style="{StaticResource MutedText}"
+                        <TextBlock Text="{loc:Tr Timers_DamageTypeLabel}" Style="{StaticResource MutedText}"
                                    FontSize="11" Margin="0,10,0,3"
-                                   ToolTip="The schools the ability deals — shown on the timer bar so you know what's incoming (ward the right thing). The first school you toggle is the dominant one and drives the flame colour.&#10;Tag only: it never affects when the timer starts. The curator fills it from measured hits." />
+                                   ToolTip="{loc:Tr Timers_DamageTypeTip}" />
                         <ItemsControl ItemsSource="{Binding DamageSchoolChips}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -266,8 +267,8 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,5,0">
-                                <TextBlock Text="Control effect" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="The control it applies (stun, stifle, mez…) — shown on the timer bar so you know WHAT lands at zero and can pre-cure or joust.&#10;Tag only: it never affects when the timer starts." />
+                                <TextBlock Text="{loc:Tr Timers_ControlEffectLabel}" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="{loc:Tr Timers_ControlEffectTip}" />
                                 <ComboBox ItemsSource="{Binding ControlEffectChoices}" SelectedItem="{Binding ControlEffectText}" FontSize="12" />
                             </StackPanel>
                         </Grid>
@@ -280,26 +281,26 @@
                                 <ColumnDefinition Width="70" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,10,0">
-                                <TextBlock Text="Category (mob — “a|b” for split mobs)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="The mob this timer belongs to — used for tree grouping, and as the gate when 'category lock' is ticked (names must match the log exactly, articles included: 'a bisected rumbler').&#10;A mob that splits into renamed copies shares one timer via |-separated names: the earth rumbler|bisected rumbler|trisected rumbler" />
+                                <TextBlock Text="{loc:Tr Timers_CategoryLabel}" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="{loc:Tr Timers_CategoryTip}" />
                                 <TextBox Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="13" />
                             </StackPanel>
                             <!-- TextWrapping="Wrap" on the narrow numeric boxes: the Fluent
                                  theme's clear (×) button appears on focus and covers the whole
                                  value at this width; Wrap is the template's collapse trigger. -->
                             <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                                <TextBlock Text="Length" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="Seconds from one cast to the next — the countdown length.&#10;Use the curator's 'base' figure when swipe mods were in play: the live timer re-stretches itself whenever the mob actually gets swiped." />
+                                <TextBlock Text="{loc:Tr Timers_LengthLabel}" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="{loc:Tr Timers_LengthTip}" />
                                 <TextBox Text="{Binding DurationSeconds, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Padding="8,5" FontSize="13" />
                             </StackPanel>
                             <StackPanel Grid.Column="2" Margin="0,0,8,0">
-                                <TextBlock Text="Warn" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="Seconds remaining when the bar goes urgent and the warning sound plays.&#10;Pick your reaction time: 10s to pre-ward, 3s for a joust call." />
+                                <TextBlock Text="{loc:Tr Timers_WarnLabel}" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="{loc:Tr Timers_WarnTip}" />
                                 <TextBox Text="{Binding WarningSeconds, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Padding="8,5" FontSize="13" />
                             </StackPanel>
                             <StackPanel Grid.Column="3">
-                                <TextBlock Text="Remove at" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="Seconds remaining when the bar disappears. Negative keeps it counting PAST zero: -15 shows it overdue for 15s.&#10;Useful because bosses hold casts — the ability is still coming even though the countdown ran out." />
+                                <TextBlock Text="{loc:Tr Timers_RemoveAtLabel}" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="{loc:Tr Timers_RemoveAtTip}" />
                                 <TextBox Text="{Binding RemoveSeconds, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Padding="8,5" FontSize="13" />
                             </StackPanel>
                         </Grid>
@@ -310,25 +311,25 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="Bar colour" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="The bar / dial fill colour in the timer overlay.&#10;Worth a convention: red for raid-wide AoEs, purple for control, green for personal recasts." />
+                                <TextBlock Text="{loc:Tr Timers_BarColourLabel}" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="{loc:Tr Timers_BarColourTip}" />
                                 <ComboBox ItemsSource="{Binding ColorChoices}" SelectedIndex="{Binding ColorChoice}"
                                           Width="110" FontSize="13" />
                             </StackPanel>
                             <WrapPanel Grid.Column="1" Margin="12,14,0,0">
-                                <CheckBox Content="only mine" IsChecked="{Binding RestrictToMe}" FontSize="12" Margin="0,0,10,4"
-                                          ToolTip="Only starts when YOU cast the ability — everyone else's casts are ignored.&#10;E.g. track your own Harm Touch recast without the other shadowknight's casts restarting your bar. Leave off for boss timers." />
-                                <CheckBox Content="one at a time" IsChecked="{Binding AbsoluteTiming}" FontSize="12" Margin="0,0,10,4"
-                                          ToolTip="While the bar is running, new casts are ignored — it always runs to zero before it can start again.&#10;Use when re-casts mid-window shouldn't reset the prediction (a scripted cycle, or an effect logged once per person it hits)." />
-                                <CheckBox Content="category lock" IsChecked="{Binding RestrictToCategory}" FontSize="12" Margin="0,0,10,4"
-                                          ToolTip="Only start when the Category matches the caster, the victim, or the current zone.&#10;This keeps a boss timer that boss's own — another mob casting a same-named ability won't start it. Untick to fire for any caster." />
+                                <CheckBox Content="{loc:Tr Timers_OnlyMine}" IsChecked="{Binding RestrictToMe}" FontSize="12" Margin="0,0,10,4"
+                                          ToolTip="{loc:Tr Timers_OnlyMineTip}" />
+                                <CheckBox Content="{loc:Tr Timers_OneAtATime}" IsChecked="{Binding AbsoluteTiming}" FontSize="12" Margin="0,0,10,4"
+                                          ToolTip="{loc:Tr Timers_OneAtATimeTip}" />
+                                <CheckBox Content="{loc:Tr Timers_CategoryLock}" IsChecked="{Binding RestrictToCategory}" FontSize="12" Margin="0,0,10,4"
+                                          ToolTip="{loc:Tr Timers_CategoryLockTip}" />
                                 <!-- ACT's "restart only" checkbox is gone: every timer
                                      restarts its one bar now (sub-timers removed engine-
                                      wide); the flag still round-trips in XML for ACT. -->
-                                <CheckBox Content="allow timer mods" IsChecked="{Binding Modable}" FontSize="12" Margin="0,0,10,4"
-                                          ToolTip="Recast debuffs stretch the countdown: with Traumatic Swipe on the mob, a 30s timer starts at 45s (base × 1.5), and rescales if the swiper dies.&#10;Tick for boss recasts (store the un-swiped base as Length); untick for fixed-length effects like a stifle duration." />
-                                <CheckBox Content="radial" IsChecked="{Binding RadialDisplay}" FontSize="12" Margin="0,0,10,4"
-                                          ToolTip="Show as a round dial in the dial row at the top of the timer overlay, instead of a bar in the list.&#10;Best kept to the two or three timers you glance at constantly — the main AoE recast, not every DoT." />
+                                <CheckBox Content="{loc:Tr Timers_AllowTimerMods}" IsChecked="{Binding Modable}" FontSize="12" Margin="0,0,10,4"
+                                          ToolTip="{loc:Tr Timers_AllowTimerModsTip}" />
+                                <CheckBox Content="{loc:Tr Timers_Radial}" IsChecked="{Binding RadialDisplay}" FontSize="12" Margin="0,0,10,4"
+                                          ToolTip="{loc:Tr Timers_RadialTip}" />
                             </WrapPanel>
                         </Grid>
 
@@ -338,14 +339,14 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" Margin="0,0,12,4">
-                                <CheckBox Content="panel A" IsChecked="{Binding Panel1}" FontSize="12"
-                                          ToolTip="Show this timer in the Timers A overlay.&#10;Run both overlays to split, say, boss timers (A) from your personal recasts (B)." />
-                                <CheckBox Content="panel B" IsChecked="{Binding Panel2}" FontSize="12" Margin="10,0,0,0"
-                                          ToolTip="Show this timer in the Timers B overlay — the second, independently placed timer window (enable it on the Overlays page)." />
+                                <CheckBox Content="{loc:Tr Timers_PanelA}" IsChecked="{Binding Panel1}" FontSize="12"
+                                          ToolTip="{loc:Tr Timers_PanelATip}" />
+                                <CheckBox Content="{loc:Tr Timers_PanelB}" IsChecked="{Binding Panel2}" FontSize="12" Margin="10,0,0,0"
+                                          ToolTip="{loc:Tr Timers_PanelBTip}" />
                             </StackPanel>
                             <StackPanel Grid.Column="1">
-                                <TextBlock Text="Tooltip / note" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="Free note shown when hovering the timer's row in the list — strat reminders, cast order, where the number came from." />
+                                <TextBlock Text="{loc:Tr Timers_TooltipNoteLabel}" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="{loc:Tr Timers_TooltipNoteTip}" />
                                 <TextBox Text="{Binding Tooltip, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="12" />
                             </StackPanel>
                         </Grid>
@@ -356,13 +357,13 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,5,0">
-                                <TextBlock Text="Start sound (text or WAV path)" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="Played when the timer starts (the ability just landed). Text is spoken aloud; a .wav path is played; just 'tts' speaks the timer's name; empty = silent." />
+                                <TextBlock Text="{loc:Tr Timers_StartSoundLabel}" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="{loc:Tr Timers_StartSoundTip}" />
                                 <TextBox Text="{Binding StartSound, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="12" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="5,0,0,0">
-                                <TextBlock Text="Warning sound" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
-                                           ToolTip="Played at the warn mark, before the ability comes back. Same rules: text spoken, .wav played, just 'tts' says '&lt;name&gt; soon', empty = silent." />
+                                <TextBlock Text="{loc:Tr Timers_WarningSoundLabel}" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,3"
+                                           ToolTip="{loc:Tr Timers_WarningSoundTip}" />
                                 <TextBox Text="{Binding WarningSound, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" FontSize="12" />
                             </StackPanel>
                         </Grid>
@@ -371,16 +372,16 @@
                                    TextWrapping="Wrap" Margin="0,8,0,0" />
 
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                            <Button Content="Save timer" Style="{StaticResource GoldButton}" Command="{Binding SaveTimerCommand}" />
-                            <Button Content="Clear" Style="{StaticResource GoldButton}" Margin="8,0,0,0" Command="{Binding NewTimerCommand}" />
+                            <Button Content="{loc:Tr Timers_SaveTimer}" Style="{StaticResource GoldButton}" Command="{Binding SaveTimerCommand}" />
+                            <Button Content="{loc:Tr Timers_Clear}" Style="{StaticResource GoldButton}" Margin="8,0,0,0" Command="{Binding NewTimerCommand}" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <Border Style="{StaticResource Card}" Padding="14" Margin="0,12,0,0">
                     <StackPanel>
-                        <TextBlock Text="Import from ACT" Style="{StaticResource SectionLabel}" />
-                        <TextBlock Text="Paste ACT share XML — &lt;Spell … /&gt; and &lt;Trigger … /&gt; lines both work — or import a full ACT settings export file."
+                        <TextBlock Text="{loc:Tr Timers_ImportFromAct}" Style="{StaticResource SectionLabel}" />
+                        <TextBlock Text="{loc:Tr Timers_ImportHint}"
                                    Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,6" TextWrapping="Wrap" />
                         <TextBox Text="{Binding ImportText, UpdateSourceTrigger=PropertyChanged}"
                                  FontFamily="Consolas" FontSize="12" Padding="8,5" AcceptsReturn="True"
@@ -391,9 +392,9 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Button Content="Import" Style="{StaticResource GoldButton}" Command="{Binding ImportXmlCommand}" />
-                            <Button Grid.Column="1" Content="Import XML file…" Style="{StaticResource GoldButton}" Margin="8,0,0,0"
-                                    ToolTip="Import an ACT settings export (Config with CustomTriggers + SpellTimers)"
+                            <Button Content="{loc:Tr Timers_Import}" Style="{StaticResource GoldButton}" Command="{Binding ImportXmlCommand}" />
+                            <Button Grid.Column="1" Content="{loc:Tr Timers_ImportXmlFile}" Style="{StaticResource GoldButton}" Margin="8,0,0,0"
+                                    ToolTip="{loc:Tr Timers_ImportXmlFileTip}"
                                     Command="{Binding ImportXmlFileCommand}" />
                             <TextBlock Grid.Column="2" Text="{Binding ImportResult}" Style="{StaticResource MutedText}"
                                        FontSize="12" Margin="10,5,0,0" TextWrapping="Wrap" />
@@ -403,7 +404,7 @@
 
                 <Border Style="{StaticResource Card}" Padding="14" Margin="0,12,0,0">
                     <StackPanel>
-                        <TextBlock Text="Running timers" Style="{StaticResource SectionLabel}" />
+                        <TextBlock Text="{loc:Tr Timers_RunningTimers}" Style="{StaticResource SectionLabel}" />
                         <ItemsControl ItemsSource="{Binding LiveBars}" Margin="0,8,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -425,7 +426,7 @@
                                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                             <TextBlock Grid.Column="1" Text="{Binding SwipeText}" FontSize="11" FontWeight="Bold"
                                                        Foreground="{StaticResource WarningBrush}" VerticalAlignment="Center" Margin="0,0,6,0"
-                                                       ToolTip="Stretched by a recast debuff (e.g. Traumatic Swipe)" />
+                                                       ToolTip="{loc:Tr Timers_SwipeTip}" />
                                             <TextBlock Grid.Column="2" Text="{Binding SecondsText}" FontSize="12"
                                                        FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center">
                                                 <TextBlock.Style>
@@ -444,7 +445,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <TextBlock Text="Hit ▶ on a timer to preview it here and on the overlay."
+                        <TextBlock Text="{loc:Tr Timers_PreviewHint}"
                                    Style="{StaticResource MutedText}" FontSize="11" Margin="0,4,0,0" />
                     </StackPanel>
                 </Border>

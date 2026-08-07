@@ -1,6 +1,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
+using EQ2Parser.App.Localization;
 using EQ2Parser.Core.Triggers;
 
 namespace EQ2Parser.App.Services;
@@ -40,7 +41,12 @@ public sealed class LexiconSyncService
 
     public string BaseUrl { get; }
 
-    public string Status { get; private set; } = "Not synced yet.";
+    private string? _status;
+
+    /// <summary>Lazy default: this service is constructed before
+    /// Loc.Initialize runs, so the not-synced-yet line resolves at read
+    /// time rather than at construction.</summary>
+    public string Status => _status ?? Loc.Get("LexiconSvc_NotSyncedYet");
 
     /// <summary>Raised (on whatever thread) whenever Status changes.</summary>
     public event Action? StatusChanged;
@@ -124,19 +130,19 @@ public sealed class LexiconSyncService
     {
         try
         {
-            SetStatus("Syncing…");
+            SetStatus(Loc.Get("LexiconSvc_Syncing"));
             var json = await Http.GetStringAsync($"{BaseUrl}/api/act/pack").ConfigureAwait(false);
             var pack = JsonSerializer.Deserialize<PackRoot>(json, PackJson);
             if (pack is null)
             {
-                SetStatus("Sync failed: empty response.");
+                SetStatus(Loc.Get("LexiconSvc_SyncFailedEmpty"));
                 return;
             }
             if (_appliedVersion.Length > 0 && pack.Version == _appliedVersion)
             {
                 // Already applied (from cache or a prior sync) — a full
                 // re-apply here was pure churn through every engine.
-                SetStatus($"{_appliedSummary} · up to date (v{pack.Version})");
+                SetStatus(Loc.Format("LexiconSvc_StatusUpToDate", _appliedSummary, pack.Version));
                 return;
             }
             Directory.CreateDirectory(AppSettings.Directory);
@@ -145,7 +151,7 @@ public sealed class LexiconSyncService
         }
         catch (Exception ex)
         {
-            SetStatus($"Sync failed: {ex.Message} — using the cached pack.");
+            SetStatus(Loc.Format("LexiconSvc_SyncFailed", ex.Message));
         }
     }
 
@@ -228,15 +234,16 @@ public sealed class LexiconSyncService
                 _disabledTriggers.ToHashSet(StringComparer.OrdinalIgnoreCase),
                 _enabledTriggers.ToHashSet(StringComparer.OrdinalIgnoreCase));
             _appliedVersion = pack.Version;
-            _appliedSummary = $"{triggers.Count} triggers · {timers.Count} timers from {pack.Zones.Count} zones";
+            _appliedSummary = Loc.Format("LexiconSvc_AppliedSummary", triggers.Count, timers.Count, pack.Zones.Count);
         }
-        SetStatus(_appliedSummary
-            + (cached ? " (cached — checking for updates…)" : $" · synced (v{pack.Version})"));
+        SetStatus(cached
+            ? Loc.Format("LexiconSvc_StatusCached", _appliedSummary)
+            : Loc.Format("LexiconSvc_StatusSynced", _appliedSummary, pack.Version));
     }
 
     private void SetStatus(string status)
     {
-        Status = status;
+        _status = status;
         StatusChanged?.Invoke();
     }
 

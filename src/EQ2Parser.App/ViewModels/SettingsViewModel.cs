@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using EQ2Parser.App.Localization;
 using EQ2Parser.App.Services;
 
 namespace EQ2Parser.App.ViewModels;
@@ -14,11 +15,14 @@ public sealed partial class VoicePackRow(NeuralPack pack) : ObservableObject
     private string _status = "";
 
     [ObservableProperty]
-    private string _actionLabel = "Download";
+    private string _actionLabel = Loc.Get("SettingsVm_ActionDownload");
 
     [ObservableProperty]
     private bool _busy;
 }
+
+/// <summary>A selectable UI language (code + native display name).</summary>
+public sealed record LanguageChoice(string Code, string DisplayName);
 
 public sealed partial class SettingsViewModel : ObservableObject
 {
@@ -64,8 +68,30 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private double _voiceDepthAmount;
 
+    // ---- UI language (persisted immediately; applies on restart) ----
+
+    public IReadOnlyList<LanguageChoice> LanguageChoices { get; } =
+        [.. Loc.Languages.Select(l => new LanguageChoice(l.Code, l.DisplayName))];
+
+    [ObservableProperty]
+    private LanguageChoice? _selectedLanguage;
+
+    [ObservableProperty]
+    private string _languageStatus = "";
+
+    private bool _loadingLanguage;
+
+    partial void OnSelectedLanguageChanged(LanguageChoice? value)
+    {
+        if (_loadingLanguage || value is null)
+            return;
+        _manager.Settings = _manager.Settings with { LanguageCode = value.Code };
+        _manager.Settings.Save();
+        LanguageStatus = Loc.Get("SettingsVm_LanguageRestartHint");
+    }
+
     public string TtsRateLabel => $"{TtsRate:0.0}×";
-    public string VoiceDepthLabel => VoiceDepthAmount < 0.005 ? "off" : $"{VoiceDepthAmount:P0}";
+    public string VoiceDepthLabel => VoiceDepthAmount < 0.005 ? Loc.Get("SettingsVm_DepthOff") : $"{VoiceDepthAmount:P0}";
     public string AlertVolumeLabel => $"{AlertVolume:P0}";
 
     partial void OnTtsRateChanged(double value)
@@ -116,12 +142,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
         if (PiperVoiceCatalog.IsInstalled(neural))
         {
-            VoiceStatus = "Neural voice ready — offline from here on.";
+            VoiceStatus = Loc.Get("SettingsVm_NeuralReady");
             return;
         }
         if (PiperVoiceCatalog.PackFor(neural) is { } pack)
         {
-            VoiceStatus = $"This voice needs the {pack.SizeMb} MB pack below — downloading it now.";
+            VoiceStatus = Loc.Format("SettingsVm_NeedsPack", pack.SizeMb);
             _ = DownloadPackAsync(FindRow(pack));
         }
     }
@@ -151,11 +177,11 @@ public sealed partial class SettingsViewModel : ObservableObject
             });
             RefreshPackRows();
             if (PiperVoiceCatalog.Find(SelectedVoice?.Id) is { } current && current.Archive == row.Pack.Archive)
-                VoiceStatus = "Pack removed — alerts fall back to a Windows voice until it's downloaded again.";
+                VoiceStatus = Loc.Get("SettingsVm_PackRemoved");
         }
         catch (Exception ex)
         {
-            row.Status = $"Couldn't remove ({ex.Message}) — try again in a moment.";
+            row.Status = Loc.Format("SettingsVm_RemoveFailed", ex.Message);
         }
         finally
         {
@@ -167,23 +193,23 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         if (_downloadingArchive is not null)
         {
-            row.Status = "Another download is running — try again when it finishes.";
+            row.Status = Loc.Get("SettingsVm_DownloadBusy");
             return;
         }
         _downloadingArchive = row.Pack.Archive;
         row.Busy = true;
         try
         {
-            var progress = new Progress<double>(p => row.Status = $"Downloading — {p:P0} of ~{row.Pack.SizeMb} MB…");
+            var progress = new Progress<double>(p => row.Status = Loc.Format("SettingsVm_Downloading", p, row.Pack.SizeMb));
             await PiperVoiceCatalog.DownloadAsync(row.Pack.PackVoices[0], progress, CancellationToken.None);
             RefreshPackRows();
             if (PiperVoiceCatalog.Find(SelectedVoice?.Id) is { } current && current.Archive == row.Pack.Archive)
-                VoiceStatus = "Neural voice installed — hit Test. Alerts use it from now on.";
+                VoiceStatus = Loc.Get("SettingsVm_Installed");
         }
         catch (Exception ex)
         {
-            row.Status = $"Download failed ({ex.Message}) — hit Download to retry.";
-            row.ActionLabel = "Download";
+            row.Status = Loc.Format("SettingsVm_DownloadFailed", ex.Message);
+            row.ActionLabel = Loc.Get("SettingsVm_ActionDownload");
         }
         finally
         {
@@ -199,13 +225,13 @@ public sealed partial class SettingsViewModel : ObservableObject
             if (PiperVoiceCatalog.IsPackInstalled(row.Pack))
             {
                 var mb = PiperVoiceCatalog.InstalledBytes(row.Pack) / (1024.0 * 1024.0);
-                row.Status = $"Installed · {mb:0} MB on disk";
-                row.ActionLabel = "Remove";
+                row.Status = Loc.Format("SettingsVm_InstalledSize", mb);
+                row.ActionLabel = Loc.Get("SettingsVm_ActionRemove");
             }
             else
             {
-                row.Status = $"{row.Pack.SizeMb} MB download";
-                row.ActionLabel = "Download";
+                row.Status = Loc.Format("SettingsVm_PackSize", row.Pack.SizeMb);
+                row.ActionLabel = Loc.Get("SettingsVm_ActionDownload");
             }
         }
     }
@@ -228,12 +254,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         // fallback cost a tester a session of confusion.
         manager.Audio.NeuralVoiceFailed += reason =>
             System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
-                VoiceStatus = $"Neural voice failed to speak ({reason}) — alerts are using a Windows voice. "
-                    + "Try removing the pack below and downloading it again, then hit Test.");
+                VoiceStatus = Loc.Format("SettingsVm_NeuralFailed", reason));
         _loadingUpload = true;
         UploadEnabled = manager.Settings.UploadEnabled;
         _loadingUpload = false;
-        _uploadTokenState = manager.Settings.LexiconApiTokenProtected is null ? "No token saved." : "Token saved.";
+        _uploadTokenState = Loc.Get(manager.Settings.LexiconApiTokenProtected is null ? "SettingsVm_NoTokenSaved" : "SettingsVm_TokenSavedState");
         _uploadStatus = manager.Uploads.Status;
         manager.Uploads.StatusChanged += () =>
             System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => UploadStatus = manager.Uploads.Status);
@@ -250,6 +275,10 @@ public sealed partial class SettingsViewModel : ObservableObject
         Voices = AlertAudioService.ListVoices();
         PackRows = [.. PiperVoiceCatalog.Packs.Select(p => new VoicePackRow(p))];
         RefreshPackRows();
+        _loadingLanguage = true;
+        _selectedLanguage = LanguageChoices.FirstOrDefault(c => c.Code == manager.Settings.LanguageCode)
+            ?? LanguageChoices[0];
+        _loadingLanguage = false;
         _ttsRate = manager.Settings.TtsRate;
         _voiceDepthAmount = Math.Clamp(1 - manager.Settings.TtsDepth, 0, 0.3);
         _alertVolume = manager.Settings.AlertVolume;
@@ -347,26 +376,26 @@ public sealed partial class SettingsViewModel : ObservableObject
         var token = box.Password.Trim();
         if (token.Length == 0)
         {
-            UploadStatus = "Paste your API token first.";
+            UploadStatus = Loc.Get("SettingsVm_PasteTokenFirst");
             return;
         }
         if (TokenProtector.Protect(token) is not { } blob)
         {
-            UploadStatus = "Couldn't encrypt the token (Windows DPAPI unavailable).";
+            UploadStatus = Loc.Get("SettingsVm_DpapiUnavailable");
             return;
         }
         box.Clear();
         _manager.Settings = _manager.Settings with { LexiconApiTokenProtected = blob };
         _manager.Settings.Save();
-        UploadTokenState = "Token saved.";
+        UploadTokenState = Loc.Get("SettingsVm_TokenSavedState");
         ReconfigureUploads();
-        UploadStatus = "Token saved — hit Test to verify it.";
+        UploadStatus = Loc.Get("SettingsVm_TokenSavedHitTest");
     }
 
     [RelayCommand]
     private async Task TestUploadToken()
     {
-        UploadStatus = "Testing…";
+        UploadStatus = Loc.Get("SettingsVm_Testing");
         UploadStatus = await _manager.Uploads.TestTokenAsync();
     }
 
@@ -378,9 +407,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         _loadingUpload = true;
         UploadEnabled = false;
         _loadingUpload = false;
-        UploadTokenState = "No token saved.";
+        UploadTokenState = Loc.Get("SettingsVm_NoTokenSaved");
         ReconfigureUploads();
-        UploadStatus = "Token removed.";
+        UploadStatus = Loc.Get("SettingsVm_TokenRemoved");
     }
 
     [RelayCommand]
@@ -400,22 +429,22 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         if (!double.TryParse(IdleEndSeconds, out var idle) || idle < 1 || idle > 60)
         {
-            Status = "Idle timeout must be 1–60 seconds.";
+            Status = Loc.Get("SettingsVm_IdleRange");
             return;
         }
         if (!int.TryParse(PollMilliseconds, out var poll) || poll < 1 || poll > 1000)
         {
-            Status = "Poll interval must be 1–1000 ms.";
+            Status = Loc.Get("SettingsVm_PollRange");
             return;
         }
         if (!int.TryParse(HistoryBossDays, out var bossDays) || bossDays < 1 || bossDays > 365)
         {
-            Status = "Boss history must load 1–365 days (bosses stay archived beyond that).";
+            Status = Loc.Get("SettingsVm_BossRange");
             return;
         }
         if (!int.TryParse(HistoryTrashDays, out var trashDays) || trashDays < 1 || trashDays > 365)
         {
-            Status = "Trash retention must be 1–365 days.";
+            Status = Loc.Get("SettingsVm_TrashRange");
             return;
         }
         _manager.Settings = _manager.Settings with
@@ -429,6 +458,6 @@ public sealed partial class SettingsViewModel : ObservableObject
             AlertVolume = AlertVolume,
         };
         _manager.Settings.Save();
-        Status = "Saved. Parsing values apply to sources added from now on; audio applies immediately.";
+        Status = Loc.Get("SettingsVm_Saved");
     }
 }

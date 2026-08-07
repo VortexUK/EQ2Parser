@@ -28,6 +28,9 @@ public partial class App : Application
             typeof(DependencyObject), new FrameworkPropertyMetadata(60_000));
         LiveChartsCore.LiveCharts.Configure(config => config.AddDarkTheme());
         _manager = new SourceManager();
+        // Before ANY window: the {loc:Tr} markup extension resolves at
+        // XAML load, so the dictionaries must be in place first.
+        Localization.Loc.Initialize(_manager.Settings.LanguageCode);
         _manager.RestoreHistory();
         _manager.RestoreFromSettings();
         _manager.StartFolderWatch();

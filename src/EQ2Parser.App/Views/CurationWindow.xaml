@@ -2,7 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:EQ2Parser.App.ViewModels"
-        Title="Curation Workbench" Width="780" Height="600" WindowStartupLocation="CenterOwner"
+        xmlns:loc="clr-namespace:EQ2Parser.App.Localization"
+        Title="{loc:Tr Curation_WindowTitle}" Width="780" Height="600" WindowStartupLocation="CenterOwner"
         Background="{StaticResource BgBrush}">
     <Grid Margin="14">
         <Grid.RowDefinitions>
@@ -23,9 +24,9 @@
             <ComboBox Grid.Column="1" ItemsSource="{Binding ModeChoices}" SelectedIndex="{Binding ModeIndex}"
                       MinWidth="130" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0" />
             <TextBlock Grid.Column="2" Style="{StaticResource MutedText}" FontSize="12" Margin="12,4,0,0"
-                       Text="What each mob actually casts, with recast timings measured from your archived fights." />
-            <Button Grid.Column="3" Content="Copy all missing as XML" Style="{StaticResource GoldButton}"
-                    ToolTip="Every timeable ability without a timer, as ACT &lt;Spell&gt; lines for the Lexicon curator pages"
+                       Text="{loc:Tr Curation_HeaderHint}" />
+            <Button Grid.Column="3" Content="{loc:Tr Curation_CopyAllMissing}" Style="{StaticResource GoldButton}"
+                    ToolTip="{loc:Tr Curation_CopyAllMissingTooltip}"
                     Command="{Binding CopyMissingXmlCommand}" />
         </Grid>
 
@@ -83,16 +84,16 @@
                                            VerticalAlignment="Center" Margin="0,0,12,0"
                                            ToolTip="{Binding RecastToolTip}" />
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="timer ✓" FontSize="12" Foreground="{StaticResource SuccessBrush}"
+                                    <TextBlock Text="{loc:Tr Curation_TimerDone}" FontSize="12" Foreground="{StaticResource SuccessBrush}"
                                                VerticalAlignment="Center" Margin="0,0,6,0"
                                                Visibility="{Binding HasTimer, Converter={StaticResource BoolToVis}}" />
-                                    <Button Content="Make timer" Style="{StaticResource GoldButton}" Padding="10,3"
+                                    <Button Content="{loc:Tr Curation_MakeTimer}" Style="{StaticResource GoldButton}" Padding="10,3"
                                             Visibility="{Binding HasTimer, Converter={StaticResource InverseBoolToVis}}"
                                             IsEnabled="{Binding CanTime}"
                                             Command="{Binding DataContext.CreateTimerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                             CommandParameter="{Binding}" />
                                     <Button Content="⧉" Style="{StaticResource GoldButton}" Padding="8,3" Margin="6,0,0,0"
-                                            ToolTip="Copy as ACT &lt;Spell&gt; XML"
+                                            ToolTip="{loc:Tr Curation_CopyXmlTooltip}"
                                             Command="{Binding DataContext.CopyXmlCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                             CommandParameter="{Binding}" />
                                 </StackPanel>

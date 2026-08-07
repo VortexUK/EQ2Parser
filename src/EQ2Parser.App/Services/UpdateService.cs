@@ -1,4 +1,5 @@
 using System.Reflection;
+using EQ2Parser.App.Localization;
 using Velopack;
 using Velopack.Sources;
 
@@ -29,7 +30,7 @@ public sealed class UpdateService
     public string CurrentVersion =>
         _manager.IsInstalled
             ? _manager.CurrentVersion?.ToString() ?? "?"
-            : Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) + " (from source)";
+            : Loc.Format("UpdateSvc_VersionFromSource", Assembly.GetExecutingAssembly().GetName().Version?.ToString(3));
 
     private void Set(string status)
     {
@@ -42,27 +43,27 @@ public sealed class UpdateService
     {
         if (!_manager.IsInstalled)
         {
-            Set("running from source — update via git pull");
+            Set(Loc.Get("UpdateSvc_RunningFromSource"));
             return;
         }
         try
         {
-            Set("checking for updates…");
+            Set(Loc.Get("UpdateSvc_Checking"));
             var update = await _manager.CheckForUpdatesAsync().ConfigureAwait(false);
             if (update is null)
             {
-                Set("up to date");
+                Set(Loc.Get("UpdateSvc_UpToDate"));
                 return;
             }
-            Set($"downloading v{update.TargetFullRelease.Version}…");
+            Set(Loc.Format("UpdateSvc_Downloading", update.TargetFullRelease.Version));
             await _manager.DownloadUpdatesAsync(update).ConfigureAwait(false);
             // Applies silently after the app closes; next launch is current.
             _manager.WaitExitThenApplyUpdates(update.TargetFullRelease, silent: true, restart: false);
-            Set($"v{update.TargetFullRelease.Version} downloaded — applies when you close the app");
+            Set(Loc.Format("UpdateSvc_Downloaded", update.TargetFullRelease.Version));
         }
         catch (Exception ex)
         {
-            Set($"update check failed ({ex.Message}) — will retry next launch");
+            Set(Loc.Format("UpdateSvc_CheckFailed", ex.Message));
         }
     }
 }

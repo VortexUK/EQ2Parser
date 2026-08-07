@@ -1,6 +1,7 @@
 <UserControl x:Class="EQ2Parser.App.Views.SourcesView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:EQ2Parser.App.Localization">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -8,17 +9,17 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Text="Log Sources" Style="{StaticResource PageTitle}" />
+        <TextBlock Text="{loc:Tr Sources_Title}" Style="{StaticResource PageTitle}" />
 
         <StackPanel Grid.Row="1" Margin="0,0,0,12">
             <StackPanel Orientation="Horizontal">
-                <Button Content="Add live tail" Style="{StaticResource GoldButton}" Command="{Binding AddLiveCommand}" />
-                <Button Content="Add + parse existing" Style="{StaticResource GoldButton}" Margin="8,0,0,0"
+                <Button Content="{loc:Tr Sources_AddLiveTail}" Style="{StaticResource GoldButton}" Command="{Binding AddLiveCommand}" />
+                <Button Content="{loc:Tr Sources_AddParseExisting}" Style="{StaticResource GoldButton}" Margin="8,0,0,0"
                         Command="{Binding AddWithHistoryCommand}" />
-                <Button Content="Watch folder…" Style="{StaticResource GoldButton}" Margin="8,0,0,0"
-                        ToolTip="Point at the EQ2 logs folder — any character's log that becomes active is tracked automatically"
+                <Button Content="{loc:Tr Sources_WatchFolder}" Style="{StaticResource GoldButton}" Margin="8,0,0,0"
+                        ToolTip="{loc:Tr Sources_WatchFolderTip}"
                         Command="{Binding WatchFolderCommand}" />
-                <TextBlock Text="Live tail starts at the end; parse existing chews the whole log once; a watched folder tracks every active log by itself."
+                <TextBlock Text="{loc:Tr Sources_ModesHint}"
                            Style="{StaticResource MutedText}" FontSize="12" Margin="16,6,0,0" />
             </StackPanel>
             <ItemsControl ItemsSource="{Binding WatchedFolders}" Margin="0,8,0,0">
@@ -29,7 +30,7 @@
                             <TextBlock Text="{Binding}" Style="{StaticResource MutedText}" FontSize="12"
                                        VerticalAlignment="Center" />
                             <Button Content="✕" Style="{StaticResource GoldButton}" Padding="8,1" Margin="10,0,0,0"
-                                    ToolTip="Stop watching (detaches its auto-discovered sources)"
+                                    ToolTip="{loc:Tr Sources_UnwatchTip}"
                                     Command="{Binding DataContext.UnwatchFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     CommandParameter="{Binding}" />
                         </StackPanel>
@@ -61,7 +62,7 @@
                                     <TextBlock Text="{Binding Status}" Style="{StaticResource MutedText}" FontSize="12"
                                                Foreground="{StaticResource TextBrush}" Margin="0,2,0,0" />
                                 </StackPanel>
-                                <Button Grid.Column="1" Content="Remove" Style="{StaticResource GoldButton}"
+                                <Button Grid.Column="1" Content="{loc:Tr Sources_Remove}" Style="{StaticResource GoldButton}"
                                         VerticalAlignment="Center"
                                         Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         CommandParameter="{Binding}" />

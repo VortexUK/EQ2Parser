@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using EQ2Parser.App.Localization;
 using EQ2Parser.App.Services;
 using EQ2Parser.Core.Triggers;
 using Trigger = EQ2Parser.Core.Triggers.Trigger;
@@ -38,10 +39,10 @@ public sealed partial class TriggerRow : ObservableObject, ICategoryDropTarget
 
     public string SoundLabel => Trigger.SoundType switch
     {
-        TriggerSound.Beep => "Beep",
-        TriggerSound.WavFile => $"WAV  {System.IO.Path.GetFileName(Trigger.SoundData)}",
-        TriggerSound.Tts => $"Say  “{Trigger.SoundData}”",
-        _ => "Silent",
+        TriggerSound.Beep => Loc.Get("TriggersVm_SoundBeep"),
+        TriggerSound.WavFile => Loc.Format("TriggersVm_SoundWavFile", System.IO.Path.GetFileName(Trigger.SoundData)),
+        TriggerSound.Tts => Loc.Format("TriggersVm_SoundSay", Trigger.SoundData),
+        _ => Loc.Get("TriggersVm_SoundSilent"),
     };
 
     /// <summary>The linked spell timer is gone (deleted after the link was
@@ -50,7 +51,9 @@ public sealed partial class TriggerRow : ObservableObject, ICategoryDropTarget
         Trigger.StartsTimer && Trigger.TimerName.Length > 0 && !_owner.HasTimerNamed(Trigger.TimerName);
 
     public string TimerLabel => Trigger.StartsTimer && Trigger.TimerName.Length > 0
-        ? $"⏱ {Trigger.TimerName}{(LinkedTimerMissing ? " — no such timer!" : "")}"
+        ? LinkedTimerMissing
+            ? Loc.Format("TriggersVm_TimerLabelMissing", Trigger.TimerName)
+            : Loc.Format("TriggersVm_TimerLabel", Trigger.TimerName)
         : "";
 
     [ObservableProperty]
@@ -89,7 +92,13 @@ public sealed partial class TriggersViewModel : ObservableObject
 
     private readonly CategoryTree<Trigger> _tree;
 
-    public IReadOnlyList<string> SoundChoices { get; } = ["Silent", "Beep", "Play WAV file", "Speak text (TTS)"];
+    public IReadOnlyList<string> SoundChoices { get; } =
+    [
+        Loc.Get("TriggersVm_SoundSilent"),
+        Loc.Get("TriggersVm_SoundBeep"),
+        Loc.Get("TriggersVm_SoundPlayWav"),
+        Loc.Get("TriggersVm_SoundSpeakTts"),
+    ];
 
     public TriggersViewModel(SourceManager manager)
     {
@@ -269,7 +278,7 @@ public sealed partial class TriggersViewModel : ObservableObject
     // ---- editor ----
 
     [ObservableProperty]
-    private string _editorTitle = "New trigger";
+    private string _editorTitle = Loc.Get("TriggersVm_NewTrigger");
 
     [ObservableProperty]
     private string _regexText = "";
@@ -352,7 +361,7 @@ public sealed partial class TriggersViewModel : ObservableObject
     private void NewTrigger()
     {
         _editingKey = null;
-        EditorTitle = "New trigger";
+        EditorTitle = Loc.Get("TriggersVm_NewTrigger");
         RegexText = "";
         Category = "General";
         ZoneText = "";
@@ -375,7 +384,7 @@ public sealed partial class TriggersViewModel : ObservableObject
             return;
         var t = row.Trigger;
         _editingKey = t.Key;
-        EditorTitle = "Edit trigger";
+        EditorTitle = Loc.Get("TriggersVm_EditTrigger");
         MarkEditingRow();
         RegexText = t.RegexText;
         Category = t.Category;
@@ -399,7 +408,7 @@ public sealed partial class TriggersViewModel : ObservableObject
         var regex = RegexText.Trim();
         if (regex.Length == 0)
         {
-            EditorError = "A regex is required.";
+            EditorError = Loc.Get("TriggersVm_RegexRequired");
             return;
         }
         var category = Category.Trim();
@@ -407,7 +416,7 @@ public sealed partial class TriggersViewModel : ObservableObject
             category = "General";
         if (!double.TryParse(CooldownSeconds, out var cooldown) || cooldown < 0)
         {
-            EditorError = "Cooldown must be a number of seconds.";
+            EditorError = Loc.Get("TriggersVm_CooldownInvalid");
             return;
         }
         var timerName = (TimerName ?? "").Trim();
@@ -427,7 +436,7 @@ public sealed partial class TriggersViewModel : ObservableObject
         }
         catch (ArgumentException ex)
         {
-            EditorError = $"Invalid regex: {ex.Message}";
+            EditorError = Loc.Format("TriggersVm_InvalidRegex", ex.Message);
             return;
         }
         _manager.Triggers.AddOrUpdate(trigger, _editingKey);
@@ -435,12 +444,12 @@ public sealed partial class TriggersViewModel : ObservableObject
         // Stay ON the saved trigger — the editor emptying itself after every
         // save read as the work vanishing. "New trigger" is the way out.
         _editingKey = trigger.Key;
-        EditorTitle = "Edit trigger";
+        EditorTitle = Loc.Get("TriggersVm_EditTrigger");
         _tree.Reveal(trigger.Zone, category);
         EditorError = "";
         EditorInfo = linked > 0
-            ? $"Saved. Also created spell timer “{trigger.TimerName}” (30s default) — set its real length on the Timers page."
-            : "Saved.";
+            ? Loc.Format("TriggersVm_SavedWithTimer", trigger.TimerName)
+            : Loc.Get("TriggersVm_Saved");
         RebuildRows();
     }
 
@@ -449,8 +458,8 @@ public sealed partial class TriggersViewModel : ObservableObject
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Filter = "WAV files (*.wav)|*.wav|All files (*.*)|*.*",
-            Title = "Choose alert sound",
+            Filter = Loc.Get("TriggersVm_WavFileFilter"),
+            Title = Loc.Get("TriggersVm_ChooseAlertSound"),
         };
         if (dialog.ShowDialog() == true)
             SoundData = dialog.FileName;
@@ -471,7 +480,7 @@ public sealed partial class TriggersViewModel : ObservableObject
             case TriggerSound.Tts when text.Length > 0:
                 // Stand in for $1-style capture substitutions in the preview.
                 _manager.Audio.Speak(
-                    System.Text.RegularExpressions.Regex.Replace(text, @"\$\{?\w+\}?", "something"));
+                    System.Text.RegularExpressions.Regex.Replace(text, @"\$\{?\w+\}?", Loc.Get("TriggersVm_TtsPlaceholderWord")));
                 break;
         }
     }
@@ -514,14 +523,17 @@ public sealed partial class TriggersViewModel : ObservableObject
         var linked = _manager.SpellTimers.EnsureLinkedTimers(imported);
         List<string> parts = [];
         if (imported.Count > 0)
-            parts.Add($"{imported.Count} trigger{(imported.Count == 1 ? "" : "s")} imported");
+            parts.Add(Loc.Format(imported.Count == 1 ? "TriggersVm_TriggersImportedOne" : "TriggersVm_TriggersImportedMany", imported.Count));
         if (timers.Count > 0)
-            parts.Add($"{timers.Count} spell timer{(timers.Count == 1 ? "" : "s")} imported (see Timers page)");
+            parts.Add(Loc.Format(timers.Count == 1 ? "TriggersVm_SpellTimersImportedOne" : "TriggersVm_SpellTimersImportedMany", timers.Count));
         if (linked > 0)
-            parts.Add($"{linked} linked timer{(linked == 1 ? "" : "s")} created with 30s defaults — set real lengths on the Timers page");
+            parts.Add(Loc.Format(linked == 1 ? "TriggersVm_LinkedTimersSetLengthsOne" : "TriggersVm_LinkedTimersSetLengthsMany", linked));
         if (failedLines.Count > 0)
-            parts.Add($"{failedLines.Count} line{(failedLines.Count == 1 ? "" : "s")} not recognised (line {string.Join(", ", failedLines.Take(5))}{(failedLines.Count > 5 ? ", …" : "")})");
-        ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : "Nothing to import — paste ACT share XML first.";
+        {
+            var lineList = string.Join(", ", failedLines.Take(5)) + (failedLines.Count > 5 ? ", …" : "");
+            parts.Add(Loc.Format(failedLines.Count == 1 ? "TriggersVm_LinesNotRecognisedOne" : "TriggersVm_LinesNotRecognisedMany", failedLines.Count, lineList));
+        }
+        ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : Loc.Get("TriggersVm_NothingToImport");
         if (imported.Count > 0)
         {
             ImportText = "";
@@ -536,8 +548,8 @@ public sealed partial class TriggersViewModel : ObservableObject
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Import ACT settings XML",
-            Filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*",
+            Title = Loc.Get("TriggersVm_ImportActXmlTitle"),
+            Filter = Loc.Get("TriggersVm_XmlFileFilter"),
         };
         if (dialog.ShowDialog() != true)
             return;
@@ -548,13 +560,13 @@ public sealed partial class TriggersViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
-            ImportResult = $"Couldn't read the file: {ex.Message}";
+            ImportResult = Loc.Format("TriggersVm_FileReadError", ex.Message);
             return;
         }
         var result = ActConfigImport.TryImport(xml);
         if (result is null)
         {
-            ImportResult = "Not a recognisable ACT XML export (no Trigger/Spell entries found).";
+            ImportResult = Loc.Get("TriggersVm_NotActXml");
             return;
         }
         _manager.Triggers.AddOrUpdateMany(result.Triggers);
@@ -564,14 +576,14 @@ public sealed partial class TriggersViewModel : ObservableObject
         var linked = _manager.SpellTimers.EnsureLinkedTimers(result.Triggers);
         List<string> parts = [];
         if (result.Triggers.Count > 0)
-            parts.Add($"{result.Triggers.Count} trigger{(result.Triggers.Count == 1 ? "" : "s")} imported");
+            parts.Add(Loc.Format(result.Triggers.Count == 1 ? "TriggersVm_TriggersImportedOne" : "TriggersVm_TriggersImportedMany", result.Triggers.Count));
         if (result.Timers.Count > 0)
-            parts.Add($"{result.Timers.Count} spell timer{(result.Timers.Count == 1 ? "" : "s")} imported (see Timers page)");
+            parts.Add(Loc.Format(result.Timers.Count == 1 ? "TriggersVm_SpellTimersImportedOne" : "TriggersVm_SpellTimersImportedMany", result.Timers.Count));
         if (linked > 0)
-            parts.Add($"{linked} linked timer{(linked == 1 ? "" : "s")} created with 30s defaults");
+            parts.Add(Loc.Format(linked == 1 ? "TriggersVm_LinkedTimersOne" : "TriggersVm_LinkedTimersMany", linked));
         if (result.Skipped > 0)
-            parts.Add($"{result.Skipped} entr{(result.Skipped == 1 ? "y" : "ies")} skipped (bad regex or missing name)");
-        ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : "The file contained no importable entries.";
+            parts.Add(Loc.Format(result.Skipped == 1 ? "TriggersVm_EntriesSkippedOne" : "TriggersVm_EntriesSkippedMany", result.Skipped));
+        ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : Loc.Get("TriggersVm_FileNoEntries");
         RebuildRows();
     }
 

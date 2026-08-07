@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using EQ2Parser.App.Localization;
 using EQ2Parser.App.Services;
 using EQ2Parser.Core.Triggers;
 using Trigger = EQ2Parser.Core.Triggers.Trigger;
@@ -53,21 +54,21 @@ public sealed partial class TimerDefRow : ObservableObject, ICategoryDropTarget
     {
         get
         {
-            List<string> parts = [$"{Definition.DurationSeconds}s"];
+            List<string> parts = [Loc.Format("TimersVm_DetailDurationSeconds", Definition.DurationSeconds)];
             if (Definition.WarningSeconds > 0)
-                parts.Add($"warn {Definition.WarningSeconds}s");
+                parts.Add(Loc.Format("TimersVm_DetailWarnSeconds", Definition.WarningSeconds));
             if (Definition.ControlEffect is { Length: > 0 } cc)
                 parts.Add(cc.ToUpperInvariant());
             if (Definition.DamageType is { Length: > 0 } dt)
                 parts.Add(dt);
             if (Definition.RestrictToMe)
-                parts.Add("only mine");
+                parts.Add(Loc.Get("TimersVm_DetailOnlyMine"));
             if (Definition.AbsoluteTiming)
-                parts.Add("one at a time");
+                parts.Add(Loc.Get("TimersVm_DetailOneAtATime"));
             if (Definition.RestrictToCategory)
-                parts.Add("category-locked");
+                parts.Add(Loc.Get("TimersVm_DetailCategoryLocked"));
             if (!Definition.Modable)
-                parts.Add("mods off");
+                parts.Add(Loc.Get("TimersVm_DetailModsOff"));
             if (Definition.StartSoundData.Length > 0 || Definition.WarningSoundData.Length > 0)
                 parts.Add("🔊");
             return string.Join("  ·  ", parts);
@@ -346,7 +347,11 @@ public sealed partial class TimersViewModel : ObservableObject
     // ---- editor ----
 
     public IReadOnlyList<string> ColorChoices { get; } =
-        ["Blue", "Red", "Green", "Gold", "Purple", "Cyan", "Orange", "White"];
+    [
+        Loc.Get("TimersVm_ColorBlue"), Loc.Get("TimersVm_ColorRed"), Loc.Get("TimersVm_ColorGreen"),
+        Loc.Get("TimersVm_ColorGold"), Loc.Get("TimersVm_ColorPurple"), Loc.Get("TimersVm_ColorCyan"),
+        Loc.Get("TimersVm_ColorOrange"), Loc.Get("TimersVm_ColorWhite"),
+    ];
 
     private static readonly int[] ColorValues =
     [
@@ -356,7 +361,7 @@ public sealed partial class TimersViewModel : ObservableObject
     ];
 
     [ObservableProperty]
-    private string _editorTitle = "New timer";
+    private string _editorTitle = Loc.Get("TimersVm_NewTimer");
 
     [ObservableProperty]
     private string _name = "";
@@ -491,7 +496,7 @@ public sealed partial class TimersViewModel : ObservableObject
     {
         _editingKey = null;
         _hasCustomColor = false;
-        EditorTitle = "New timer";
+        EditorTitle = Loc.Get("TimersVm_NewTimer");
         Name = "";
         Category = "General";
         ZoneText = "";
@@ -522,7 +527,7 @@ public sealed partial class TimersViewModel : ObservableObject
             return;
         var d = row.Definition;
         _editingKey = d.Key;
-        EditorTitle = "Edit timer";
+        EditorTitle = Loc.Get("TimersVm_EditTimer");
         Name = d.Name;
         Category = d.Category;
         ZoneText = d.Zone;
@@ -557,22 +562,22 @@ public sealed partial class TimersViewModel : ObservableObject
         var name = Name.Trim();
         if (name.Length == 0)
         {
-            EditorError = "The timer needs a name — it matches the ability/spell name in the log.";
+            EditorError = Loc.Get("TimersVm_NameRequired");
             return;
         }
         if (!int.TryParse(DurationSeconds, out var duration) || duration < 1 || duration > 24 * 3600)
         {
-            EditorError = "Duration must be a whole number of seconds.";
+            EditorError = Loc.Get("TimersVm_DurationInvalid");
             return;
         }
         if (!int.TryParse(WarningSeconds, out var warning) || warning < 0)
         {
-            EditorError = "Warning must be a whole number of seconds (0 = no warning).";
+            EditorError = Loc.Get("TimersVm_WarningInvalid");
             return;
         }
         if (!int.TryParse(RemoveSeconds, out var remove))
         {
-            EditorError = "Remove-at must be a whole number of seconds (negative = linger past zero).";
+            EditorError = Loc.Get("TimersVm_RemoveInvalid");
             return;
         }
         var category = Category.Trim();
@@ -603,7 +608,7 @@ public sealed partial class TimersViewModel : ObservableObject
         // Stay ON the saved timer — the editor emptying itself after every
         // save read as the work vanishing. "New timer" is the way out.
         _editingKey = definition.Key;
-        EditorTitle = "Edit timer";
+        EditorTitle = Loc.Get("TimersVm_EditTimer");
         _tree.Reveal(definition.Zone, definition.Category);
         EditorError = "";
         RebuildRows();
@@ -624,8 +629,8 @@ public sealed partial class TimersViewModel : ObservableObject
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Import ACT settings XML",
-            Filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*",
+            Title = Loc.Get("TimersVm_ImportActXmlTitle"),
+            Filter = Loc.Get("TimersVm_XmlFileFilter"),
         };
         if (dialog.ShowDialog() != true)
             return;
@@ -636,13 +641,13 @@ public sealed partial class TimersViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
-            ImportResult = $"Couldn't read the file: {ex.Message}";
+            ImportResult = Loc.Format("TimersVm_FileReadError", ex.Message);
             return;
         }
         var result = ActConfigImport.TryImport(xml);
         if (result is null)
         {
-            ImportResult = "Not a recognisable ACT XML export (no Trigger/Spell entries found).";
+            ImportResult = Loc.Get("TimersVm_NotActXml");
             return;
         }
         _manager.SpellTimers.ImportMany(result.Timers);
@@ -650,14 +655,14 @@ public sealed partial class TimersViewModel : ObservableObject
         var linked = _manager.SpellTimers.EnsureLinkedTimers(result.Triggers);
         List<string> parts = [];
         if (result.Timers.Count > 0)
-            parts.Add($"{result.Timers.Count} spell timer{(result.Timers.Count == 1 ? "" : "s")} imported");
+            parts.Add(Loc.Format(result.Timers.Count == 1 ? "TimersVm_SpellTimersImportedOne" : "TimersVm_SpellTimersImportedMany", result.Timers.Count));
         if (result.Triggers.Count > 0)
-            parts.Add($"{result.Triggers.Count} trigger{(result.Triggers.Count == 1 ? "" : "s")} imported (see Triggers page)");
+            parts.Add(Loc.Format(result.Triggers.Count == 1 ? "TimersVm_TriggersImportedOne" : "TimersVm_TriggersImportedMany", result.Triggers.Count));
         if (linked > 0)
-            parts.Add($"{linked} linked timer{(linked == 1 ? "" : "s")} created with 30s defaults");
+            parts.Add(Loc.Format(linked == 1 ? "TimersVm_LinkedTimersOne" : "TimersVm_LinkedTimersMany", linked));
         if (result.Skipped > 0)
-            parts.Add($"{result.Skipped} entr{(result.Skipped == 1 ? "y" : "ies")} skipped (bad regex or missing name)");
-        ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : "The file contained no importable entries.";
+            parts.Add(Loc.Format(result.Skipped == 1 ? "TimersVm_EntriesSkippedOne" : "TimersVm_EntriesSkippedMany", result.Skipped));
+        ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : Loc.Get("TimersVm_FileNoEntries");
         RebuildRows();
     }
 
@@ -690,14 +695,14 @@ public sealed partial class TimersViewModel : ObservableObject
         var linked = _manager.SpellTimers.EnsureLinkedTimers(triggers);
         List<string> parts = [];
         if (timers.Count > 0)
-            parts.Add($"{timers.Count} timer{(timers.Count == 1 ? "" : "s")} imported");
+            parts.Add(Loc.Format(timers.Count == 1 ? "TimersVm_TimersImportedOne" : "TimersVm_TimersImportedMany", timers.Count));
         if (triggers.Count > 0)
-            parts.Add($"{triggers.Count} trigger{(triggers.Count == 1 ? "" : "s")} imported (see Triggers page)");
+            parts.Add(Loc.Format(triggers.Count == 1 ? "TimersVm_TriggersImportedOne" : "TimersVm_TriggersImportedMany", triggers.Count));
         if (linked > 0)
-            parts.Add($"{linked} linked timer{(linked == 1 ? "" : "s")} created with 30s defaults");
+            parts.Add(Loc.Format(linked == 1 ? "TimersVm_LinkedTimersOne" : "TimersVm_LinkedTimersMany", linked));
         if (failed > 0)
-            parts.Add($"{failed} line{(failed == 1 ? "" : "s")} not recognised");
-        ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : "Nothing to import — paste ACT share XML first.";
+            parts.Add(Loc.Format(failed == 1 ? "TimersVm_LinesNotRecognisedOne" : "TimersVm_LinesNotRecognisedMany", failed));
+        ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : Loc.Get("TimersVm_NothingToImport");
         if (timers.Count > 0 || triggers.Count > 0)
         {
             ImportText = "";

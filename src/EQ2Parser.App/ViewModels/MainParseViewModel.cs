@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using EQ2Parser.App.Localization;
 using EQ2Parser.App.Services;
 using EQ2Parser.Core.Analysis;
 using EQ2Parser.Core.Combat;
@@ -238,10 +239,10 @@ public sealed partial class MainParseViewModel : ObservableObject
     }
 
     [ObservableProperty]
-    private string _petHeader = "Pets (0)";
+    private string _petHeader = Loc.Format("MainVm_PetsHeader", 0);
 
     [ObservableProperty]
-    private string _enemyHeader = "Enemies (0)";
+    private string _enemyHeader = Loc.Format("MainVm_EnemiesHeader", 0);
 
     // ── Chart (encounter-summary bars + average line) ───────────────────────
 
@@ -305,7 +306,7 @@ public sealed partial class MainParseViewModel : ObservableObject
     private bool _swingLevel;
 
     [ObservableProperty]
-    private string _drillNameHeader = "BUCKET";
+    private string _drillNameHeader = Loc.Get("MainVm_DrillHeaderBucket");
 
     private string? _detailKey;
     private string? _detailBucket;
@@ -426,7 +427,7 @@ public sealed partial class MainParseViewModel : ObservableObject
             {
                 nodes.Add(new ParseNode
                 {
-                    Title = "⚔ Live combat",
+                    Title = Loc.Get("MainVm_LiveCombat"),
                     Fight = LiveFollow.Instance,
                     TitleBrush = ClassColors.OutcomeWin,
                 });
@@ -440,7 +441,7 @@ public sealed partial class MainParseViewModel : ObservableObject
             for (var g = groups.Count - 1; g >= 0; g--)
             {
                 var (zone, items) = groups[g];
-                var zoneName = string.IsNullOrEmpty(zone) ? "Unknown zone" : zone;
+                var zoneName = string.IsNullOrEmpty(zone) ? Loc.Get("MainVm_UnknownZone") : zone;
                 var shown = BossesOnly ? items.Where(f => IsBossTitle(f.Title)).ToList() : items;
                 if (shown.Count == 0)
                     continue;
@@ -466,7 +467,9 @@ public sealed partial class MainParseViewModel : ObservableObject
                         var all = items.ToArray();
                         nodes.Add(new ParseNode
                         {
-                            Title = $"All - [{FmtSpan(SumDuration(all))}]",
+                            Title = Loc.Format("MainVm_AllRollup", FmtSpan(SumDuration(all))),
+                            // Label stays English: it feeds clipboard/report
+                            // output, which is deliberately not localized.
                             Fight = new AggregateFights(zoneName, "All", all),
                         });
                     }
@@ -475,7 +478,7 @@ public sealed partial class MainParseViewModel : ObservableObject
                     {
                         nodes.Add(new ParseNode
                         {
-                            Title = $"All Bosses - [{bosses.Length}] [{FmtSpan(SumDuration(bosses))}]",
+                            Title = Loc.Format("MainVm_AllBossesRollup", bosses.Length, FmtSpan(SumDuration(bosses))),
                             Fight = new AggregateFights(zoneName, "All Bosses", bosses),
                         });
                     }
@@ -483,7 +486,7 @@ public sealed partial class MainParseViewModel : ObservableObject
                 for (var i = shown.Count - 1; i >= 0; i--)
                 {
                     var fight = shown[i];
-                    var sources = fight.Sources.Count > 1 ? $" ·{fight.Sources.Count}L" : "";
+                    var sources = fight.Sources.Count > 1 ? Loc.Format("MainVm_SourcesSuffix", fight.Sources.Count) : "";
                     nodes.Add(new ParseNode
                     {
                         Title = $"{fight.Title} - [{FmtSpan(fight.Duration)}] {fight.StartTime.ToLocalTime():HH:mm:ss}{sources}",
@@ -529,7 +532,7 @@ public sealed partial class MainParseViewModel : ObservableObject
         List<CorrelatedEncounter>? match = null;
         foreach (var (z, items) in GroupHistoryZones())
         {
-            var zoneName = string.IsNullOrEmpty(z) ? "Unknown zone" : z;
+            var zoneName = string.IsNullOrEmpty(z) ? Loc.Get("MainVm_UnknownZone") : z;
             if (string.Equals($"{zoneName}|{items[0].StartTime.Ticks}", zone.GroupKey, StringComparison.Ordinal))
             {
                 match = items;

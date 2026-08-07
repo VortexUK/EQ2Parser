@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using EQ2Parser.App.Localization;
 using EQ2Parser.App.ViewModels;
 
 namespace EQ2Parser.App;
@@ -50,7 +51,9 @@ public partial class MainWindow : Window
         {
             // Invisible literals: Segoe MDL2  (restore) /  (maximize).
             MaximizeButton.Content = WindowState == WindowState.Maximized ? "" : "";
-            MaximizeButton.ToolTip = WindowState == WindowState.Maximized ? "Restore" : "Maximise";
+            MaximizeButton.ToolTip = WindowState == WindowState.Maximized
+                ? Loc.Get("Window_Restore")
+                : Loc.Get("Window_Maximise");
         };
     }
 

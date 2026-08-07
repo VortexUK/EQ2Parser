@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using EQ2Parser.App.Localization;
 using EQ2Parser.App.Services;
 using EQ2Parser.Core.Analysis;
 using EQ2Parser.Core.Combat;
@@ -155,11 +156,11 @@ public sealed partial class MainParseViewModel
         if (_detailBucket is null)
         {
             List<AbilityData> table = [];
-            string? pendingDivider = "OUTGOING";
+            string? pendingDivider = Loc.Get("MainVm_DividerOutgoing");
             foreach (var bucketName in BucketOrder)
             {
                 if (bucketName == BucketConfig.IncomingDamage)
-                    pendingDivider = "INCOMING";
+                    pendingDivider = Loc.Get("MainVm_DividerIncoming");
                 var acc = new AbilityAcc();
                 foreach (var (combatant, _) in instances)
                 {
@@ -209,7 +210,7 @@ public sealed partial class MainParseViewModel
                         bucketChart = new DrillChart(1, chartLines, window.BucketSeconds, null, null);
                 }
             }
-            return new DetailData($"{name}{cls}", "BUCKET", SortTable: false, Bars: false, IsSwingLevel: false, table, null, bucketChart);
+            return new DetailData($"{name}{cls}", Loc.Get("MainVm_DrillHeaderBucket"), SortTable: false, Bars: false, IsSwingLevel: false, table, null, bucketChart);
         }
 
         // Depth 2 — inside the Auto-Attack bucket, group by attack kind
@@ -245,7 +246,7 @@ public sealed partial class MainParseViewModel
                     ? new DrillChart(2, null, 0, slices, null)
                     : HiddenDrillChart;
             }
-            return new DetailData($"{name}{cls} › {_detailBucket}", "ATTACK", SortTable: false, Bars: true, IsSwingLevel: false, table, null, autoChart);
+            return new DetailData($"{name}{cls} › {_detailBucket}", Loc.Get("MainVm_DrillHeaderAttack"), SortTable: false, Bars: true, IsSwingLevel: false, table, null, autoChart);
         }
 
         // Depth 2 — abilities within the chosen bucket.
@@ -292,12 +293,12 @@ public sealed partial class MainParseViewModel
                 List<(string, double)> slices = [.. ranked.Take(11).Select(t => (t.Name, (double)t.Total))];
                 var rest = ranked.Skip(11).Sum(t => t.Total);
                 if (rest > 0)
-                    slices.Add(("(other)", rest));
+                    slices.Add((Loc.Get("MainVm_OtherSlice"), rest));
                 abilityChart = slices.Count > 0
                     ? new DrillChart(2, null, 0, slices, null)
                     : HiddenDrillChart;
             }
-            return new DetailData($"{name}{cls} › {_detailBucket}", "ABILITY", SortTable: true, Bars: true, IsSwingLevel: false, table, null, abilityChart);
+            return new DetailData($"{name}{cls} › {_detailBucket}", Loc.Get("MainVm_DrillHeaderAbility"), SortTable: true, Bars: true, IsSwingLevel: false, table, null, abilityChart);
         }
 
         // Depth 3 — the individual swings of one ability (or one attack kind
@@ -337,7 +338,7 @@ public sealed partial class MainParseViewModel
 
         var signature = (key, _detailBucket, _detailAbility, collected.Count);
         if (signature == _swingSignature && SwingRows.Count > 0)
-            return new DetailData(title, "ABILITY", SortTable: false, Bars: true, IsSwingLevel: true, null, null, heatChart);
+            return new DetailData(title, Loc.Get("MainVm_DrillHeaderAbility"), SortTable: false, Bars: true, IsSwingLevel: true, null, null, heatChart);
         _swingSignature = signature;
 
         collected.Sort((a, b) =>
@@ -348,7 +349,7 @@ public sealed partial class MainParseViewModel
         List<SwingRow> swings = [.. collected.Select(t => new SwingRow(
             t.S.Time.ToLocalTime().ToString("HH:mm:ss"),
             t.S.Damage.ToString(),
-            t.S.Critical ? "crit" : "",
+            t.S.Critical ? Loc.Get("MainVm_SwingCrit") : "",
             t.S.Special == "None" ? "" : t.S.Special,
             t.S.DamageType,
             incoming ? t.S.Attacker : t.S.Victim,
@@ -356,7 +357,7 @@ public sealed partial class MainParseViewModel
             t.Src,
             t.S.Damage.Number,
             t.S.Ability))];
-        return new DetailData(title, "ABILITY", SortTable: false, Bars: true, IsSwingLevel: true, null, swings, heatChart);
+        return new DetailData(title, Loc.Get("MainVm_DrillHeaderAbility"), SortTable: false, Bars: true, IsSwingLevel: true, null, swings, heatChart);
     }
 
     private static AbilityAcc GetOrAdd(Dictionary<string, AbilityAcc> accs, string key)

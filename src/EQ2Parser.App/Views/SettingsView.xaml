@@ -1,9 +1,10 @@
 <UserControl x:Class="EQ2Parser.App.Views.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:EQ2Parser.App.Localization">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel>
-            <TextBlock Text="Settings" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="{loc:Tr Settings_Title}" Style="{StaticResource PageTitle}" />
             <!-- Two explicit COLUMNS of stacked cards (not a flat wrap: wrap
                  rows all take the tallest card's height, leaving dead air).
                  The columns themselves wrap under each other when narrow. -->
@@ -11,7 +12,7 @@
                 <StackPanel Width="430" Margin="0,0,12,0">
                 <Border Style="{StaticResource Card}" Margin="0,0,0,12" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock Text="Parsing" Style="{StaticResource SectionLabel}" />
+                        <TextBlock Text="{loc:Tr Settings_Parsing}" Style="{StaticResource SectionLabel}" />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="200" />
@@ -23,21 +24,21 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <TextBlock Text="Combat idle timeout (s)" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                            <TextBlock Text="{loc:Tr Settings_CombatIdleTimeout}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
                             <!-- Wrap on the numeric boxes collapses the Fluent clear (×)
                                  button, which covers the whole value at this width. -->
                             <TextBox Grid.Column="1" Text="{Binding IdleEndSeconds}" TextWrapping="Wrap" Margin="0,2" />
-                            <TextBlock Grid.Row="1" Text="Log poll interval (ms)" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="1" Text="{loc:Tr Settings_LogPollInterval}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
                             <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding PollMilliseconds}" TextWrapping="Wrap" Margin="0,2" />
-                            <TextBlock Grid.Row="2" Text="Load bosses from (days)" Style="{StaticResource MutedText}" VerticalAlignment="Center"
-                                       ToolTip="Named fights newer than this load at startup. Older ones stay in the archive forever — pull them back from the Archive window on the Main page." />
+                            <TextBlock Grid.Row="2" Text="{loc:Tr Settings_LoadBossesFrom}" Style="{StaticResource MutedText}" VerticalAlignment="Center"
+                                       ToolTip="{loc:Tr Settings_LoadBossesFromTip}" />
                             <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding HistoryBossDays}" TextWrapping="Wrap" Margin="0,2" />
-                            <TextBlock Grid.Row="3" Text="Keep trash for (days)" Style="{StaticResource MutedText}" VerticalAlignment="Center"
-                                       ToolTip="Non-named fights are deleted for good past this window" />
+                            <TextBlock Grid.Row="3" Text="{loc:Tr Settings_KeepTrashFor}" Style="{StaticResource MutedText}" VerticalAlignment="Center"
+                                       ToolTip="{loc:Tr Settings_KeepTrashForTip}" />
                             <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding HistoryTrashDays}" TextWrapping="Wrap" Margin="0,2" />
                         </Grid>
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                            <Button Content="Save" Style="{StaticResource GoldButton}" Command="{Binding SaveCommand}" />
+                            <Button Content="{loc:Tr Settings_Save}" Style="{StaticResource GoldButton}" Command="{Binding SaveCommand}" />
                             <TextBlock Text="{Binding Status}" Style="{StaticResource MutedText}" FontSize="12"
                                        Margin="12,6,0,0" />
                         </StackPanel>
@@ -46,25 +47,25 @@
 
                 <Border Style="{StaticResource Card}" Margin="0,0,0,12" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock Text="Lexicon sync" Style="{StaticResource SectionLabel}" />
+                        <TextBlock Text="{loc:Tr Settings_LexiconSync}" Style="{StaticResource SectionLabel}" />
                         <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                            <Button Content="Sync now" Style="{StaticResource GoldButton}" Padding="12,3"
+                            <Button Content="{loc:Tr Settings_SyncNow}" Style="{StaticResource GoldButton}" Padding="12,3"
                                     Command="{Binding LexiconSyncNowCommand}"
                                     ToolTip="{Binding LexiconUrlLabel}" />
                             <TextBlock Text="{Binding LexiconStatus}" Style="{StaticResource MutedText}" FontSize="12"
                                        VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" MaxWidth="280" />
                         </StackPanel>
                         <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
-                                   Text="Curated triggers and timers from EQ2Lexicon appear as a read-only Lexicon section on the Triggers and Timers pages. Syncs automatically at startup; enable/disable choices stick across syncs." />
+                                   Text="{loc:Tr Settings_LexiconSyncHint}" />
                     </StackPanel>
                 </Border>
 
                 <Border Style="{StaticResource Card}" Margin="0,0,0,12" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock Text="Detriment callouts" Style="{StaticResource SectionLabel}" />
-                        <CheckBox Content="Announce mass detriments" IsChecked="{Binding CalloutsEnabled}"
+                        <TextBlock Text="{loc:Tr Settings_DetrimentCallouts}" Style="{StaticResource SectionLabel}" />
+                        <CheckBox Content="{loc:Tr Settings_AnnounceMassDetriments}" IsChecked="{Binding CalloutsEnabled}"
                                   FontSize="12" Margin="0,8,0,0"
-                                  ToolTip="When several players get hit by the same control effect at once, speak it — “8 players stunned”.&#10;Detected straight from the log's status lines; no per-boss setup needed." />
+                                  ToolTip="{loc:Tr Settings_AnnounceMassDetrimentsTip}" />
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="200" />
@@ -74,11 +75,11 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <TextBlock Text="Players before it fires" Style="{StaticResource MutedText}" VerticalAlignment="Center"
-                                       ToolTip="Distinct players hit within a few seconds before the callout fires. Higher = raid-wide AoEs only; 1 = every CC on anyone." />
+                            <TextBlock Text="{loc:Tr Settings_PlayersBeforeItFires}" Style="{StaticResource MutedText}" VerticalAlignment="Center"
+                                       ToolTip="{loc:Tr Settings_PlayersBeforeItFiresTip}" />
                             <TextBox Grid.Column="1" Text="{Binding CalloutMinPlayers, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Margin="0,2" />
-                            <TextBlock Grid.Row="1" Text="Cooldown per effect (s)" Style="{StaticResource MutedText}" VerticalAlignment="Center"
-                                       ToolTip="Quiet period after a callout for that effect — one stun wave is one call, not a stream." />
+                            <TextBlock Grid.Row="1" Text="{loc:Tr Settings_CooldownPerEffect}" Style="{StaticResource MutedText}" VerticalAlignment="Center"
+                                       ToolTip="{loc:Tr Settings_CooldownPerEffectTip}" />
                             <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding CalloutCooldown, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Margin="0,2" />
                         </Grid>
                     </StackPanel>
@@ -86,7 +87,19 @@
 
                 <Border Style="{StaticResource Card}" Margin="0,0,0,12" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock Text="About" Style="{StaticResource SectionLabel}" />
+                        <TextBlock Text="{loc:Tr Settings_LanguageCard}" Style="{StaticResource SectionLabel}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <ComboBox ItemsSource="{Binding LanguageChoices}" SelectedItem="{Binding SelectedLanguage}"
+                                      DisplayMemberPath="DisplayName" MinWidth="160" FontSize="13" />
+                            <TextBlock Text="{Binding LanguageStatus}" Style="{StaticResource MutedText}" FontSize="12"
+                                       VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" MaxWidth="220" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Margin="0,0,0,12" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="{loc:Tr Settings_About}" Style="{StaticResource SectionLabel}" />
                         <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                             <TextBlock Text="{Binding VersionLabel, Mode=OneWay}" Foreground="{StaticResource TextBrush}" FontSize="13" />
                             <TextBlock Text="{Binding UpdateStatus}" Style="{StaticResource MutedText}" FontSize="12"
@@ -99,25 +112,25 @@
                 <StackPanel Width="430" Margin="0,0,12,0">
                 <Border Style="{StaticResource Card}" Margin="0,0,0,12" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock Text="Parse uploads" Style="{StaticResource SectionLabel}" />
-                        <CheckBox Content="Upload finished fights to EQ2Lexicon" IsChecked="{Binding UploadEnabled}"
+                        <TextBlock Text="{loc:Tr Settings_ParseUploads}" Style="{StaticResource SectionLabel}" />
+                        <CheckBox Content="{loc:Tr Settings_UploadFinishedFights}" IsChecked="{Binding UploadEnabled}"
                                   FontSize="12" Margin="0,8,0,0"
-                                  ToolTip="Every finished fight uploads in the background. The site keeps named (boss) kills for parses and rankings; trash fights are cleared automatically after a few days.&#10;Needs a saved API token below." />
+                                  ToolTip="{loc:Tr Settings_UploadFinishedFightsTip}" />
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="80" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="API token" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                            <TextBlock Text="{loc:Tr Settings_ApiToken}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
                             <PasswordBox Grid.Column="1" x:Name="UploadTokenBox" Margin="0,2" FontSize="13" />
                         </Grid>
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                            <Button Content="Save token" Style="{StaticResource GoldButton}" Padding="12,3"
+                            <Button Content="{loc:Tr Settings_SaveToken}" Style="{StaticResource GoldButton}" Padding="12,3"
                                     Command="{Binding SaveUploadTokenCommand}"
                                     CommandParameter="{Binding ElementName=UploadTokenBox}" />
-                            <Button Content="Test" Style="{StaticResource GoldButton}" Padding="12,3" Margin="8,0,0,0"
+                            <Button Content="{loc:Tr Settings_Test}" Style="{StaticResource GoldButton}" Padding="12,3" Margin="8,0,0,0"
                                     Command="{Binding TestUploadTokenCommand}" />
-                            <Button Content="Clear" Style="{StaticResource GoldButton}" Padding="12,3" Margin="8,0,0,0"
+                            <Button Content="{loc:Tr Settings_Clear}" Style="{StaticResource GoldButton}" Padding="12,3" Margin="8,0,0,0"
                                     Command="{Binding ClearUploadTokenCommand}" />
                             <TextBlock Text="{Binding UploadTokenState}" Style="{StaticResource MutedText}" FontSize="12"
                                        VerticalAlignment="Center" Margin="12,0,0,0" />
@@ -125,13 +138,13 @@
                         <TextBlock Text="{Binding UploadStatus}" Foreground="{StaticResource GoldBrush}" FontSize="12"
                                    TextWrapping="Wrap" Margin="0,6,0,0" />
                         <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
-                                   Text="Create a token on the EQ2Lexicon site (sign in with Discord → account menu → API tokens), paste it here, Save, then Test. It's stored encrypted for this Windows user only. You can also right-click any fight in the tree to upload it on demand." />
+                                   Text="{loc:Tr Settings_ApiTokenHint}" />
                     </StackPanel>
                 </Border>
 
                 <Border Style="{StaticResource Card}" Margin="0,0,0,12" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock Text="Alerts" Style="{StaticResource SectionLabel}" />
+                        <TextBlock Text="{loc:Tr Settings_Alerts}" Style="{StaticResource SectionLabel}" />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="130" />
@@ -145,38 +158,38 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
-                            <TextBlock Text="Voice" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                            <TextBlock Text="{loc:Tr Settings_Voice}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
                             <ComboBox Grid.Column="1" ItemsSource="{Binding Voices}" SelectedItem="{Binding SelectedVoice}"
                                       DisplayMemberPath="DisplayName" Margin="0,2" FontSize="13" />
-                            <Button Grid.Column="2" Content="Test" Style="{StaticResource GoldButton}" Margin="8,2,0,2"
+                            <Button Grid.Column="2" Content="{loc:Tr Settings_Test}" Style="{StaticResource GoldButton}" Margin="8,2,0,2"
                                     Padding="12,3" Command="{Binding TestVoiceCommand}" />
 
                             <TextBlock Grid.Row="1" Style="{StaticResource MutedText}" VerticalAlignment="Center">
-                                <Run Text="Rate " /><Run Text="{Binding TtsRateLabel, Mode=OneWay}" Foreground="{StaticResource GoldBrush}" />
+                                <Run Text="{loc:Tr Settings_Rate}" /><Run Text="{Binding TtsRateLabel, Mode=OneWay}" Foreground="{StaticResource GoldBrush}" />
                             </TextBlock>
                             <Slider Grid.Row="1" Grid.Column="1" Minimum="0.5" Maximum="2" TickFrequency="0.1"
                                     IsSnapToTickEnabled="True" Value="{Binding TtsRate}" VerticalAlignment="Center" Margin="0,6" />
 
                             <TextBlock Grid.Row="2" Style="{StaticResource MutedText}" VerticalAlignment="Center"
-                                       ToolTip="Neural voices only — drags the pitch down for a deeper, bigger voice.">
-                                <Run Text="Depth " /><Run Text="{Binding VoiceDepthLabel, Mode=OneWay}" Foreground="{StaticResource GoldBrush}" />
+                                       ToolTip="{loc:Tr Settings_VoiceDepthTip}">
+                                <Run Text="{loc:Tr Settings_Depth}" /><Run Text="{Binding VoiceDepthLabel, Mode=OneWay}" Foreground="{StaticResource GoldBrush}" />
                             </TextBlock>
                             <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="0.3" TickFrequency="0.05"
                                     IsSnapToTickEnabled="True" Value="{Binding VoiceDepthAmount}" VerticalAlignment="Center" Margin="0,6"
-                                    ToolTip="Neural voices only — drags the pitch down for a deeper, bigger voice." />
+                                    ToolTip="{loc:Tr Settings_VoiceDepthTip}" />
 
                             <TextBlock Grid.Row="3" Style="{StaticResource MutedText}" VerticalAlignment="Center">
-                                <Run Text="Volume " /><Run Text="{Binding AlertVolumeLabel, Mode=OneWay}" Foreground="{StaticResource GoldBrush}" />
+                                <Run Text="{loc:Tr Settings_Volume}" /><Run Text="{Binding AlertVolumeLabel, Mode=OneWay}" Foreground="{StaticResource GoldBrush}" />
                             </TextBlock>
                             <Slider Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="1" TickFrequency="0.05"
                                     IsSnapToTickEnabled="True" Value="{Binding AlertVolume}" VerticalAlignment="Center" Margin="0,6" />
                             <Button Grid.Row="3" Grid.Column="2" Content="♪" Style="{StaticResource GoldButton}" Margin="8,2,0,2"
-                                    Padding="12,3" ToolTip="Test the chime" Command="{Binding TestChimeCommand}" />
+                                    Padding="12,3" ToolTip="{loc:Tr Settings_TestChimeTip}" Command="{Binding TestChimeCommand}" />
                         </Grid>
                         <TextBlock Text="{Binding VoiceStatus}" Foreground="{StaticResource GoldBrush}" FontSize="12"
                                    TextWrapping="Wrap" Margin="0,4,0,0" />
 
-                        <TextBlock Text="Voice packs" Style="{StaticResource SectionLabel}" Margin="0,14,0,4" />
+                        <TextBlock Text="{loc:Tr Settings_VoicePacks}" Style="{StaticResource SectionLabel}" Margin="0,14,0,4" />
                         <ItemsControl ItemsSource="{Binding PackRows}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -200,7 +213,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"
-                                   Text="Neural voices sound dramatically better than the built-in Windows voices below them in the list. Each pack downloads once, works fully offline, and can be removed here any time to reclaim the disk space." />
+                                   Text="{loc:Tr Settings_VoicePacksHint}" />
                     </StackPanel>
                 </Border>
                 </StackPanel>

@@ -1,6 +1,7 @@
 <UserControl x:Class="EQ2Parser.App.Views.TimerPanelContent"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:EQ2Parser.App.Localization"
              xmlns:v="clr-namespace:EQ2Parser.App.Views">
     <StackPanel>
         <!-- Radial timers (RadialDisplay definitions) wrap above the bars. -->
@@ -176,7 +177,7 @@
                                      recast is real, not mis-curated. -->
                                 <TextBlock Text="{Binding SwipeText}" FontSize="10" FontWeight="Bold" FontFamily="Segoe UI"
                                            Foreground="#FBBF24" VerticalAlignment="Center" Margin="5,0,0,0"
-                                           ToolTip="Stretched by a recast debuff (e.g. Traumatic Swipe)">
+                                           ToolTip="{loc:Tr Timers_SwipeTip}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
                                             <Style.Triggers>
@@ -212,7 +213,7 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <TextBlock x:Name="EmptyHint" Text="Timer bars appear here when a timer fires."
+        <TextBlock x:Name="EmptyHint" Text="{loc:Tr TimerPanel_EmptyHint}"
                    FontSize="11" Foreground="#8B90AB" Margin="1,2" FontFamily="Segoe UI" />
     </StackPanel>
 </UserControl>

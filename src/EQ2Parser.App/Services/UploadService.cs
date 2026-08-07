@@ -1,3 +1,4 @@
+using EQ2Parser.App.Localization;
 using EQ2Parser.Core.Combat;
 using EQ2Parser.Core.Upload;
 
@@ -52,7 +53,7 @@ public sealed class UploadService : IDisposable
     private Task<UploadResult> SendAsync(LexiconPayload payload, CancellationToken ct) =>
         _client is { } client
             ? client.UploadAsync(payload, ct)
-            : Task.FromResult(new UploadResult(false, 0, "No API token configured."));
+            : Task.FromResult(new UploadResult(false, 0, Loc.Get("UploadSvc_NoTokenConfigured")));
 
     public void Configure(string baseUrl, string? apiToken, bool enabled)
     {
@@ -63,7 +64,7 @@ public sealed class UploadService : IDisposable
         _client = null;
         if (string.IsNullOrWhiteSpace(apiToken))
         {
-            Set(enabled ? "no API token — save one below to start uploading" : "");
+            Set(enabled ? Loc.Get("UploadSvc_NoTokenSaveBelow") : "");
             return;
         }
         if (LexiconUploadClient.UrlProblem(baseUrl) is { } problem)
@@ -74,7 +75,7 @@ public sealed class UploadService : IDisposable
         _client = new LexiconUploadClient(baseUrl, apiToken);
         _queue.ResetAuthPause();
         if (enabled)
-            Set("ready — finished fights upload automatically");
+            Set(Loc.Get("UploadSvc_Ready"));
     }
 
     /// <summary>Engine EncounterEnded handler — never blocks (pump thread,
@@ -95,7 +96,7 @@ public sealed class UploadService : IDisposable
     {
         if (!Configured)
         {
-            Set("add your EQ2Lexicon API token in Settings to upload fights");
+            Set(Loc.Get("UploadSvc_AddTokenInSettings"));
             return;
         }
         _queue.ResetAuthPause();
@@ -110,15 +111,15 @@ public sealed class UploadService : IDisposable
     public async Task<string> TestTokenAsync()
     {
         if (_client is not { } client)
-            return "No API token saved.";
+            return Loc.Get("UploadSvc_NoTokenSaved");
         var result = await client.WhoAmIAsync().ConfigureAwait(false);
         if (!result.Success)
             return result.StatusCode == 0
                 ? result.Message
-                : $"Token rejected ({result.StatusCode}): {result.Message}";
+                : Loc.Format("UploadSvc_TokenRejected", result.StatusCode, result.Message);
         _queue.ResetAuthPause();
         var name = ExtractDiscordName(result.Body);
-        return name is null ? "Token OK." : $"Token OK — signed in as {name}.";
+        return name is null ? Loc.Get("UploadSvc_TokenOk") : Loc.Format("UploadSvc_TokenOkSignedIn", name);
     }
 
     private static string? ExtractDiscordName(string body)
