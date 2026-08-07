@@ -12,7 +12,10 @@ namespace EQ2Parser.App.Services;
 ///
 /// UI-thread exceptions are logged and swallowed — mid-raid, a broken
 /// button beats a dead parser (ACT behaves the same way). Genuinely fatal
-/// exceptions still take the process down, but log on the way out.
+/// exceptions still take the process down, but log on the way out. The
+/// exception to the swallow rule: five UI exceptions inside a minute is a
+/// crash LOOP (a broken template re-throws per frame) — the app exits
+/// hard with a crash-loop report instead of wedging unclosable.
 /// </summary>
 public static class CrashLog
 {
@@ -22,10 +25,36 @@ public static class CrashLog
     private static DateTime _lastWrite;
     private static DateTime _lastDialog;
 
+    /// <summary>UI-thread exceptions inside this window count toward the
+    /// crash-loop verdict. A broken template re-throws every render pass,
+    /// so a genuine loop trips this in a second or two; five distinct
+    /// one-off errors inside a minute is a session that's beyond saving
+    /// anyway.</summary>
+    private static readonly Queue<DateTime> _uiStrikes = new();
+    private const int LoopStrikes = 5;
+    private static readonly TimeSpan LoopWindow = TimeSpan.FromSeconds(60);
+
     public static void Install(Application app)
     {
         app.DispatcherUnhandledException += (_, e) =>
         {
+            // Swallowing is only safe for one-off errors. A RECURRING
+            // exception (broken template, poisoned layout) re-fires every
+            // frame — swallowing again wedges the app in an unclosable
+            // dialog/log loop. Detect the repeat and fail fast with
+            // evidence instead.
+            var now = DateTime.UtcNow;
+            _uiStrikes.Enqueue(now);
+            while (_uiStrikes.Count > 0 && now - _uiStrikes.Peek() > LoopWindow)
+                _uiStrikes.Dequeue();
+            if (_uiStrikes.Count >= LoopStrikes)
+            {
+                var loopPath = Write("crash-loop", e.Exception);
+                _lastDialog = DateTime.MinValue; // the last words always show
+                ShowDialog("EQ2Parser hit the same error repeatedly and has to close.", e.Exception, loopPath);
+                Environment.Exit(70);
+                return;
+            }
             var path = Write("ui-thread", e.Exception);
             // Handled BEFORE the dialog so a MessageBox failure can't re-crash.
             e.Handled = true;
@@ -55,10 +84,10 @@ public static class CrashLog
         try
         {
             var now = DateTime.Now;
-            // The rate limit tames exception storms — but the FATAL report
-            // is the process's last words and must always land, even when a
-            // storm preceded the crash.
-            if (kind != "fatal" && now - _lastWrite < TimeSpan.FromSeconds(5))
+            // The rate limit tames exception storms — but the FATAL and
+            // CRASH-LOOP reports are the process's last words and must
+            // always land, even when a storm preceded them.
+            if (kind is not ("fatal" or "crash-loop") && now - _lastWrite < TimeSpan.FromSeconds(5))
                 return null;
             _lastWrite = now;
             System.IO.Directory.CreateDirectory(Directory);
