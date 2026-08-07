@@ -416,13 +416,25 @@ public sealed partial class SettingsViewModel : ObservableObject
     private void TestVoice() =>
         // A Russian model reading the English phrase comes out garbled and
         // reads as a broken install — test it in its own language.
-        _manager.Audio.Speak(SelectedVoice?.Id?.StartsWith("piper:ru_RU", StringComparison.Ordinal) == true
+        // SpeakTest (not Speak): re-clicks while the phrase is still
+        // playing are ignored instead of queueing dozens of repeats.
+        _manager.Audio.SpeakTest(SelectedVoice?.Id?.StartsWith("piper:ru_RU", StringComparison.Ordinal) == true
             ? "Огненный круг — отойдите от рейда."
             : "Fire circle — move out of the raid.");
 
+    private long _lastChimeMs;
+
     [RelayCommand]
-    private void TestChime() =>
+    private void TestChime()
+    {
+        // Chimes overlap by design (trigger chimes must), so rate-limit
+        // just the TEST button to one chime per ring.
+        var now = Environment.TickCount64;
+        if (now - _lastChimeMs < 600)
+            return;
+        _lastChimeMs = now;
         _manager.Audio.PlayChime();
+    }
 
     [RelayCommand]
     private void Save()

@@ -111,6 +111,41 @@ public sealed class AlertAudioService : IDisposable
         });
     }
 
+    /// <summary>Guard for the Settings Test button: 0 = idle, else the
+    /// tick until which re-clicks are ignored. Cleared the moment playback
+    /// finishes; the ceiling only matters if the job is dropped from a
+    /// full queue mid-raid, so a stuck guard can't dead the button.</summary>
+    private long _testGuardUntilMs;
+
+    /// <summary>Speak for the Test button — clicks while the previous test
+    /// phrase is still synthesizing or playing are IGNORED, not queued.
+    /// Mashing Test used to stack the channel and play dozens of phrases
+    /// back to back.</summary>
+    public void SpeakTest(string text)
+    {
+        if (text.Length == 0)
+            return;
+        var now = Environment.TickCount64;
+        if (Interlocked.Read(ref _testGuardUntilMs) > now)
+            return;
+        Interlocked.Exchange(ref _testGuardUntilMs, now + 15_000);
+        var accepted = _speech.Writer.TryWrite(async ct =>
+        {
+            try
+            {
+                var wav = await SynthesizeAsync(text);
+                if (wav is not null)
+                    await PlayBytesAsync(wav, ct);
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _testGuardUntilMs, 0);
+            }
+        });
+        if (!accepted)
+            Interlocked.Exchange(ref _testGuardUntilMs, 0);
+    }
+
     /// <summary>The soft-bell alert. Fire-and-forget, overlaps speech.</summary>
     public void PlayChime() =>
         _ = PlayBytesAsync(_chime, _cts.Token);
