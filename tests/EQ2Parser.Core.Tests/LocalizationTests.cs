@@ -1,3 +1,4 @@
+using System.Reflection.Metadata;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -92,6 +93,39 @@ public class LocalizationTests
 
     private static HashSet<string> Placeholders(string s) =>
         [.. Regex.Matches(s, @"\{(\d+)[^}]*\}").Select(m => m.Groups[1].Value)];
+
+    /// <summary>The v0.2.5 regression: MSBuild's AssignCulture read the
+    /// ".de"/".en" filename segment as a culture suffix and routed every
+    /// dictionary into satellite assemblies — the app shipped rendering
+    /// raw keys. Reads the built dll's manifest via metadata (no load) and
+    /// requires every dictionary in the MAIN assembly. Skips when the App
+    /// hasn't been built (test-only runs).</summary>
+    [Fact]
+    public void Dictionaries_Are_Embedded_In_The_Built_App_Assembly()
+    {
+        var binRoot = Path.Combine(AppDir(), "bin");
+        var dll = new[] { "Release", "Debug" }
+            .SelectMany(cfg =>
+            {
+                var dir = Path.Combine(binRoot, cfg);
+                return Directory.Exists(dir)
+                    ? Directory.EnumerateFiles(dir, "EQ2Parser.App.dll", SearchOption.AllDirectories)
+                    : [];
+            })
+            .OrderByDescending(File.GetLastWriteTimeUtc)
+            .FirstOrDefault();
+        if (dll is null)
+            return; // app never built in this checkout — nothing to verify
+
+        using var stream = File.OpenRead(dll);
+        using var pe = new System.Reflection.PortableExecutable.PEReader(stream);
+        var md = pe.GetMetadataReader();
+        var names = md.ManifestResources
+            .Select(h => md.GetString(md.GetManifestResource(h).Name))
+            .ToList();
+        foreach (var code in LanguageCodes)
+            Assert.Contains($"EQ2Parser.App.Localization.strings.{code}.json", names);
+    }
 
     // ── OS-language defaulting (the out-of-box rule) ───────────────────────
 

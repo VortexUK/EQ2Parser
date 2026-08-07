@@ -34,7 +34,14 @@
   <ItemGroup>
     <Resource Include="Fonts\*.ttf" />
     <Resource Include="Assets\EQ2Parser.ico" />
-    <EmbeddedResource Include="Localization\strings.*.json" />
+    <!-- WithCulture=false is load-bearing: MSBuild's AssignCulture reads
+         the ".de"/".en" pre-extension segment as a CULTURE suffix and
+         routes the files into satellite assemblies — the main assembly
+         ships with EMPTY dictionaries and every label renders as its raw
+         key (the v0.2.5 regression). Verify with
+         GetManifestResourceNames after touching this. -->
+    <None Remove="Localization\strings.*.json" />
+    <EmbeddedResource Include="Localization\strings.*.json" WithCulture="false" />
   </ItemGroup>
 
 </Project>
