@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using EQ2Parser.App.Localization;
 using EQ2Parser.App.Services;
 
 namespace EQ2Parser.App.ViewModels;
@@ -98,27 +99,27 @@ public static class ColumnSets
     /// else triggers the extended swing-bucket walk.</summary>
     public static ColumnSetVm Encounter(SourceManager manager) => new(
         [
-            new("Class", "Class", true),
-            new("Time", "Time", true),
-            new("Damage", "Damage", true),
-            new("Percent", "% share", true),
-            new("Dps", "EncDPS", true),
-            new("Hps", "EncHPS", true),
-            new("Heals", "Heals (total)", false),
-            new("CritHeals", "Crit heals", false),
-            new("Cures", "Cures", false),
-            new("PowerDrain", "Power drain", false),
-            new("PowerRep", "Power replenish", false),
-            new("Swings", "Swings", false),
-            new("Hits", "Hits", false),
-            new("Crits", "Crit hits", false),
-            new("Misses", "Misses", false),
-            new("Avoids", "Avoids", false),
-            new("ToHit", "ToHit %", false),
-            new("CritPct", "Crit %", false),
-            new("Taken", "Damage taken", true),
-            new("HealsTaken", "Healing taken", false),
-            new("Deaths", "Deaths", true),
+            new("Class", Loc.Get("Cols_Class"), true),
+            new("Time", Loc.Get("Cols_Time"), true),
+            new("Damage", Loc.Get("Cols_Damage"), true),
+            new("Percent", Loc.Get("Cols_Percent"), true),
+            new("Dps", Loc.Get("Cols_Dps"), true),
+            new("Hps", Loc.Get("Cols_Hps"), true),
+            new("Heals", Loc.Get("Cols_Heals"), false),
+            new("CritHeals", Loc.Get("Cols_CritHeals"), false),
+            new("Cures", Loc.Get("Cols_Cures"), false),
+            new("PowerDrain", Loc.Get("Cols_PowerDrain"), false),
+            new("PowerRep", Loc.Get("Cols_PowerRep"), false),
+            new("Swings", Loc.Get("Cols_Swings"), false),
+            new("Hits", Loc.Get("Cols_Hits"), false),
+            new("Crits", Loc.Get("Cols_Crits"), false),
+            new("Misses", Loc.Get("Cols_Misses"), false),
+            new("Avoids", Loc.Get("Cols_Avoids"), false),
+            new("ToHit", Loc.Get("Cols_ToHit"), false),
+            new("CritPct", Loc.Get("Cols_CritPct"), false),
+            new("Taken", Loc.Get("Cols_Taken"), true),
+            new("HealsTaken", Loc.Get("Cols_HealsTaken"), false),
+            new("Deaths", Loc.Get("Cols_Deaths"), true),
         ],
         ["Class", "Time", "Damage", "Percent", "Dps", "Hps", "Taken", "Deaths"],
         manager.Settings.EncounterColumns,
@@ -134,11 +135,11 @@ public static class ColumnSets
     {
         List<ColumnToggle> toggles =
         [
-            new("Time", "Time", true),
-            new("Result", "Result", true),
-            new("Crit", "Crit", true),
-            new("Special", "Special", true),
-            new("Type", "Type", true),
+            new("Time", Loc.Get("Cols_Time"), true),
+            new("Result", Loc.Get("Cols_Result"), true),
+            new("Crit", Loc.Get("Cols_Crit"), true),
+            new("Special", Loc.Get("Cols_Special"), true),
+            new("Type", Loc.Get("Cols_Type"), true),
         ];
         return new(
             toggles,
@@ -157,17 +158,17 @@ public static class ColumnSets
     {
         List<ColumnToggle> toggles =
         [
-            new("Damage", "Damage", true),
-            new("Dps", "EncDPS", true),
-            new("Types", "Type", true),
-            new("Source", "Source", true),
-            new("Swings", "Swings", true),
-            new("Freq", "Frequency", true),
-            new("Hits", "Hits", true),
-            new("CritPct", "Crit %", true),
-            new("Avg", "Average", true),
-            new("Max", "Max hit", true),
-            new("Percent", "% share", true),
+            new("Damage", Loc.Get("Cols_Damage"), true),
+            new("Dps", Loc.Get("Cols_Dps"), true),
+            new("Types", Loc.Get("Cols_Type"), true),
+            new("Source", Loc.Get("Cols_Source"), true),
+            new("Swings", Loc.Get("Cols_Swings"), true),
+            new("Freq", Loc.Get("Cols_Freq"), true),
+            new("Hits", Loc.Get("Cols_Hits"), true),
+            new("CritPct", Loc.Get("Cols_CritPct"), true),
+            new("Avg", Loc.Get("Cols_Avg"), true),
+            new("Max", Loc.Get("Cols_Max"), true),
+            new("Percent", Loc.Get("Cols_Percent"), true),
         ];
         return new(
             toggles,

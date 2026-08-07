@@ -229,7 +229,13 @@
                         <Setter Property="ContextMenu">
                             <Setter.Value>
                                 <ContextMenu>
-                                    <MenuItem Header="{loc:Tr Main_ExportToClipboard}"
+                                    <MenuItem Header="{loc:Tr Main_CopyForDiscord}"
+                                              Command="{Binding PlacementTarget.Tag.CopyDiscordCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <MenuItem Header="{loc:Tr Main_CustomExport}"
+                                              Command="{Binding PlacementTarget.Tag.OpenExportCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <MenuItem Header="{loc:Tr Main_CopySummaryLine}"
                                               Command="{Binding PlacementTarget.Tag.CopyNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                     <MenuItem Header="{loc:Tr Main_ViewLog}"

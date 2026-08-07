@@ -90,6 +90,10 @@ public sealed record AppSettings
     /// Null = never customised, use defaults.</summary>
     public List<string>? AttackTypeColumns { get; init; }
 
+    /// <summary>Column keys for the Discord clipboard export (null = the
+    /// default set). Order follows the export catalogue, not this list.</summary>
+    public List<string>? ExportColumns { get; init; }
+
     /// <summary>Where the Lexicon trigger/timer pack syncs from. Point at a
     /// local dev server to test curation before it ships.</summary>
     public string LexiconBaseUrl { get; init; } = "https://varsoon.eq2lexicon.com";
