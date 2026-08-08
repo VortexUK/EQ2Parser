@@ -10,6 +10,14 @@ public sealed class Combatant(string name)
     /// <summary>Pseudo-ability name for kill/death bookkeeping swings.</summary>
     public const string KillingAbility = "Killing";
 
+    /// <summary>The anonymous pseudo-combatant (dumbfire/ground-effect
+    /// damage, unattributed deaths). Bookkeeping only — never an ally,
+    /// never a correlation witness.</summary>
+    public const string UnknownName = "Unknown";
+
+    /// <summary>Combatant-dictionary key of <see cref="UnknownName"/>.</summary>
+    public const string UnknownKey = "UNKNOWN";
+
     private readonly Dictionary<string, Bucket> _outgoing = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Bucket> _incoming = new(StringComparer.Ordinal);
 
@@ -74,7 +82,7 @@ public sealed class Combatant(string name)
     private void ModAlly(string otherName, int mod)
     {
         // "Unknown" (either side) never participates in ally bookkeeping.
-        if (mod == 0 || Name == "Unknown" || otherName == "Unknown")
+        if (mod == 0 || Name == UnknownName || otherName == UnknownName)
             return;
         var key = otherName.ToUpperInvariant();
         if (key == Key)

@@ -146,9 +146,13 @@ public sealed class AlertAudioService : IDisposable
             Interlocked.Exchange(ref _testGuardUntilMs, 0);
     }
 
-    /// <summary>The soft-bell alert. Fire-and-forget, overlaps speech.</summary>
+    /// <summary>The soft-bell alert. Fire-and-forget, overlaps speech.
+    /// Offloaded like <see cref="PlayFile"/>: PlayBytesAsync runs
+    /// synchronously up to its first await, and callers include the log
+    /// pump under the engine lock — the WaveOut device open (up to ~1 s on
+    /// a sleeping sink) must never run there.</summary>
     public void PlayChime() =>
-        _ = PlayBytesAsync(_chime, _cts.Token);
+        _ = Task.Run(() => PlayBytesAsync(_chime, _cts.Token));
 
     /// <summary>Release the loaded neural model so its pack can be removed
     /// from disk (it reloads on the next phrase if still installed).</summary>

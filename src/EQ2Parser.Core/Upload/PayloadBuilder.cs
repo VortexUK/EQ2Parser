@@ -120,7 +120,7 @@ public static class PayloadBuilder
             }
         }
 
-        var alliedDeaths = allies.Where(a => !a.Name.Contains(' ')).Sum(a => a.Deaths);
+        var alliedDeaths = allies.Where(a => Swing.LooksLikePlayer(a.Name)).Sum(a => a.Deaths);
         var alliedKills = allies.Sum(a => a.GetKills(isAlly: true));
 
         return new LexiconPayload

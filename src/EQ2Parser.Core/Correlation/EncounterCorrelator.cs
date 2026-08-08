@@ -123,11 +123,14 @@ public sealed class EncounterCorrelator(CorrelatorOptions? options = null)
             return false;
 
         // Shared non-owner combatant — the mob(s) both logs witnessed.
+        // "UNKNOWN" is bookkeeping, not a witness: dumbfire/ground-effect
+        // damage puts it in almost every fight, so two unrelated same-zone
+        // pulls would otherwise merge through it.
         foreach (var source in candidate.Sources)
         {
             foreach (var key in encounter.Combatants.Keys)
             {
-                if (_ownerKeys.Contains(key))
+                if (_ownerKeys.Contains(key) || key == Combatant.UnknownKey)
                     continue;
                 if (source.Combatants.ContainsKey(key))
                     return true;

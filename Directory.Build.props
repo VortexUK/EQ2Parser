@@ -5,8 +5,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- Single version source for the app + Velopack releases. -->
-    <Version>0.0.1</Version>
+    <!-- Version is injected at publish time (-p:Version=X.Y.Z by
+         scripts/release.ps1 and .github/workflows/release.yml); dev builds
+         use the SDK default. Do not pin a version here — it is never what
+         ships and only misleads. -->
     <Authors>VortexUK</Authors>
     <Product>EQ2Parser</Product>
     <RepositoryUrl>https://github.com/VortexUK/EQ2Parser</RepositoryUrl>

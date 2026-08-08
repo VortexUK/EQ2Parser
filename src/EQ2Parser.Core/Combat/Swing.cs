@@ -58,5 +58,5 @@ public sealed record Swing(
     /// <summary>The name heuristic ACT uses everywhere: a name containing a
     /// space is an NPC/pet, not a player.</summary>
     public static bool LooksLikePlayer(string name) =>
-        name.Length > 0 && !name.Contains(' ') && name != "Unknown";
+        name.Length > 0 && !name.Contains(' ') && name != Combatant.UnknownName;
 }

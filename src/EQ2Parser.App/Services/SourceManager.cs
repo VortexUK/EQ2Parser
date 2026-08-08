@@ -350,10 +350,11 @@ public sealed class SourceManager : IDisposable
         Settings.Save();
     }
 
-    public void Dispose()
+    /// <summary>Stop the folder watcher and join it. Idempotent — called
+    /// before <see cref="PersistSources"/> on exit (a discovery racing the
+    /// persist would lose its resume position) and again by Dispose.</summary>
+    public void StopFolderWatch()
     {
-        // Stop the folder watcher FIRST and join it — it could otherwise
-        // Add a source concurrently with (or after) this teardown.
         _watchCts.Cancel();
         try
         {
@@ -363,6 +364,13 @@ public sealed class SourceManager : IDisposable
         {
             // Cancellation surfacing on shutdown — nothing to report.
         }
+    }
+
+    public void Dispose()
+    {
+        // Stop the folder watcher FIRST and join it — it could otherwise
+        // Add a source concurrently with (or after) this teardown.
+        StopFolderWatch();
         foreach (var source in Sources)
             source.Dispose();
         History.Dispose();

@@ -66,8 +66,14 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _focusWatcher?.Dispose();
+        // Join the folder watcher BEFORE persisting — a source discovered
+        // mid-persist would lose its resume position.
+        _manager?.StopFolderWatch();
         _manager?.PersistSources();
         _manager?.Dispose();
+        // Last: a settings change made within the debounce window of
+        // quitting still reaches disk.
+        EQ2Parser.Core.Persistence.PersistedJsonFile.FlushPending();
         base.OnExit(e);
     }
 }

@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using EQ2Parser.Core.Persistence;
 
 namespace EQ2Parser.App.Services;
 

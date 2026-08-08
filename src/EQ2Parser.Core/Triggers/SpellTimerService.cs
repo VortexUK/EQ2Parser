@@ -54,9 +54,6 @@ public sealed class TimerFrame(TimerDefinition definition, string combatant)
     /// the sliding anchor of the absorb window.</summary>
     public DateTimeOffset LastNotify { get; internal set; } = DateTimeOffset.MinValue;
 
-    public DateTimeOffset NewestStart =>
-        Timers.Count == 0 ? DateTimeOffset.MinValue : Timers.Max(t => t.Start);
-
     public bool HasRunningMaster(DateTimeOffset now) =>
         Timers.Any(t => t.IsMaster && t.SecondsLeft(now) > 0);
 }

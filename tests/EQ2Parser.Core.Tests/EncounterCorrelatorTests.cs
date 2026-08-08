@@ -171,6 +171,28 @@ public class EncounterCorrelatorTests
     }
 
     [Fact]
+    public void Anonymous_Unknown_Damage_Is_Not_A_Merge_Witness()
+    {
+        // Dumbfires/ground effects attribute to "Unknown" in nearly every
+        // fight; it must never satisfy the shared-combatant test or two
+        // unrelated same-zone pulls merge through it.
+        var correlator = new EncounterCorrelator();
+        var a = Engine("log-a", "Alice");
+        var b = Engine("log-b", "Bobette");
+        correlator.Attach(a);
+        correlator.Attach(b);
+
+        Hit(a, 0, "Alice", "a gnoll", 100);
+        Hit(a, 2, "Unknown", "Alice", 25); // ground effect on Alice
+        Hit(b, 1, "Bobette", "a snake", 50);
+        Hit(b, 3, "Unknown", "Bobette", 25); // unrelated ground effect
+        a.EndCombat();
+        b.EndCombat();
+
+        Assert.Equal(2, correlator.History.Count);
+    }
+
+    [Fact]
     public void Primary_Is_The_Longest_Source_And_Supplies_The_Title()
     {
         var correlator = new EncounterCorrelator();
