@@ -1,5 +1,9 @@
 # EQ2Parser
 
+[![CI](https://github.com/VortexUK/EQ2Parser/actions/workflows/ci.yml/badge.svg)](https://github.com/VortexUK/EQ2Parser/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/VortexUK/EQ2Parser/actions/workflows/codeql.yml/badge.svg)](https://github.com/VortexUK/EQ2Parser/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A modern, native Windows replacement for Advanced Combat Tracker, purpose-built
 for EverQuest II (TLE) raiding and the [EQ2 Lexicon](https://eq2lexicon.com)
 ecosystem.
@@ -56,3 +60,13 @@ dotnet test
 ```
 
 Requires the .NET 10 SDK (pinned via `global.json`).
+
+## Contributing & Security
+
+- Dev setup, the gates, and the PR checklist live in [CONTRIBUTING.md](CONTRIBUTING.md) — including the non-negotiable cleanroom rule.
+- Architecture and key decisions are documented in [CLAUDE.md](CLAUDE.md) and [docs/act-behavior.md](docs/act-behavior.md).
+- Found a security issue? See [SECURITY.md](SECURITY.md) — please report privately, not via public issues.
+
+## License
+
+[MIT](LICENSE).

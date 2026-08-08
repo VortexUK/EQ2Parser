@@ -11,6 +11,11 @@ on:
 jobs:
   analyze:
     name: Analyze C#
+    # Code-scanning upload needs Advanced Security on PRIVATE repos — skip
+    # cleanly until the repo is public (verified: the analyze step is the
+    # only failure while private). Delete this guard never; it no-ops once
+    # public.
+    if: ${{ !github.event.repository.private }}
     # Windows runner + manual build: the App project targets
     # net10.0-windows/WPF, which build-mode none extraction degrades on.
     runs-on: windows-latest

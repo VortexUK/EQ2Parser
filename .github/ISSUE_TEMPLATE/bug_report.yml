@@ -1,0 +1,79 @@
+name: Bug report
+description: The app crashes, parses wrong numbers, or misbehaves.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. A complete report makes it much more likely to get fixed quickly.
+
+        **Security issue?** Don't file it here — use [GitHub Security Advisories](https://github.com/VortexUK/EQ2Parser/security/advisories/new) instead.
+
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown in Settings (or the installer name, e.g. v0.2.8).
+      placeholder: "v0.2.8"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - Parsing (wrong numbers / missed lines / encounters split or merged wrongly)
+        - Triggers / spell timers
+        - Overlays
+        - Upload to EQ2Lexicon
+        - TTS / sounds
+        - App crash or freeze
+        - Settings / import / other UI
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you saw, and what you expected instead.
+      placeholder: |
+        1. Raided ToNT with two boxed logs tailing
+        2. Expected the Overseer fight to merge into one encounter
+        3. Got two separate fights in the tree instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: log-excerpt
+    attributes:
+      label: Log excerpt (parsing bugs)
+      description: |
+        For wrong-numbers / missed-lines bugs, paste the relevant raw lines from your
+        `logs/<server>/eq2log_<character>.txt` — they're the whole bug report for a parser.
+        A comparison against ACT's numbers for the same fight is even better.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: crash-log
+    attributes:
+      label: Crash log (crashes only)
+      description: |
+        Crashes write `crash-*.txt` into `%LOCALAPPDATA%\EQ2Parser` — paste the newest one.
+        These contain no tokens, but skim before posting anyway.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: environment
+    attributes:
+      label: Windows version / anything unusual
+      description: e.g. "Windows 11 24H2, logs on a network drive, 150% display scaling".
+      placeholder: "Windows 11, logs local, single monitor"
+    validations:
+      required: false
