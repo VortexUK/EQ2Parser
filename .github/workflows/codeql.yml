@@ -1,0 +1,38 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1" # weekly — catches new queries against unchanged code
+
+jobs:
+  analyze:
+    name: Analyze C#
+    # Windows runner + manual build: the App project targets
+    # net10.0-windows/WPF, which build-mode none extraction degrades on.
+    runs-on: windows-latest
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+          build-mode: manual
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:csharp"

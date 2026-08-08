@@ -46,7 +46,7 @@ public sealed class Combatant(string name)
             }
         }
         GetOrCreate(_outgoing, BucketConfig.AllOutgoingRef).Add(swing);
-        if (swing.Ability == Grammar.EnglishGrammar.AutoAttackAbility
+        if (swing.Ability == Swing.AutoAttackAbility
             && swing.DamageType.Length > 0
             && swing.Damage.Number > 0)
         {

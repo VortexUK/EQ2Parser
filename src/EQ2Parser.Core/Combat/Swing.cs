@@ -55,6 +55,11 @@ public sealed record Swing(
     string? Extra = null,
     DateTimeOffset? ObservedAt = null)
 {
+    /// <summary>The pseudo-ability plain melee swings record under — the
+    /// Auto-Attack vs skill split every stat surface keys on. Lives in
+    /// Combat (the bottom layer); the grammar aliases it.</summary>
+    public const string AutoAttackAbility = "Auto-Attack";
+
     /// <summary>The name heuristic ACT uses everywhere: a name containing a
     /// space is an NPC/pet, not a player.</summary>
     public static bool LooksLikePlayer(string name) =>

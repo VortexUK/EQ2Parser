@@ -5,6 +5,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Vulnerable-dependency audit on restore, transitives included.
+         NU19xx warnings become errors via TreatWarningsAsErrors — pinned
+         here explicitly so the gate is chosen, not ambient SDK behavior. -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
     <!-- Version is injected at publish time (-p:Version=X.Y.Z by
          scripts/release.ps1 and .github/workflows/release.yml); dev builds
          use the SDK default. Do not pin a version here — it is never what

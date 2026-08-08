@@ -21,7 +21,7 @@ public static partial class EnglishGrammar
     /// it with the log owner's character name.</summary>
     public const string You = "YOU";
 
-    public const string AutoAttackAbility = "Auto-Attack";
+    public const string AutoAttackAbility = Swing.AutoAttackAbility;
 
     // ── Damage ──────────────────────────────────────────────────────────────
     // YOUR Divine Strike hits a bog slug for a critical of 15,032 divine damage.

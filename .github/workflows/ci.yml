@@ -18,5 +18,8 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release
 
+      - name: Format
+        run: dotnet format EQ2Parser.slnx --verify-no-changes --no-restore
+
       - name: Test
         run: dotnet test --configuration Release --no-build --verbosity normal
