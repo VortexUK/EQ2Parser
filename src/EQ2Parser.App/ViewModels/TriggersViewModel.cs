@@ -546,45 +546,11 @@ public sealed partial class TriggersViewModel : ObservableObject
     [RelayCommand]
     private void ImportXmlFile()
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = Loc.Get("TriggersVm_ImportActXmlTitle"),
-            Filter = Loc.Get("TriggersVm_XmlFileFilter"),
-        };
-        if (dialog.ShowDialog() != true)
+        if (ActImportFlow.ImportXmlFile(_manager, "TriggersVm_", timersFirst: false) is not { } outcome)
             return;
-        string xml;
-        try
-        {
-            xml = System.IO.File.ReadAllText(dialog.FileName);
-        }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
-        {
-            ImportResult = Loc.Format("TriggersVm_FileReadError", ex.Message);
-            return;
-        }
-        var result = ActConfigImport.TryImport(xml);
-        if (result is null)
-        {
-            ImportResult = Loc.Get("TriggersVm_NotActXml");
-            return;
-        }
-        _manager.Triggers.AddOrUpdateMany(result.Triggers);
-        _manager.SpellTimers.ImportMany(result.Timers);
-        // AFTER the explicit spells land — the linked-timer default must not
-        // shadow a real definition arriving in the same file.
-        var linked = _manager.SpellTimers.EnsureLinkedTimers(result.Triggers);
-        List<string> parts = [];
-        if (result.Triggers.Count > 0)
-            parts.Add(Loc.Format(result.Triggers.Count == 1 ? "TriggersVm_TriggersImportedOne" : "TriggersVm_TriggersImportedMany", result.Triggers.Count));
-        if (result.Timers.Count > 0)
-            parts.Add(Loc.Format(result.Timers.Count == 1 ? "TriggersVm_SpellTimersImportedOne" : "TriggersVm_SpellTimersImportedMany", result.Timers.Count));
-        if (linked > 0)
-            parts.Add(Loc.Format(linked == 1 ? "TriggersVm_LinkedTimersOne" : "TriggersVm_LinkedTimersMany", linked));
-        if (result.Skipped > 0)
-            parts.Add(Loc.Format(result.Skipped == 1 ? "TriggersVm_EntriesSkippedOne" : "TriggersVm_EntriesSkippedMany", result.Skipped));
-        ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : Loc.Get("TriggersVm_FileNoEntries");
-        RebuildRows();
+        ImportResult = outcome.Message;
+        if (outcome.Applied)
+            RebuildRows();
     }
 
     // ---- recent fires ----

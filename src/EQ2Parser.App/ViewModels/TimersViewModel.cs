@@ -627,43 +627,11 @@ public sealed partial class TimersViewModel : ObservableObject
     [RelayCommand]
     private void ImportXmlFile()
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Title = Loc.Get("TimersVm_ImportActXmlTitle"),
-            Filter = Loc.Get("TimersVm_XmlFileFilter"),
-        };
-        if (dialog.ShowDialog() != true)
+        if (ActImportFlow.ImportXmlFile(_manager, "TimersVm_", timersFirst: true) is not { } outcome)
             return;
-        string xml;
-        try
-        {
-            xml = System.IO.File.ReadAllText(dialog.FileName);
-        }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
-        {
-            ImportResult = Loc.Format("TimersVm_FileReadError", ex.Message);
-            return;
-        }
-        var result = ActConfigImport.TryImport(xml);
-        if (result is null)
-        {
-            ImportResult = Loc.Get("TimersVm_NotActXml");
-            return;
-        }
-        _manager.SpellTimers.ImportMany(result.Timers);
-        _manager.Triggers.AddOrUpdateMany(result.Triggers);
-        var linked = _manager.SpellTimers.EnsureLinkedTimers(result.Triggers);
-        List<string> parts = [];
-        if (result.Timers.Count > 0)
-            parts.Add(Loc.Format(result.Timers.Count == 1 ? "TimersVm_SpellTimersImportedOne" : "TimersVm_SpellTimersImportedMany", result.Timers.Count));
-        if (result.Triggers.Count > 0)
-            parts.Add(Loc.Format(result.Triggers.Count == 1 ? "TimersVm_TriggersImportedOne" : "TimersVm_TriggersImportedMany", result.Triggers.Count));
-        if (linked > 0)
-            parts.Add(Loc.Format(linked == 1 ? "TimersVm_LinkedTimersOne" : "TimersVm_LinkedTimersMany", linked));
-        if (result.Skipped > 0)
-            parts.Add(Loc.Format(result.Skipped == 1 ? "TimersVm_EntriesSkippedOne" : "TimersVm_EntriesSkippedMany", result.Skipped));
-        ImportResult = parts.Count > 0 ? string.Join(" · ", parts) : Loc.Get("TimersVm_FileNoEntries");
-        RebuildRows();
+        ImportResult = outcome.Message;
+        if (outcome.Applied)
+            RebuildRows();
     }
 
     [RelayCommand]
