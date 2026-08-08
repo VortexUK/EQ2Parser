@@ -6,11 +6,13 @@ A modern Windows replacement for Advanced Combat Tracker (ACT), purpose-built
 for EverQuest II TLE raiding and the EQ2 Lexicon site. .NET 10, WPF (Fluent
 theme), Velopack distribution, MIT. See README.md for the decision table.
 
-Sibling repos: `E:\git\EQ2Lexicon` (the website this app uploads to),
-`E:\git\EQ2LexiconACTPlugin` (the ACT plugin this app will eventually replace —
+Sibling repos: `D:\git\EQ2Lexicon` (the website this app uploads to),
+`EQ2LexiconACTPlugin` (the ACT plugin this app will eventually replace —
 its UploadClient/PayloadSigner are the reference for the upload protocol),
-`E:\git\AdvancedCombatTracker` (EQAditu's companion repo — localization + plugin
-sources; the app itself is closed source).
+`AdvancedCombatTracker` (EQAditu's companion repo — localization + plugin
+sources; the app itself is closed source). The latter two are on GitHub
+(VortexUK/EQ2LexiconACTPlugin, EQAditu/AdvancedCombatTracker) — clone as
+needed; only EQ2Lexicon is checked out locally.
 
 ## Hard rules
 
