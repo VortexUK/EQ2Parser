@@ -86,21 +86,23 @@
                       ToolTip="{loc:Tr Overlays_AutoHideTip}"
                       Foreground="{StaticResource TextBrush}" FontSize="12.5" Margin="0,0,0,10" />
 
-            <!-- One knob for all three meters: post-fight fade delay. -->
+            <!-- One option for all three meters: post-fight fade + delay. -->
             <Grid Margin="0,0,0,14" MaxWidth="640" HorizontalAlignment="Left"
                   ToolTip="{loc:Tr Overlays_FadeMetersTip}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="240" />
+                    <ColumnDefinition Width="220" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="{loc:Tr Overlays_FadeMeters}" Style="{StaticResource MutedText}"
-                           FontSize="12.5" VerticalAlignment="Center" Margin="0,0,10,0" />
-                <Slider Grid.Column="1" Minimum="0" Maximum="30" Value="{Binding MiniParseFadeSeconds}"
-                        IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center" />
+                <CheckBox Content="{loc:Tr Overlays_FadeMeters}" IsChecked="{Binding MiniParseFadeEnabled}"
+                          Foreground="{StaticResource TextBrush}" FontSize="12.5"
+                          VerticalAlignment="Center" Margin="0,0,12,0" />
+                <Slider Grid.Column="1" Minimum="1" Maximum="30" Value="{Binding MiniParseFadeSeconds}"
+                        IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center"
+                        IsEnabled="{Binding MiniParseFadeEnabled}" />
                 <TextBlock Grid.Column="2" Text="{Binding MiniParseFadeSecondsLabel}"
                            Foreground="{StaticResource GoldBrush}" FontSize="11.5"
-                           VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="52" />
+                           VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="40" />
             </Grid>
 
             <ItemsControl ItemsSource="{Binding Cards}" ItemTemplate="{StaticResource OverlayCard}">

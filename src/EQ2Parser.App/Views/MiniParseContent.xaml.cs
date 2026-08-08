@@ -89,8 +89,11 @@ public partial class MiniParseContent : IOverlayContent
         // Post-fight fade: report "nothing to show" once combat has been
         // over for the configured hold — the shell fades a LOCKED overlay
         // to zero on that signal (unlocked ones stay put for dragging).
-        var faded = _fade.ShouldHide(
-            data.InCombat, _manager.Settings.MiniParseFadeSeconds, DateTimeOffset.Now);
+        // Option off → hold 0 → the gate never hides.
+        var hold = _manager.Settings.MiniParseFadeEnabled
+            ? Math.Max(1, _manager.Settings.MiniParseFadeSeconds)
+            : 0;
+        var faded = _fade.ShouldHide(data.InCombat, hold, DateTimeOffset.Now);
         return data.Rows.Count > 0 && !faded;
     }
 

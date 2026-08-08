@@ -170,8 +170,19 @@ public sealed class OverlaysViewModel : ObservableObject
         }
     }
 
-    /// <summary>One knob for all three meters: seconds after a fight before
-    /// they fade out (0 = never). Debounced save — this rides a slider.</summary>
+    /// <summary>The tick box: fade all three meters after a fight.</summary>
+    public bool MiniParseFadeEnabled
+    {
+        get => _manager.Settings.MiniParseFadeEnabled;
+        set
+        {
+            _manager.Settings = _manager.Settings with { MiniParseFadeEnabled = value };
+            _manager.Settings.Save();
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Seconds before the fade. Debounced save — rides a slider.</summary>
     public int MiniParseFadeSeconds
     {
         get => _manager.Settings.MiniParseFadeSeconds;
@@ -185,7 +196,6 @@ public sealed class OverlaysViewModel : ObservableObject
         }
     }
 
-    public string MiniParseFadeSecondsLabel => MiniParseFadeSeconds == 0
-        ? Loc.Get("Overlays_FadeNever")
-        : Loc.Format("Overlays_FadeSecondsLabel", MiniParseFadeSeconds);
+    public string MiniParseFadeSecondsLabel =>
+        Loc.Format("Overlays_FadeSecondsLabel", MiniParseFadeSeconds);
 }
