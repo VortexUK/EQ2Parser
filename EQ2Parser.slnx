@@ -5,5 +5,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/EQ2Parser.Core.Tests/EQ2Parser.Core.Tests.csproj" />
+    <Project Path="tests/EQ2Parser.App.Tests/EQ2Parser.App.Tests.csproj" />
   </Folder>
 </Solution>

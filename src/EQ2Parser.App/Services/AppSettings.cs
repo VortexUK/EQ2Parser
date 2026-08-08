@@ -154,8 +154,13 @@ public sealed record AppSettings
     public OverlayWindowSettings? TimerOverlayB { get; init; }
     public OverlayWindowSettings? NotificationsOverlay { get; init; }
 
+    /// <summary>All persisted app state lives here. EQ2PARSER_DATA_DIR
+    /// overrides the default %LOCALAPPDATA%\EQ2Parser — the isolation hook
+    /// App.Tests uses so tests can NEVER touch a real install's files, and
+    /// a portable-install escape hatch for users.</summary>
     public static string Directory =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EQ2Parser");
+        Environment.GetEnvironmentVariable("EQ2PARSER_DATA_DIR")
+        ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EQ2Parser");
 
     private static string FilePath => Path.Combine(Directory, "settings.json");
 

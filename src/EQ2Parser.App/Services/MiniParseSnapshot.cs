@@ -1,22 +1,13 @@
+using EQ2Parser.Core.Analysis;
 using EQ2Parser.Core.Combat;
-using EQ2Parser.Core.Correlation;
 
 namespace EQ2Parser.App.Services;
 
-/// <summary>One row of the mini parse: rank, name, metric value, share of
-/// the top row, deaths, and the detected class (for colouring).</summary>
-public sealed record MiniParseRow(
-    int Rank, string Name, string? ClassName, double Value, double Fraction, long Total, int Deaths);
-
-/// <summary>Header + rows for the mini parse window. RaidValue is the
-/// whole raid's metric per second — every ally, not just visible rows.</summary>
-public sealed record MiniParseData(
-    string Title, string DurationLabel, string MetricLabel, double RaidValue, IReadOnlyList<MiniParseRow> Rows);
-
 /// <summary>
-/// Builds the mini parse view of the CURRENT fight. While combat runs the
-/// engine's ACTIVE encounter is the source of truth — encounters only reach
-/// the correlator's history when they END, so a history-only meter lags a
+/// Picks the fight the mini parse shows and feeds it to the Core
+/// <see cref="MiniParseBuilder"/>. While combat runs the engine's ACTIVE
+/// encounter is the source of truth — encounters only reach the
+/// correlator's history when they END, so a history-only meter lags a
 /// whole fight behind. After the fight the newest correlated encounter
 /// lingers, exactly how a meter should behave. Class detection is cached
 /// per fight and refreshed every couple of seconds so a snapshot at 4 Hz
@@ -97,42 +88,7 @@ public sealed class MiniParseSnapshot(SourceManager manager)
                 }
             }
 
-            var seconds = Math.Max(1.0, duration.TotalSeconds);
-            List<(string Name, long Total, int Deaths)> totals = [];
-            foreach (var (key, combatant) in members)
-            {
-                if (!allyKeys.Contains(key))
-                    continue;
-                var total = metric switch
-                {
-                    "HPS" => combatant.Healed,
-                    "Tanking" => combatant.DamageTaken,
-                    _ => combatant.Damage,
-                };
-                if (total > 0)
-                    totals.Add((combatant.Name, total, combatant.Deaths));
-            }
-            totals.Sort((a, b) => b.Total.CompareTo(a.Total));
-
-            long raidTotal = 0;
-            foreach (var (_, total, _) in totals)
-                raidTotal += total;
-            var top = totals.Count > 0 ? totals[0].Total : 1;
-            List<MiniParseRow> rows = [];
-            for (var i = 0; i < totals.Count && i < maxRows; i++)
-            {
-                var (name, total, deaths) = totals[i];
-                rows.Add(new MiniParseRow(
-                    i + 1, name, _classNames.GetValueOrDefault(name),
-                    total / seconds, (double)total / top, total, deaths));
-            }
-
-            return new MiniParseData(
-                title,
-                duration.ToString(@"m\:ss"),
-                metric,
-                raidTotal / seconds,
-                rows);
+            return MiniParseBuilder.Build(title, duration, metric, maxRows, members, allyKeys, _classNames);
         }
     }
 }

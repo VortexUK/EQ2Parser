@@ -23,7 +23,9 @@ public sealed class LexiconSyncService
 {
     private const string SourceTag = "lexicon";
 
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
+    private static readonly HttpClient SharedHttp = new() { Timeout = TimeSpan.FromSeconds(20) };
+
+    private readonly HttpClient _http;
 
     private static readonly JsonSerializerOptions PackJson = new()
     {
@@ -53,9 +55,17 @@ public sealed class LexiconSyncService
     public event Action? StatusChanged;
 
     public LexiconSyncService(TriggerService triggers, TimerService timers, string baseUrl)
+        : this(triggers, timers, baseUrl, SharedHttp)
+    {
+    }
+
+    /// <summary>Test seam: inject the HTTP transport (App.Tests drives the
+    /// sync flow against a canned pack without a network).</summary>
+    internal LexiconSyncService(TriggerService triggers, TimerService timers, string baseUrl, HttpClient http)
     {
         _triggers = triggers;
         _timers = timers;
+        _http = http;
         BaseUrl = baseUrl.TrimEnd('/');
         LoadOverrides();
         triggers.LexiconEnabledChanged += (key, enabled) => SetOverride(_disabledTriggers, _enabledTriggers, key, enabled);
@@ -133,7 +143,7 @@ public sealed class LexiconSyncService
         try
         {
             SetStatus(Loc.Get("LexiconSvc_Syncing"));
-            var json = await Http.GetStringAsync($"{BaseUrl}/api/act/pack").ConfigureAwait(false);
+            var json = await _http.GetStringAsync($"{BaseUrl}/api/act/pack").ConfigureAwait(false);
             var pack = JsonSerializer.Deserialize<PackRoot>(json, PackJson);
             if (pack is null)
             {

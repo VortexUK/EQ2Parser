@@ -5,6 +5,7 @@ using EQ2Parser.App.Services;
 using EQ2Parser.Core.Analysis;
 using EQ2Parser.Core.Combat;
 using EQ2Parser.Core.Correlation;
+using EQ2Parser.Core.Logs;
 using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;

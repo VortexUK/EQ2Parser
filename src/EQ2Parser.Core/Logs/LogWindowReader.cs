@@ -1,7 +1,7 @@
 using System.IO;
 using System.Text;
 
-namespace EQ2Parser.App.Services;
+namespace EQ2Parser.Core.Logs;
 
 /// <summary>
 /// Reads a time window of raw lines out of a (potentially huge) EQ2 log by
