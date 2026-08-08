@@ -108,30 +108,30 @@ public sealed partial class MainParseViewModel
                     SnapshotFight(merged, allies, pets, enemies);
                     break;
                 case AggregateFights aggregate:
-                {
-                    SnapshotAggregate(aggregate, allies, pets, enemies);
-                    var allyDamage = allies.Sum(r => r.Damage) + pets.Sum(r => r.Damage);
-                    breadcrumb = Describe(
-                        aggregate.Zone,
-                        Loc.Format("MainVm_AggregateTitle", LocalizeAggregateLabel(aggregate.Label), aggregate.Fights.Count),
-                        aggregate.Duration, allyDamage / ((IFightView)aggregate).DisplaySeconds, live: false);
-                    break;
-                }
-                case ZoneFights zone:
-                {
-                    var zoneFights = ResolveZoneFights(zone);
-                    breadcrumb = Loc.Format("MainVm_ZoneBreadcrumb", zone.Zone, zoneFights.Count, FmtSpan(SumDuration(zoneFights)));
-                    // Correlator.Version catches in-place merges; Count still
-                    // matters because the Bosses-only filter changes the list
-                    // without touching the correlator.
-                    var sig = (zone.GroupKey, zoneFights.Count, manager.Correlator.Version);
-                    if (sig != _zoneSummarySig)
                     {
-                        _zoneSummarySig = sig;
-                        zoneRows = BuildZoneSummary(zoneFights);
+                        SnapshotAggregate(aggregate, allies, pets, enemies);
+                        var allyDamage = allies.Sum(r => r.Damage) + pets.Sum(r => r.Damage);
+                        breadcrumb = Describe(
+                            aggregate.Zone,
+                            Loc.Format("MainVm_AggregateTitle", LocalizeAggregateLabel(aggregate.Label), aggregate.Fights.Count),
+                            aggregate.Duration, allyDamage / ((IFightView)aggregate).DisplaySeconds, live: false);
+                        break;
                     }
-                    break;
-                }
+                case ZoneFights zone:
+                    {
+                        var zoneFights = ResolveZoneFights(zone);
+                        breadcrumb = Loc.Format("MainVm_ZoneBreadcrumb", zone.Zone, zoneFights.Count, FmtSpan(SumDuration(zoneFights)));
+                        // Correlator.Version catches in-place merges; Count still
+                        // matters because the Bosses-only filter changes the list
+                        // without touching the correlator.
+                        var sig = (zone.GroupKey, zoneFights.Count, manager.Correlator.Version);
+                        if (sig != _zoneSummarySig)
+                        {
+                            _zoneSummarySig = sig;
+                            zoneRows = BuildZoneSummary(zoneFights);
+                        }
+                        break;
+                    }
                 default:
                     return;
             }

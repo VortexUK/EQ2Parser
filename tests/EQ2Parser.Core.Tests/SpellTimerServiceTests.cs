@@ -164,13 +164,19 @@ public class SpellTimerServiceTests
         var service = new SpellTimerService();
         service.AddOrUpdateDefinition(new TimerDefinition
         {
-            Name = "Blanket of Eternal Night", Category = "Mayong Mistmoore",
-            Zone = "Mistmoore's Inner Sanctum", RestrictToCategory = true, DurationSeconds = 53,
+            Name = "Blanket of Eternal Night",
+            Category = "Mayong Mistmoore",
+            Zone = "Mistmoore's Inner Sanctum",
+            RestrictToCategory = true,
+            DurationSeconds = 53,
         });
         service.AddOrUpdateDefinition(new TimerDefinition
         {
-            Name = "Blanket of Eternal Night", Category = "Mayong Mistmoore",
-            Zone = "Throne of New Tunaria", RestrictToCategory = true, DurationSeconds = 61,
+            Name = "Blanket of Eternal Night",
+            Category = "Mayong Mistmoore",
+            Zone = "Throne of New Tunaria",
+            RestrictToCategory = true,
+            DurationSeconds = 61,
         });
         Assert.Equal(2, service.Definitions.Count);
 
@@ -361,13 +367,17 @@ public class SpellTimerServiceTests
         var service = new SpellTimerService();
         service.AddOrUpdateDefinition(new TimerDefinition
         {
-            Name = "Treyloth Reflect", Category = "Treyloth D'Kulvith",
-            Zone = "Freethinker Hideout", DurationSeconds = 30,
+            Name = "Treyloth Reflect",
+            Category = "Treyloth D'Kulvith",
+            Zone = "Freethinker Hideout",
+            DurationSeconds = 30,
         });
         service.AddOrUpdateDefinition(new TimerDefinition
         {
-            Name = "Treyloth Reflect", Category = "Someone Else",
-            Zone = "Another Zone", DurationSeconds = 99,
+            Name = "Treyloth Reflect",
+            Category = "Someone Else",
+            Zone = "Another Zone",
+            DurationSeconds = 99,
         });
 
         Assert.True(service.NotifyLinked("Treyloth Reflect", "Freethinker Hideout", "Treyloth D'Kulvith",

@@ -248,26 +248,26 @@ public sealed partial class MainParseViewModel
         switch (parameter)
         {
             case ParseNode { Fight: CorrelatedEncounter fight }:
-            {
-                context = fight.Title;
-                var tags = manager.Classifier.Classify(fight.Primary);
-                foreach (var (key, entry) in fight.MergedCombatants)
                 {
-                    if (!fight.MergedAllyKeys.Contains(key))
-                        continue;
-                    if (tags.TryGetValue(key, out var tag) && tag.Kind is CombatantKind.System or CombatantKind.Bystander)
-                        continue;
-                    targets.Add((entry.Combatant.Name, entry.Combatant));
+                    context = fight.Title;
+                    var tags = manager.Classifier.Classify(fight.Primary);
+                    foreach (var (key, entry) in fight.MergedCombatants)
+                    {
+                        if (!fight.MergedAllyKeys.Contains(key))
+                            continue;
+                        if (tags.TryGetValue(key, out var tag) && tag.Kind is CombatantKind.System or CombatantKind.Bystander)
+                            continue;
+                        targets.Add((entry.Combatant.Name, entry.Combatant));
+                    }
+                    break;
                 }
-                break;
-            }
             case CombatantRow row when ResolveFight() is { } fight:
-            {
-                context = row.Name;
-                foreach (var combatant in FightCombatantInstances(fight, row.Key))
-                    targets.Add((combatant.Name, combatant));
-                break;
-            }
+                {
+                    context = row.Name;
+                    foreach (var combatant in FightCombatantInstances(fight, row.Key))
+                        targets.Add((combatant.Name, combatant));
+                    break;
+                }
         }
         return targets;
     }
@@ -537,52 +537,52 @@ public sealed partial class MainParseViewModel
                     }
                     break;
                 case 0:
-                {
-                    long claimed = 0;
-                    var second = sw.Time.ToUnixTimeSeconds();
-                    for (var a = 0; a < absorbs.Count; a++)
                     {
-                        if (absorbUsed[a])
-                            continue;
-                        var gap = sw.TimeSorter - absorbs[a].Sorter;
-                        if (gap is <= 0 or > 6 || Math.Abs(absorbs[a].Second - second) > 1)
-                            continue;
-                        absorbUsed[a] = true;
-                        claimed += absorbs[a].Amount;
+                        long claimed = 0;
+                        var second = sw.Time.ToUnixTimeSeconds();
+                        for (var a = 0; a < absorbs.Count; a++)
+                        {
+                            if (absorbUsed[a])
+                                continue;
+                            var gap = sw.TimeSorter - absorbs[a].Sorter;
+                            if (gap is <= 0 or > 6 || Math.Abs(absorbs[a].Second - second) > 1)
+                                continue;
+                            absorbUsed[a] = true;
+                            claimed += absorbs[a].Amount;
+                        }
+                        if (claimed > 0)
+                        {
+                            tally.Warded++;
+                            tally.WardedTotal += claimed;
+                        }
+                        else if (isAuto)
+                        {
+                            tally.StoneskinAuto++;
+                        }
+                        else
+                        {
+                            tally.StoneskinSkill++;
+                        }
+                        break;
                     }
-                    if (claimed > 0)
-                    {
-                        tally.Warded++;
-                        tally.WardedTotal += claimed;
-                    }
-                    else if (isAuto)
-                    {
-                        tally.StoneskinAuto++;
-                    }
-                    else
-                    {
-                        tally.StoneskinSkill++;
-                    }
-                    break;
-                }
                 default:
-                {
-                    var kind = sw.Damage.Number switch
                     {
-                        Core.Combat.DamageValue.MissNumber => "Miss",
-                        Core.Combat.DamageValue.ResistNumber => "Resist",
-                        Core.Combat.DamageValue.ParryNumber => "Parry",
-                        Core.Combat.DamageValue.RiposteNumber => "Riposte",
-                        Core.Combat.DamageValue.BlockNumber => "Block",
-                        _ => sw.Damage.ToString() == "Counter" ? "Counter" : "Dodge",
-                    };
-                    var actor = actorOf?.Invoke(sw) ?? "";
-                    if (!tally.Avoids.TryGetValue(kind, out var actors))
-                        tally.Avoids[kind] = actors = new(StringComparer.OrdinalIgnoreCase);
-                    actors.TryGetValue(actor, out var n);
-                    actors[actor] = isAuto ? (n.Auto + 1, n.Skill) : (n.Auto, n.Skill + 1);
-                    break;
-                }
+                        var kind = sw.Damage.Number switch
+                        {
+                            Core.Combat.DamageValue.MissNumber => "Miss",
+                            Core.Combat.DamageValue.ResistNumber => "Resist",
+                            Core.Combat.DamageValue.ParryNumber => "Parry",
+                            Core.Combat.DamageValue.RiposteNumber => "Riposte",
+                            Core.Combat.DamageValue.BlockNumber => "Block",
+                            _ => sw.Damage.ToString() == "Counter" ? "Counter" : "Dodge",
+                        };
+                        var actor = actorOf?.Invoke(sw) ?? "";
+                        if (!tally.Avoids.TryGetValue(kind, out var actors))
+                            tally.Avoids[kind] = actors = new(StringComparer.OrdinalIgnoreCase);
+                        actors.TryGetValue(actor, out var n);
+                        actors[actor] = isAuto ? (n.Auto + 1, n.Skill) : (n.Auto, n.Skill + 1);
+                        break;
+                    }
             }
         }
     }
@@ -803,8 +803,8 @@ public sealed partial class MainParseViewModel
             // avoidance breakdown (shares of the avoids).
             ReportChartTitle1 = "OUTCOME";
             ReportChartTitle2 = "AVOIDANCE BREAKDOWN";
-                ReportDonutsVisible = true;
-                ReportCartesianVisible = false;
+            ReportDonutsVisible = true;
+            ReportCartesianVisible = false;
             ReportDonutInner =
             [
                 Ring("Landed", hitCount, new SKColor(0xF8, 0x71, 0x71), attempts, 44),

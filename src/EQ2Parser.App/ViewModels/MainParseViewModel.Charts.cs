@@ -315,9 +315,9 @@ public sealed partial class MainParseViewModel
         switch (chart.Mode)
         {
             case 1 when chart.Lines is { } lines:
-            {
-                var bucket = chart.BucketSeconds;
-                DrillCartesianSeries = [.. lines.Select(ISeries (line) => new LineSeries<double>
+                {
+                    var bucket = chart.BucketSeconds;
+                    DrillCartesianSeries = [.. lines.Select(ISeries (line) => new LineSeries<double>
                 {
                     Values = line.Rates,
                     Name = line.Name,
@@ -328,10 +328,10 @@ public sealed partial class MainParseViewModel
                     GeometryFill = null,
                     LineSmoothness = 0.4,
                 })];
-                DrillXAxes = [TimeAxis(bucket)];
-                DrillYAxes =
-                [
-                    new Axis
+                    DrillXAxes = [TimeAxis(bucket)];
+                    DrillYAxes =
+                    [
+                        new Axis
                     {
                         LabelsPaint = MutedPaint(),
                         TextSize = 11,
@@ -340,14 +340,14 @@ public sealed partial class MainParseViewModel
                         MinLimit = 0,
                     },
                 ];
-                DrillCartesianVisible = true;
-                DrillDonutVisible = false;
-                break;
-            }
+                    DrillCartesianVisible = true;
+                    DrillDonutVisible = false;
+                    break;
+                }
             case 2 when chart.Slices is { } slices:
-            {
-                var total = Math.Max(1, slices.Sum(s => s.Value));
-                DrillDonutSeries = [.. slices.Select(ISeries (slice, i) =>
+                {
+                    var total = Math.Max(1, slices.Sum(s => s.Value));
+                    DrillDonutSeries = [.. slices.Select(ISeries (slice, i) =>
                 {
                     var share = slice.Value / total;
                     return new PieSeries<double>
@@ -360,20 +360,20 @@ public sealed partial class MainParseViewModel
                         ToolTipLabelFormatter = _ => $"{CombatantRow.Compact(slice.Value)}  ·  {share:P0}",
                     };
                 })];
-                DrillCartesianVisible = false;
-                DrillDonutVisible = true;
-                break;
-            }
+                    DrillCartesianVisible = false;
+                    DrillDonutVisible = true;
+                    break;
+                }
             case 3 when chart.Heat is { } heat:
-            {
-                // Heat strip: time on X, intensity = the skill's output in
-                // that window (stone → gold → red).
-                var points = new LiveChartsCore.Defaults.WeightedPoint[heat.Length];
-                for (var i = 0; i < heat.Length; i++)
-                    points[i] = new(i, 0, heat[i]);
-                DrillCartesianSeries =
-                [
-                    new HeatSeries<LiveChartsCore.Defaults.WeightedPoint>
+                {
+                    // Heat strip: time on X, intensity = the skill's output in
+                    // that window (stone → gold → red).
+                    var points = new LiveChartsCore.Defaults.WeightedPoint[heat.Length];
+                    for (var i = 0; i < heat.Length; i++)
+                        points[i] = new(i, 0, heat[i]);
+                    DrillCartesianSeries =
+                    [
+                        new HeatSeries<LiveChartsCore.Defaults.WeightedPoint>
                     {
                         Values = points,
                         Name = "output",
@@ -385,12 +385,12 @@ public sealed partial class MainParseViewModel
                         ],
                     },
                 ];
-                DrillXAxes = [TimeAxis(chart.BucketSeconds)];
-                DrillYAxes = [new Axis { Labels = [""], LabelsPaint = null, SeparatorsPaint = null }];
-                DrillCartesianVisible = true;
-                DrillDonutVisible = false;
-                break;
-            }
+                    DrillXAxes = [TimeAxis(chart.BucketSeconds)];
+                    DrillYAxes = [new Axis { Labels = [""], LabelsPaint = null, SeparatorsPaint = null }];
+                    DrillCartesianVisible = true;
+                    DrillDonutVisible = false;
+                    break;
+                }
             default:
                 DrillChartVisible = false;
                 DrillCartesianVisible = false;
