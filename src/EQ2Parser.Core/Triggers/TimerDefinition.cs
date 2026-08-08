@@ -70,7 +70,13 @@ public sealed record TimerDefinition
     /// zone (lower-cased) for the timer to start.</summary>
     public bool RestrictToCategory { get; init; }
 
-    /// <summary>Never create sub-timers; every notify is a fresh master.</summary>
+    /// <summary>ACT's "Only master ticks" (share-format `OM`): with several
+    /// bars of one timer running, only the MASTER bar's schedule makes
+    /// sound — sub-timers stay silent. Round-tripped for share-format
+    /// fidelity but INERT here by design: our engine never creates
+    /// sub-timers at all (a recast replaces the one bar — see
+    /// SpellTimerService.Start), so behavior always equals `true`. Not
+    /// exposed in the editor. Implement only if sub-timers ever exist.</summary>
     public bool OnlyMasterTicks { get; init; }
 
     /// <summary>"Allow Timer Mods to affect this": whether recast mods
