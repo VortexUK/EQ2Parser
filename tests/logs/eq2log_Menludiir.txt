@@ -1,0 +1,30 @@
+(1779270700)[Wed May 20 10:51:40 2026] Logging to 'logs/Varsoon/eq2log_Menludiir.txt' is now *ON*
+(1779270701)[Wed May 20 10:51:41 2026] You have entered Qeynos Province District.
+(1779270702)[Wed May 20 10:51:42 2026] You say, "Hail, Stissa, Emissary of the Speaker"
+(1779270710)[Wed May 20 10:51:50 2026] YOU hit a gnoll for 100 crushing damage.
+(1779270712)[Wed May 20 10:51:52 2026] a gnoll tries to crush Menludiir, but Menludiir parries.
+(1779270713)[Wed May 20 10:51:53 2026] YOU hit a gnoll for a critical of 150 crushing damage.
+(1779270714)[Wed May 20 10:51:54 2026] You have killed a gnoll.
+(1779270725)[Wed May 20 10:52:05 2026] \aPC -1 Obeax:Obeax\/a tells General (2), "hits for days"
+(1779270728)[Wed May 20 10:52:08 2026] You have entered Castle Mistmoore.
+(1779270740)[Wed May 20 10:52:20 2026] YOUR Divine Strike hits Malkonis D'Morte for a critical of 15,032 divine damage.
+(1779270741)[Wed May 20 10:52:21 2026] Malkonis D'Morte hits Menludiir for 500 crushing damage.
+(1779270742)[Wed May 20 10:52:22 2026] Asame's Assassinate hits Malkonis D'Morte for a critical of 140.6K disease damage.
+(1779270743)[Wed May 20 10:52:23 2026] Sofja's Grim Sorcery heals Menludiir for a critical of 1,024 hit points.
+(1779270744)[Wed May 20 10:52:24 2026] Menludiir's unswerving hammer multi attacks Malkonis D'Morte for a critical of 2,378 crushing damage.
+(1779270745)[Wed May 20 10:52:25 2026] Mexxy's Ward of Faith absorbs 300 points of damage from being done to YOURSELF. (479 points remaining)
+(1779270746)[Wed May 20 10:52:26 2026] Malkonis D'Morte tries to slash Menludiir with Barrage, but Menludiir parries.
+(1779270747)[Wed May 20 10:52:27 2026] Tsuna's Empower Servant refreshes Tsuna for 59 mana points.
+(1779270748)[Wed May 20 10:52:28 2026] Badbang's Insolent Gibe increases THEIR hate with Malkonis D'Morte for 1,234 threat.
+(1779270749)[Wed May 20 10:52:29 2026] Catofur's Cure Trauma relieves Eviscerate from Badbang.
+(1779270750)[Wed May 20 10:52:30 2026] Shyoh's Vampiric Requiem hits Shyoh but fails to inflict any damage.
+(1779270751)[Wed May 20 10:52:31 2026] Malkonis D'Morte is hit by Acid Spray for 447 poison damage.
+(1779270752)[Wed May 20 10:52:32 2026] YOU try to pierce Malkonis D'Morte but miss.
+(1779270753)[Wed May 20 10:52:33 2026] Asame hits Malkonis D'Morte for 4,540 disease damage.
+(1779270754)[Wed May 20 10:52:34 2026] Alas, Sofja has died from pain and suffering.
+(1779270756)[Wed May 20 10:52:36 2026] Rusk's fae fire sputters and dies.
+(1779270758)[Wed May 20 10:52:38 2026] Duress' Thunderous Overture hits Malkonis D'Morte for 1,234 mental damage.
+(1779270760)[Wed May 20 10:52:40 2026] Malkonis D'Morte tries to crush YOU, but YOU riposte.
+(1779270762)[Wed May 20 10:52:42 2026] YOU hit Malkonis D'Morte for a critical of 5,529 crushing damage.
+(1779270764)[Wed May 20 10:52:44 2026] Malkonis D'Morte has been slain by Menludiir!
+(1779270775)[Wed May 20 10:52:55 2026] You say, "gg"

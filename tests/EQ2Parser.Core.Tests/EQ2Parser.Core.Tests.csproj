@@ -22,4 +22,9 @@
     <ProjectReference Include="..\..\src\EQ2Parser.Core\EQ2Parser.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Committed golden corpus — the always-on full-pipeline fixture. -->
+    <None Include="..\logs\**" LinkBase="logs" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

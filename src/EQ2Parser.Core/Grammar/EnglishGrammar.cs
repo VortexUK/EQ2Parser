@@ -226,55 +226,88 @@ public static partial class EnglishGrammar
     /// <summary>Parse one log message. Null = not a line this grammar knows.</summary>
     public static GrammarEvent? TryParse(string message)
     {
-        // Ordering matters: possessive forms must be tried before the plain
-        // form ("Badbang's Magic Feedback hits …" must not parse with
-        // attacker "Badbang's Magic Feedback").
+        // Two rules govern this dispatch:
+        //   * ORDER matters within a family: possessive forms before the
+        //     plain form ("Badbang's Magic Feedback hits …" must not parse
+        //     with attacker "Badbang's Magic Feedback"), anonymous first.
+        //   * Every family sits behind a LITERAL its patterns provably
+        //     require (guards never change what matches — they only skip
+        //     regexes that cannot). An unmatched line (chat, emotes, quest
+        //     text — most of a real log) used to walk ~20 lazy-dot regexes
+        //     and backtrack through each; now it costs a handful of
+        //     Contains/EndsWith scans and zero regex work.
         Match m;
 
-        if ((m = YourAbilityDamage().Match(message)).Success)
-            return Damage(m, You, m.Groups["ability"].Value);
-        if ((m = YouAutoDamage().Match(message)).Success)
-            return Damage(m, You, AutoAttackAbility);
-        // Anonymous before possessive: "Bob's pet is hit by Acid Spray for
-        // 447 poison damage." otherwise phantom-parses as attacker "Bob",
-        // ability "pet is", victim "by Acid Spray". The " is hit by "
-        // literal is specific enough that no possessive line matches it.
-        if ((m = AnonymousHit().Match(message)).Success)
-            return Damage(m, "Unknown", m.Groups["ability"].Value);
-        if ((m = PossessiveAbilityDamage().Match(message)).Success)
-            return Damage(m, m.Groups["attacker"].Value, m.Groups["ability"].Value);
-        if ((m = AvoidLine().Match(message)).Success)
+        if (message.EndsWith(" damage.", StringComparison.Ordinal))
+        {
+            if (message.EndsWith(" but fails to inflict any damage.", StringComparison.Ordinal))
+            {
+                if ((m = YourNoDamage().Match(message)).Success)
+                    return NoDamageHit(m, You, m.Groups["ability"].Value);
+                if ((m = PossessiveNoDamage().Match(message)).Success)
+                    return NoDamageHit(m, m.Groups["attacker"].Value, m.Groups["ability"].Value);
+                if ((m = PlainNoDamage().Match(message)).Success)
+                    return NoDamageHit(m, m.Groups["attacker"].Value, AutoAttackAbility);
+            }
+            else
+            {
+                if ((m = YourAbilityDamage().Match(message)).Success)
+                    return Damage(m, You, m.Groups["ability"].Value);
+                if ((m = YouAutoDamage().Match(message)).Success)
+                    return Damage(m, You, AutoAttackAbility);
+                // Anonymous before possessive: "Bob's pet is hit by Acid
+                // Spray for 447 poison damage." otherwise phantom-parses as
+                // attacker "Bob", ability "pet is", victim "by Acid Spray".
+                if (message.Contains(" is hit by ", StringComparison.Ordinal)
+                    && (m = AnonymousHit().Match(message)).Success)
+                    return Damage(m, "Unknown", m.Groups["ability"].Value);
+                if ((m = PossessiveAbilityDamage().Match(message)).Success)
+                    return Damage(m, m.Groups["attacker"].Value, m.Groups["ability"].Value);
+                if ((m = PlainDamage().Match(message)).Success)
+                    return Damage(m, m.Groups["attacker"].Value, AutoAttackAbility);
+            }
+        }
+        if (message.Contains(" tries to ", StringComparison.Ordinal)
+            && (m = AvoidLine().Match(message)).Success)
             return Avoid(m);
-        if ((m = PlainDamage().Match(message)).Success)
-            return Damage(m, m.Groups["attacker"].Value, AutoAttackAbility);
-        if ((m = YourHeal().Match(message)).Success)
-            return Heal(m, You);
-        if ((m = PossessiveHeal().Match(message)).Success)
-            return Heal(m, m.Groups["attacker"].Value);
-        if ((m = YouAvoid().Match(message)).Success)
+        if (message.Contains(" heals ", StringComparison.Ordinal))
+        {
+            if ((m = YourHeal().Match(message)).Success)
+                return Heal(m, You);
+            if ((m = PossessiveHeal().Match(message)).Success)
+                return Heal(m, m.Groups["attacker"].Value);
+        }
+        if (message.StartsWith("YOU try to ", StringComparison.Ordinal)
+            && (m = YouAvoid().Match(message)).Success)
             return AvoidFrom(m, You);
-        if ((m = YourNoDamage().Match(message)).Success)
-            return NoDamageHit(m, You, m.Groups["ability"].Value);
-        if ((m = PossessiveNoDamage().Match(message)).Success)
-            return NoDamageHit(m, m.Groups["attacker"].Value, m.Groups["ability"].Value);
-        if ((m = PlainNoDamage().Match(message)).Success)
-            return NoDamageHit(m, m.Groups["attacker"].Value, AutoAttackAbility);
-        if ((m = YourWardAbsorb().Match(message)).Success)
-            return Ward(m, You);
-        if ((m = WardAbsorb().Match(message)).Success)
-            return Ward(m, m.Groups["attacker"].Value);
-        if ((m = YourPowerRefresh().Match(message)).Success)
-            return PowerReplenish(m, You);
-        if ((m = PowerRefresh().Match(message)).Success)
-            return PowerReplenish(m, m.Groups["attacker"].Value);
-        if ((m = YourThreatChange().Match(message)).Success)
-            return Threat(m, You);
-        if ((m = ThreatChange().Match(message)).Success)
-            return Threat(m, m.Groups["attacker"].Value);
-        if ((m = YourCureRelieves().Match(message)).Success)
-            return Cure(m, You);
-        if ((m = CureRelieves().Match(message)).Success)
-            return Cure(m, m.Groups["attacker"].Value);
+        if (message.Contains(" absorbs ", StringComparison.Ordinal))
+        {
+            if ((m = YourWardAbsorb().Match(message)).Success)
+                return Ward(m, You);
+            if ((m = WardAbsorb().Match(message)).Success)
+                return Ward(m, m.Groups["attacker"].Value);
+        }
+        if (message.Contains(" refreshes ", StringComparison.Ordinal))
+        {
+            if ((m = YourPowerRefresh().Match(message)).Success)
+                return PowerReplenish(m, You);
+            if ((m = PowerRefresh().Match(message)).Success)
+                return PowerReplenish(m, m.Groups["attacker"].Value);
+        }
+        if (message.Contains(" hate with ", StringComparison.Ordinal))
+        {
+            if ((m = YourThreatChange().Match(message)).Success)
+                return Threat(m, You);
+            if ((m = ThreatChange().Match(message)).Success)
+                return Threat(m, m.Groups["attacker"].Value);
+        }
+        if (message.Contains(" relieves ", StringComparison.Ordinal))
+        {
+            if ((m = YourCureRelieves().Match(message)).Success)
+                return Cure(m, You);
+            if ((m = CureRelieves().Match(message)).Success)
+                return Cure(m, m.Groups["attacker"].Value);
+        }
         if (message.EndsWith('!'))
         {
             if ((m = StatusApplied().Match(message)).Success)
@@ -307,23 +340,32 @@ public static partial class EnglishGrammar
         if (message.Contains(" fades from ", StringComparison.Ordinal)
             && (m = StatusFadesFrom().Match(message)).Success)
             return Status(m.Groups["victim"].Value, m.Groups["effect"].Value, applied: false);
-        if ((m = YouKilled().Match(message)).Success)
+        if (message.StartsWith("You have killed ", StringComparison.Ordinal)
+            && (m = YouKilled().Match(message)).Success)
             return new DeathEvent(You, m.Groups["victim"].Value);
-        if ((m = AlasDied().Match(message)).Success)
+        if (message.StartsWith("Alas, ", StringComparison.Ordinal)
+            && (m = AlasDied().Match(message)).Success)
             return new DeathEvent("Unknown", m.Groups["victim"].Value);
-        if ((m = SlainBy().Match(message)).Success)
+        if (message.Contains(" has been slain by ", StringComparison.Ordinal)
+            && (m = SlainBy().Match(message)).Success)
             return new DeathEvent(m.Groups["killer"].Value, m.Groups["victim"].Value);
-        if ((m = HasKilled().Match(message)).Success)
+        if (message.Contains(" has killed ", StringComparison.Ordinal)
+            && (m = HasKilled().Match(message)).Success)
             return new DeathEvent(m.Groups["killer"].Value, m.Groups["victim"].Value);
-        // "Rusk's fae fire sputters and dies." — a dumbfire expiring
-        // naturally, not a combat death; must not feed the Dies() shape.
-        if (message.EndsWith(" sputters and dies.", StringComparison.Ordinal))
-            return null;
-        if ((m = Dies().Match(message)).Success)
+        if (message.EndsWith(" dies.", StringComparison.Ordinal))
+        {
+            // "Rusk's fae fire sputters and dies." — a dumbfire expiring
+            // naturally, not a combat death; must not feed the Dies() shape.
+            if (message.EndsWith(" sputters and dies.", StringComparison.Ordinal))
+                return null;
+            if ((m = Dies().Match(message)).Success)
+                return new DeathEvent("Unknown", m.Groups["victim"].Value);
+        }
+        if (message.EndsWith(" has been banished!", StringComparison.Ordinal)
+            && (m = Banished().Match(message)).Success)
             return new DeathEvent("Unknown", m.Groups["victim"].Value);
-        if ((m = Banished().Match(message)).Success)
-            return new DeathEvent("Unknown", m.Groups["victim"].Value);
-        if ((m = ZoneEntered().Match(message)).Success)
+        if (message.StartsWith("You have entered ", StringComparison.Ordinal)
+            && (m = ZoneEntered().Match(message)).Success)
             return new ZoneEvent(m.Groups["zone"].Value);
 
         return null;
@@ -346,7 +388,7 @@ public static partial class EnglishGrammar
         return new SwingEvent(
             category,
             Critical: m.Groups["crit"].Success,
-            Special: SpecialFromVerb(m.Groups["verb"].Value),
+            Special: special,
             Attacker: attacker,
             Ability: ability,
             Damage: ParseAmount(m.Groups["amount"].Value),
