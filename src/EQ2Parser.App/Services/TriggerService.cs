@@ -192,7 +192,7 @@ public sealed class TriggerService
             var index = _definitions.FindIndex(t => t.Key == key);
             if (index < 0 || _definitions[index].Enabled == enabled)
                 return;
-            updated = CloneWith(_definitions[index], enabled);
+            updated = _definitions[index].WithEnabled(enabled);
             _definitions[index] = updated;
             lexicon = updated.Source.Length > 0;
             engines = [.. _engines];
@@ -218,7 +218,7 @@ public sealed class TriggerService
     public void ApplyLexicon(IReadOnlyCollection<Trigger> triggers, IReadOnlySet<string> disabledKeys, IReadOnlySet<string> enabledKeys)
     {
         List<string> removedKeys = [];
-        List<Trigger> added = [];
+        List<Trigger> added;
         TriggerEngine[] engines;
         lock (_gate)
         {
@@ -228,16 +228,9 @@ public sealed class TriggerService
                 removedKeys.Add(old.Key);
             }
             var customKeys = _definitions.Select(t => t.Key).ToHashSet(StringComparer.Ordinal);
-            foreach (var trigger in triggers)
-            {
-                if (customKeys.Contains(trigger.Key))
-                    continue;
-                var enabled = !disabledKeys.Contains(trigger.Key)
-                    && (trigger.Enabled || enabledKeys.Contains(trigger.Key));
-                var effective = enabled == trigger.Enabled ? trigger : CloneWith(trigger, enabled);
-                _definitions.Add(effective);
-                added.Add(effective);
-            }
+            added = LexiconMerge.Plan(triggers, customKeys, disabledKeys, enabledKeys,
+                static t => t.Key, static t => t.Enabled, static (t, e) => t.WithEnabled(e));
+            _definitions.AddRange(added);
             engines = [.. _engines];
         }
         lock (_engineSync)
@@ -250,18 +243,6 @@ public sealed class TriggerService
         }
         DefinitionsChanged?.Invoke();
     }
-
-    private static Trigger CloneWith(Trigger t, bool enabled) => new(t.RegexText, t.Category, t.Zone)
-    {
-        Enabled = enabled,
-        RestrictToCategoryZone = t.RestrictToCategoryZone,
-        SoundType = t.SoundType,
-        SoundData = t.SoundData,
-        StartsTimer = t.StartsTimer,
-        TimerName = t.TimerName,
-        AudioCooldown = t.AudioCooldown,
-        Source = t.Source,
-    };
 
     /// <summary>Cross-source dedupe: every live log in the same raid sees
     /// the same emote line, and every source's engine fires — the player

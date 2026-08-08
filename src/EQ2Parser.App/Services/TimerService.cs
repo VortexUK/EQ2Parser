@@ -148,14 +148,9 @@ public sealed class TimerService
             foreach (var key in Service.Definitions.Where(d => d.Source.Length > 0).Select(d => d.Key).ToList())
                 Service.RemoveDefinition(key);
             var customKeys = Service.Definitions.Select(d => d.Key).ToHashSet(StringComparer.Ordinal);
-            foreach (var definition in definitions)
-            {
-                if (customKeys.Contains(definition.Key))
-                    continue;
-                var enabled = !disabledKeys.Contains(definition.Key)
-                    && (definition.Enabled || enabledKeys.Contains(definition.Key));
-                Service.AddOrUpdateDefinition(definition with { Enabled = enabled });
-            }
+            foreach (var definition in LexiconMerge.Plan(definitions, customKeys, disabledKeys, enabledKeys,
+                static d => d.Key, static d => d.Enabled, static (d, e) => d with { Enabled = e }))
+                Service.AddOrUpdateDefinition(definition);
         }
         DefinitionsChanged?.Invoke();
     }

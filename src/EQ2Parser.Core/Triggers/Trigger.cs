@@ -38,6 +38,29 @@ public sealed class Trigger
         PrefilterLiteral = LiteralPrefilter.TryExtract(regexText);
     }
 
+    private Trigger(Trigger source)
+    {
+        RegexText = source.RegexText;
+        Category = source.Category;
+        Zone = source.Zone;
+        // Regex instances are immutable and thread-safe — share the compiled
+        // pattern instead of recompiling on every enable flip.
+        Pattern = source.Pattern;
+        PrefilterLiteral = source.PrefilterLiteral;
+        Enabled = source.Enabled;
+        RestrictToCategoryZone = source.RestrictToCategoryZone;
+        SoundType = source.SoundType;
+        SoundData = source.SoundData;
+        StartsTimer = source.StartsTimer;
+        TimerName = source.TimerName;
+        AudioCooldown = source.AudioCooldown;
+        Source = source.Source;
+    }
+
+    /// <summary>Copy with a different enabled flag. Lives here — an
+    /// app-side field-by-field clone silently drops any field added later.</summary>
+    public Trigger WithEnabled(bool enabled) => new(this) { Enabled = enabled };
+
     public string RegexText { get; }
     public Regex Pattern { get; }
 
