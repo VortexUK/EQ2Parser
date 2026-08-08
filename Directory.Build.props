@@ -10,6 +10,14 @@
          here explicitly so the gate is chosen, not ambient SDK behavior. -->
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>
+    <!-- The linter: built-in Roslyn analyzers on the ecosystem-standard
+         rule set (no StyleCop — the IDExxxx style rules + CA quality rules
+         ARE the modern linter). latest-recommended enables the curated CA
+         set as warnings; EnforceCodeStyleInBuild turns .editorconfig style
+         rules into build diagnostics. TreatWarningsAsErrors makes both
+         hard gates. Per-rule severities live in .editorconfig. -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <!-- Version is injected at publish time (-p:Version=X.Y.Z by
          scripts/release.ps1 and .github/workflows/release.yml); dev builds
          use the SDK default. Do not pin a version here — it is never what

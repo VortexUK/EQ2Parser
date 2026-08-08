@@ -6,6 +6,10 @@ using LiveChartsCore.SkiaSharpView;
 
 namespace EQ2Parser.App;
 
+// WPF Application lifetime: the fields are torn down in OnExit — making
+// Application IDisposable is not the WPF pattern.
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "Disposed in OnExit; WPF Application cannot be using-scoped.")]
 public partial class App : Application
 {
     private SourceManager? _manager;

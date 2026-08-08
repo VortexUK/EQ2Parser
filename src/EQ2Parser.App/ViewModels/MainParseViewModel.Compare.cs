@@ -109,7 +109,7 @@ public sealed partial class MainParseViewModel
 
     /// <summary>Green when the delta helps (more dps / shorter fight),
     /// red when it hurts, neutral for tiny moves under ±2%.</summary>
-    private static System.Windows.Media.Brush DeltaBrush(double delta) => delta switch
+    private static System.Windows.Media.SolidColorBrush DeltaBrush(double delta) => delta switch
     {
         > 0.02 => Services.ClassColors.OutcomeWin,
         < -0.02 => Services.ClassColors.OutcomeLoss,

@@ -52,7 +52,7 @@ internal static class Eq2LogLocator
         return [.. found.OrderByDescending(f => f.Newest).Select(f => f.Path)];
     }
 
-    private static IEnumerable<string> SafeDrives()
+    private static List<string> SafeDrives()
     {
         List<string> roots = [];
         try

@@ -320,7 +320,7 @@ public sealed partial class TimersViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void CopyRowXml(TimerDefRow? row)
+    private static void CopyRowXml(TimerDefRow? row)
     {
         if (row is null)
             return;

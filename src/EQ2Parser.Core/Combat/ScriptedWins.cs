@@ -44,8 +44,7 @@ public sealed class ScriptedWins
                 return wins;
             using var reader = new StreamReader(stream);
             var file = JsonSerializer.Deserialize<RuleFile>(
-                reader.ReadToEnd(),
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                reader.ReadToEnd(), JsonDefaults.CaseInsensitive);
             foreach (var entry in file?.Rules ?? [])
             {
                 if (entry.Speakers is { Length: > 0 } speakers && !string.IsNullOrEmpty(entry.Phrase))
@@ -78,7 +77,7 @@ public sealed class ScriptedWins
                 continue;
             foreach (var speaker in rule.Speakers)
             {
-                if (message.IndexOf($":{speaker}\\/a says", StringComparison.Ordinal) >= 0)
+                if (message.Contains($":{speaker}\\/a says", StringComparison.Ordinal))
                     return true;
             }
         }

@@ -84,8 +84,7 @@ public sealed class SourceOverrides
 
     private void Merge(Stream stream, bool prepend = false)
     {
-        var file = JsonSerializer.Deserialize<RuleFile>(
-            stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var file = JsonSerializer.Deserialize<RuleFile>(stream, JsonDefaults.CaseInsensitive);
         foreach (var entry in file?.Overrides ?? [])
         {
             if (entry.Ability is not { Length: > 0 } ability)

@@ -477,7 +477,7 @@ public sealed partial class MainParseViewModel : ObservableObject
         RebuildTree();
     }
 
-    private static System.Windows.Media.Brush OutcomeBrush(CorrelatedEncounter fight) =>
+    private static System.Windows.Media.SolidColorBrush OutcomeBrush(CorrelatedEncounter fight) =>
         fight.GetSuccessLevel() switch
         {
             SuccessLevel.Win => ClassColors.OutcomeWin,

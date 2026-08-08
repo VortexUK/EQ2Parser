@@ -183,7 +183,7 @@ public sealed partial class CurationViewModel : ObservableObject
             && d.Category.Split('|').Any(c => string.Equals(c.Trim(), mined.Mob, StringComparison.OrdinalIgnoreCase))
             && string.Equals(d.Zone, mined.Zone, StringComparison.OrdinalIgnoreCase));
 
-    private TimerDefinition BuildDefinition(MinedAbility mined)
+    private static TimerDefinition BuildDefinition(MinedAbility mined)
     {
         // Base (swipe-adjusted) duration: the live engine re-applies the
         // 1.5× stretch whenever the mob is actually swiped.

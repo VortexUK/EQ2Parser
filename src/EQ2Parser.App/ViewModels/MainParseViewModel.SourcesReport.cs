@@ -27,7 +27,7 @@ public sealed partial class MainParseViewModel
         new(0xF8, 0x71, 0x71), // renamed pet — red (fraud signal)
     ];
 
-    private static System.Windows.Media.Brush SourceBrush(AbilitySource source) => source switch
+    private static System.Windows.Media.SolidColorBrush SourceBrush(AbilitySource source) => source switch
     {
         AbilitySource.Class => Services.ClassColors.SourceClass,
         AbilitySource.Raid => Services.ClassColors.SourceRaid,

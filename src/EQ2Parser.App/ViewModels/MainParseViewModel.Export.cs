@@ -214,7 +214,7 @@ public sealed partial class MainParseViewModel
         return null;
     }
 
-    private string RenderTable(
+    private static string RenderTable(
         string summary, IEnumerable<(Combatant Combatant, string Cls)> allies,
         double seconds, ExportSpec spec)
     {
@@ -254,7 +254,7 @@ public sealed partial class MainParseViewModel
     }
 
     /// <summary>Zone/rollup nodes: one row per fight instead of combatants.</summary>
-    private string FightsTable(string label, IReadOnlyList<CorrelatedEncounter> fights)
+    private static string FightsTable(string label, IReadOnlyList<CorrelatedEncounter> fights)
     {
         List<ExportColumn> columns =
         [

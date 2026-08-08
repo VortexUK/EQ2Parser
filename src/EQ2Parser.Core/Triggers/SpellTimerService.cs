@@ -148,7 +148,7 @@ public sealed class SpellTimerService(TimerOptions? options = null)
         {
             if (!def.Enabled)
                 continue;
-            var zoneHit = def.Zone.Length > 0 && def.Zone.ToLowerInvariant() == zone;
+            var zoneHit = def.Zone.Length > 0 && string.Equals(def.Zone, zone, StringComparison.OrdinalIgnoreCase);
             var categoryHit = def.CategoryMatches(attacker, victim, zone);
             int tier;
             if (def.RestrictToCategory)

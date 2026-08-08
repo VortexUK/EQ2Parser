@@ -26,7 +26,7 @@ public sealed class UploadService : IDisposable
     /// <summary>Log-writer provenance for an auto upload: who holds the log
     /// file right now (seconds after the fight ended)? EverQuest2 among the
     /// holders → the positive live-log stamp; see LogProvenance.</summary>
-    private static IReadOnlyList<string>? ProbeProvenance(Encounter encounter) =>
+    private static List<string>? ProbeProvenance(Encounter encounter) =>
         OperatingSystem.IsWindows()
             ? LogProvenance.BuildWarnings(
                 Core.Logs.LogFileHolders.Probe(encounter.SourceId), Environment.ProcessId)

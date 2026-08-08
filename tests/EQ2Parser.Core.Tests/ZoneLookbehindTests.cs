@@ -10,6 +10,7 @@ public class ZoneLookbehindTests : IDisposable
 
     public void Dispose()
     {
+        GC.SuppressFinalize(this);
         try
         {
             File.Delete(_path);

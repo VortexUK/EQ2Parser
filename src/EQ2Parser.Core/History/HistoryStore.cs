@@ -54,7 +54,7 @@ public sealed class HistoryStore : IDisposable
     {
         using var cmd = _conn.CreateCommand();
         cmd.CommandText = "PRAGMA user_version;";
-        return Convert.ToInt32(cmd.ExecuteScalar());
+        return Convert.ToInt32(cmd.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
     }
 
     /// <summary>Upgrade an older database in place — v1 lacked is_boss;
@@ -410,7 +410,7 @@ public sealed class HistoryStore : IDisposable
         using var cmd = _conn.CreateCommand();
         cmd.CommandText = "SELECT COUNT(*) FROM swings WHERE encounter_id = $enc;";
         cmd.Parameters.AddWithValue("$enc", encounterId);
-        return Convert.ToInt32(cmd.ExecuteScalar());
+        return Convert.ToInt32(cmd.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
     }
 
     public bool DeleteEncounter(long encounterId)

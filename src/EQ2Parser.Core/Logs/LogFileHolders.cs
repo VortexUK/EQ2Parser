@@ -32,7 +32,7 @@ public static class LogFileHolders
     }
 
     [SupportedOSPlatform("windows")]
-    private static IReadOnlyList<FileHolder> ProbeWindows(string path)
+    private static List<FileHolder> ProbeWindows(string path)
     {
         if (RmStartSession(out var session, 0, Guid.NewGuid().ToString("N")) != 0)
             return [];

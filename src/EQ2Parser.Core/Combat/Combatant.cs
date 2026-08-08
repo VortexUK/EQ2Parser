@@ -97,7 +97,7 @@ public sealed class Combatant(string name)
         return bucket;
     }
 
-    private AbilityStats? AllOf(IReadOnlyDictionary<string, Bucket> side, string bucketName) =>
+    private static AbilityStats? AllOf(Dictionary<string, Bucket> side, string bucketName) =>
         side.TryGetValue(bucketName, out var bucket) ? bucket.All : null;
 
     // ── Stat surface (each is the "All" ability of one bucket) ──────────────

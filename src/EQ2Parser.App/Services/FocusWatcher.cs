@@ -43,7 +43,7 @@ public sealed class FocusWatcher : IDisposable
     {
         try
         {
-            GetWindowThreadProcessId(hwnd, out var pid);
+            _ = GetWindowThreadProcessId(hwnd, out var pid);
             if (pid == 0)
                 return;
             if (!_verdicts.TryGetValue(pid, out var friendly))

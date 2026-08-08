@@ -8,8 +8,33 @@ indent_style = space
 
 [*.cs]
 indent_size = 4
-# dotnet format's default rule set applies; keep style debates out of PRs.
+# The linter is the BUILT-IN Roslyn analyzers on the ecosystem-standard rule
+# set (AnalysisLevel=latest-recommended + EnforceCodeStyleInBuild in
+# Directory.Build.props; TreatWarningsAsErrors makes warnings hard gates).
+# Deliberate per-rule deviations live here, each with its reason — keep
+# style debates out of PRs.
 csharp_style_namespace_declarations = file_scoped:warning
+
+# CA1711: "don't end type names in Queue/Collection/…". UploadQueue IS a
+# queue (channel + drain) — the reserved-suffix pedantry buys nothing here.
+dotnet_diagnostic.CA1711.severity = none
+
+# CA1305 (IFormatProvider): stays an ERROR in Core — it caught real wire-
+# format bugs (ACT share XML with locale digits). The App override below
+# relaxes it for UI display strings only.
+
+[src/EQ2Parser.App/**.cs]
+# UI display strings: current-culture formatting is the CORRECT default for
+# text the user reads (dates, durations, counts follow their locale).
+# Demanding an explicit provider at every ToString in the WPF layer is
+# ceremony without a bug behind it. Wire/persisted formats don't live here.
+dotnet_diagnostic.CA1305.severity = suggestion
+
+[tests/**.cs]
+# Underscored test names (Does_The_Thing) are the xunit convention.
+dotnet_diagnostic.CA1707.severity = none
+# Test assertions format for humans reading failure output, not for wires.
+dotnet_diagnostic.CA1305.severity = suggestion
 
 [*.{xml,csproj,props,targets,xaml}]
 indent_size = 2

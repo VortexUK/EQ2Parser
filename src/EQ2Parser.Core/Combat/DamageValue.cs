@@ -41,10 +41,12 @@ public readonly struct DamageValue : IEquatable<DamageValue>, IComparable<Damage
     public bool IsDeath => Number == DeathNumber && TextOrDefault == "Death";
     public bool IsMiss => Equals(Miss);
 
-    /// <summary>The display text; falls back to the canonical name per code.</summary>
+    /// <summary>The display text; falls back to the canonical name per code.
+    /// Invariant formatting on purpose: this string participates in
+    /// equality/hashing, so it must not vary with the user's locale.</summary>
     public string TextOrDefault => _text ?? Number switch
     {
-        > 0 => Number.ToString("N0"),
+        > 0 => Number.ToString("N0", System.Globalization.CultureInfo.InvariantCulture),
         NoDamageNumber => "No Damage",
         MissNumber => "Miss",
         ResistNumber => "Resist",
@@ -68,6 +70,13 @@ public readonly struct DamageValue : IEquatable<DamageValue>, IComparable<Damage
         Number == UnknownNumber && other.Number == UnknownNumber
             ? string.CompareOrdinal(TextOrDefault, other.TextOrDefault)
             : Number.CompareTo(other.Number);
+
+    public static bool operator ==(DamageValue left, DamageValue right) => left.Equals(right);
+    public static bool operator !=(DamageValue left, DamageValue right) => !left.Equals(right);
+    public static bool operator <(DamageValue left, DamageValue right) => left.CompareTo(right) < 0;
+    public static bool operator <=(DamageValue left, DamageValue right) => left.CompareTo(right) <= 0;
+    public static bool operator >(DamageValue left, DamageValue right) => left.CompareTo(right) > 0;
+    public static bool operator >=(DamageValue left, DamageValue right) => left.CompareTo(right) >= 0;
 
     public override string ToString() => TextOrDefault;
 }

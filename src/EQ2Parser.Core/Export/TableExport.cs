@@ -60,7 +60,7 @@ public static class TableExport
             AppendRow(sb, columns, widths, c => Cell(row, c));
         }
         if (kept < rows.Count)
-            sb.Append(string.Format(moreFormat, rows.Count - kept)).Append('\n');
+            sb.Append(string.Format(System.Globalization.CultureInfo.InvariantCulture, moreFormat, rows.Count - kept)).Append('\n');
         sb.Append("```");
         return sb.ToString();
     }

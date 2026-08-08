@@ -75,7 +75,7 @@ public partial class OverlayShellWindow
         SourceInitialized += (_, _) =>
         {
             var hwnd = new WindowInteropHelper(this).Handle;
-            SetWindowLong(hwnd, GwlExstyle, GetWindowLong(hwnd, GwlExstyle) | WsExNoActivate | WsExToolWindow);
+            _ = SetWindowLong(hwnd, GwlExstyle, GetWindowLong(hwnd, GwlExstyle) | WsExNoActivate | WsExToolWindow);
             Apply(_controller.GetSettings(_kind));
         };
 
@@ -117,7 +117,7 @@ public partial class OverlayShellWindow
         if (hwnd != 0)
         {
             var style = GetWindowLong(hwnd, GwlExstyle);
-            SetWindowLong(hwnd, GwlExstyle, _locked ? style | WsExTransparent : style & ~WsExTransparent);
+            _ = SetWindowLong(hwnd, GwlExstyle, _locked ? style | WsExTransparent : style & ~WsExTransparent);
         }
         RefreshContent();
     }

@@ -94,6 +94,8 @@ public class LocalizationTests
     private static HashSet<string> Placeholders(string s) =>
         [.. Regex.Matches(s, @"\{(\d+)[^}]*\}").Select(m => m.Groups[1].Value)];
 
+    private static readonly string[] BuildConfigs = ["Release", "Debug"];
+
     /// <summary>The v0.2.5 regression: MSBuild's AssignCulture read the
     /// ".de"/".en" filename segment as a culture suffix and routed every
     /// dictionary into satellite assemblies — the app shipped rendering
@@ -104,7 +106,7 @@ public class LocalizationTests
     public void Dictionaries_Are_Embedded_In_The_Built_App_Assembly()
     {
         var binRoot = Path.Combine(AppDir(), "bin");
-        var dll = new[] { "Release", "Debug" }
+        var dll = BuildConfigs
             .SelectMany(cfg =>
             {
                 var dir = Path.Combine(binRoot, cfg);

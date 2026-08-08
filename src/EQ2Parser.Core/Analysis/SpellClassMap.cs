@@ -41,8 +41,7 @@ public sealed partial class SpellClassMap
         using var stream = Assembly.GetExecutingAssembly()
             .GetManifestResourceStream("EQ2Parser.Core.Resources.spell_classes.json")
             ?? throw new InvalidOperationException("spell_classes.json resource missing");
-        var file = JsonSerializer.Deserialize<MapFile>(
-                stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+        var file = JsonSerializer.Deserialize<MapFile>(stream, JsonDefaults.CaseInsensitive)
             ?? throw new InvalidOperationException("spell_classes.json is empty");
         return new SpellClassMap(
             new Dictionary<string, string[]>(file.Spells, StringComparer.Ordinal),

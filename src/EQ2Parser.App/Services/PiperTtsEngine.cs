@@ -123,16 +123,16 @@ public sealed class PiperTtsEngine : IDisposable
     {
         if (!OperatingSystem.IsWindows() || path.All(c => c < 128))
             return path;
-        var buffer = new StringBuilder(520);
-        var n = GetShortPathName(path, buffer, buffer.Capacity);
-        if (n <= 0 || n > buffer.Capacity)
+        var buffer = new char[520];
+        var n = GetShortPathName(path, buffer, buffer.Length);
+        if (n <= 0 || n > buffer.Length)
             return path;
-        var shortPath = buffer.ToString();
+        var shortPath = new string(buffer, 0, n);
         return shortPath.All(c => c < 128) ? shortPath : path;
     }
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern int GetShortPathName(string longPath, StringBuilder shortPath, int bufferSize);
+    private static extern int GetShortPathName(string longPath, char[] shortPath, int bufferSize);
 
     /// <summary>Release the loaded model (file handles included) so its
     /// pack can be deleted from disk. Next synthesis reloads on demand.</summary>

@@ -49,13 +49,13 @@ public sealed class RadialDial : FrameworkElement
         set => SetValue(IsWarningProperty, value);
     }
 
-    protected override void OnRender(DrawingContext dc)
+    protected override void OnRender(DrawingContext drawingContext)
     {
         var radius = Math.Min(ActualWidth, ActualHeight) / 2 - 3;
         if (radius <= 0)
             return;
         var center = new Point(ActualWidth / 2, ActualHeight / 2);
-        dc.DrawEllipse(null, TrackPen, center, radius, radius);
+        drawingContext.DrawEllipse(null, TrackPen, center, radius, radius);
 
         var fraction = Math.Clamp(Fraction, 0, 1);
         if (fraction <= 0)
@@ -68,7 +68,7 @@ public sealed class RadialDial : FrameworkElement
 
         if (fraction >= 0.999)
         {
-            dc.DrawEllipse(null, pen, center, radius, radius);
+            drawingContext.DrawEllipse(null, pen, center, radius, radius);
             return;
         }
 
@@ -87,6 +87,6 @@ public sealed class RadialDial : FrameworkElement
                 isLargeArc: sweep > 180, SweepDirection.Clockwise, isStroked: true, isSmoothJoin: false);
         }
         geometry.Freeze();
-        dc.DrawGeometry(null, pen, geometry);
+        drawingContext.DrawGeometry(null, pen, geometry);
     }
 }

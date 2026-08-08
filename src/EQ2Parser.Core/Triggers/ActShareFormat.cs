@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Xml;
 
@@ -152,7 +153,9 @@ public static class ActShareFormat
         var sb = new StringBuilder("<Trigger");
         Attr(sb, "R", EscapeRegexForShare(t.RegexText));
         Attr(sb, "SD", Escape(t.SoundData));
-        Attr(sb, "ST", ((int)t.SoundType).ToString());
+        // Invariant digits throughout Export — this is WIRE format; locale
+        // digit shapes/separators would corrupt the share XML.
+        Attr(sb, "ST", ((int)t.SoundType).ToString(CultureInfo.InvariantCulture));
         Attr(sb, "CR", t.RestrictToCategoryZone ? "T" : "F");
         Attr(sb, "C", Escape(t.Category));
         Attr(sb, "T", t.StartsTimer ? "T" : "F");
@@ -168,16 +171,16 @@ public static class ActShareFormat
     {
         var sb = new StringBuilder("<Spell");
         Attr(sb, "N", Escape(d.Name));
-        Attr(sb, "T", d.DurationSeconds.ToString());
+        Attr(sb, "T", d.DurationSeconds.ToString(CultureInfo.InvariantCulture));
         Attr(sb, "OM", d.OnlyMasterTicks ? "T" : "F");
         Attr(sb, "R", d.RestrictToMe ? "T" : "F");
         Attr(sb, "A", d.AbsoluteTiming ? "T" : "F");
-        Attr(sb, "WV", d.WarningSeconds.ToString());
+        Attr(sb, "WV", d.WarningSeconds.ToString(CultureInfo.InvariantCulture));
         Attr(sb, "RD", d.RadialDisplay ? "T" : "F");
         Attr(sb, "M", d.Modable ? "T" : "F");
         Attr(sb, "Tt", Escape(d.Tooltip));
-        Attr(sb, "FC", d.FillColorArgb.ToString());
-        Attr(sb, "RV", d.RemoveSeconds.ToString());
+        Attr(sb, "FC", d.FillColorArgb.ToString(CultureInfo.InvariantCulture));
+        Attr(sb, "RV", d.RemoveSeconds.ToString(CultureInfo.InvariantCulture));
         Attr(sb, "C", Escape(d.Category));
         Attr(sb, "RC", d.RestrictToCategory ? "T" : "F");
         // Import honours these (ACT config-file names) — omitting them

@@ -190,7 +190,7 @@ public sealed partial class MainParseViewModel
     }
 
     [RelayCommand]
-    private void CopyCombatant(CombatantRow? row)
+    private static void CopyCombatant(CombatantRow? row)
     {
         if (row is null)
             return;
@@ -246,7 +246,7 @@ public sealed partial class MainParseViewModel
     }
 
     [RelayCommand]
-    private void CopyAbility(AbilityRow? row)
+    private static void CopyAbility(AbilityRow? row)
     {
         if (row is null || row.IsGroupLabel)
             return;
@@ -254,7 +254,7 @@ public sealed partial class MainParseViewModel
     }
 
     [RelayCommand]
-    private void CopySwing(SwingRow? row)
+    private static void CopySwing(SwingRow? row)
     {
         if (row is null)
             return;

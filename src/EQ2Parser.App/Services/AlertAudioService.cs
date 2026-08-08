@@ -177,7 +177,7 @@ public sealed class AlertAudioService : IDisposable
             {
                 using var reader = new AudioFileReader(path);
                 reader.Volume = (float)Math.Clamp(Volume, 0, 1);
-                await PlayProviderAsync(reader, _cts.Token, applyVolume: false);
+                await PlayProviderAsync(reader, applyVolume: false, _cts.Token);
             }
             catch (Exception)
             {
@@ -290,7 +290,7 @@ public sealed class AlertAudioService : IDisposable
         {
             using var ms = new MemoryStream(wav);
             using var reader = new WaveFileReader(ms);
-            await PlayProviderAsync(reader.ToSampleProvider(), ct, applyVolume: true);
+            await PlayProviderAsync(reader.ToSampleProvider(), applyVolume: true, ct);
         }
         catch (Exception)
         {
@@ -298,7 +298,7 @@ public sealed class AlertAudioService : IDisposable
         }
     }
 
-    private async Task PlayProviderAsync(ISampleProvider provider, CancellationToken ct, bool applyVolume)
+    private async Task PlayProviderAsync(ISampleProvider provider, bool applyVolume, CancellationToken ct)
     {
         if (applyVolume)
             provider = new VolumeSampleProvider(provider) { Volume = (float)Math.Clamp(Volume, 0, 1) };

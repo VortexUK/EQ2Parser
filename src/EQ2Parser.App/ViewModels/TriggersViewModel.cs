@@ -259,7 +259,7 @@ public sealed partial class TriggersViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void CopyRowXml(TriggerRow? row)
+    private static void CopyRowXml(TriggerRow? row)
     {
         if (row is null)
             return;
