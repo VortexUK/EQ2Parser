@@ -144,6 +144,12 @@ public sealed record AppSettings
     /// users want overlays visible regardless of focus.</summary>
     public bool OverlayAutoHide { get; init; }
 
+    /// <summary>Seconds after a fight ends before the three mini parse
+    /// meters fade out (locked overlays only — an unlocked meter stays put
+    /// so it can be dragged). One shared knob for DPS/HPS/Tanking.
+    /// 0 = never fade (the last fight lingers, the pre-feature behaviour).</summary>
+    public int MiniParseFadeSeconds { get; init; } = 5;
+
     // The overlay windows. Null = never configured (defaults apply; timer
     // panel A seeds from the legacy fields, the DPS meter from the old
     // single mini parse).

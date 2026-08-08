@@ -46,6 +46,9 @@ public sealed class AppSettingsCompatTests : IDisposable
         // documented pre-LastPosition behaviour), not zero.
         Assert.Null(source.LastPosition);
         Assert.False(source.AutoDiscovered);
+        // Fields added after this file was written get their defaults —
+        // e.g. the mini parse fade arrives as 5s, not 0/never.
+        Assert.Equal(5, settings.MiniParseFadeSeconds);
     }
 
     [Fact]

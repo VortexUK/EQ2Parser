@@ -8,9 +8,11 @@ public sealed record MiniParseRow(
     int Rank, string Name, string? ClassName, double Value, double Fraction, long Total, int Deaths);
 
 /// <summary>Header + rows for the mini parse window. RaidValue is the
-/// whole raid's metric per second — every ally, not just visible rows.</summary>
+/// whole raid's metric per second — every ally, not just visible rows.
+/// InCombat drives the post-fight fade (see OverlayFadeGate).</summary>
 public sealed record MiniParseData(
-    string Title, string DurationLabel, string MetricLabel, double RaidValue, IReadOnlyList<MiniParseRow> Rows);
+    string Title, string DurationLabel, string MetricLabel, double RaidValue, IReadOnlyList<MiniParseRow> Rows,
+    bool InCombat = false);
 
 /// <summary>
 /// The mini parse maths: ally totals for the chosen metric, sorted, capped
@@ -25,7 +27,8 @@ public static class MiniParseBuilder
         string title, TimeSpan duration, string metric, int maxRows,
         IEnumerable<(string Key, Combatant Combatant)> members,
         IReadOnlySet<string> allyKeys,
-        IReadOnlyDictionary<string, string?> classNames)
+        IReadOnlyDictionary<string, string?> classNames,
+        bool inCombat = false)
     {
         var seconds = Math.Max(1.0, duration.TotalSeconds);
         List<(string Name, long Total, int Deaths)> totals = [];
@@ -62,6 +65,7 @@ public static class MiniParseBuilder
             duration.ToString(@"m\:ss", System.Globalization.CultureInfo.InvariantCulture),
             metric,
             raidTotal / seconds,
-            rows);
+            rows,
+            inCombat);
     }
 }

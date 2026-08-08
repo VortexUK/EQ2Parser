@@ -92,8 +92,11 @@ public partial class OverlayShellWindow
     {
         var settings = _controller.GetSettings(_kind);
         var hasContent = _content.Refresh(settings);
-        // Locked + idle: zero pixels until something happens.
-        Root.Opacity = _locked && !hasContent ? 0 : 1;
+        // Locked + idle: zero pixels until something happens. Appearing
+        // SNAPS (a starting fight wants its meter instantly); disappearing
+        // eases out over ~0.75s of ticks — the post-fight fade.
+        var visible = !_locked || hasContent;
+        Root.Opacity = visible ? 1 : Math.Max(0, Root.Opacity - 0.2);
     }
 
     /// <summary>Push the current settings onto the live window.</summary>

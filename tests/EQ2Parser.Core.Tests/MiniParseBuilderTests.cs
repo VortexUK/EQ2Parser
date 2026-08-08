@@ -94,6 +94,17 @@ public class MiniParseBuilderTests
     }
 
     [Fact]
+    public void InCombat_Flag_Passes_Through_For_The_Fade_Gate()
+    {
+        var (members, allies) = Raid(Dealer("Alice", 100));
+        var live = MiniParseBuilder.Build("Boss", TimeSpan.FromSeconds(10), "DPS", 10, members, allies, NoClasses, inCombat: true);
+        var ended = MiniParseBuilder.Build("Boss", TimeSpan.FromSeconds(10), "DPS", 10, members, allies, NoClasses);
+
+        Assert.True(live.InCombat);
+        Assert.False(ended.InCombat);
+    }
+
+    [Fact]
     public void Class_Names_Attach_By_Display_Name()
     {
         var (members, allies) = Raid(Dealer("Alice", 100));

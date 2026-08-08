@@ -4,6 +4,7 @@ using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using EQ2Parser.App.Services;
 using EQ2Parser.App.ViewModels;
+using EQ2Parser.Core.Analysis;
 
 namespace EQ2Parser.App.Views;
 
@@ -39,12 +40,15 @@ public partial class MiniParseContent : IOverlayContent
 {
     private const double RowHeight = 22;
 
+    private readonly SourceManager _manager;
     private readonly MiniParseSnapshot _snapshot;
+    private readonly OverlayFadeGate _fade = new();
     private readonly string _metric;
     private readonly ObservableCollection<MiniParseRowVm> _rows = [];
 
     public MiniParseContent(SourceManager manager, string metric)
     {
+        _manager = manager;
         _snapshot = new MiniParseSnapshot(manager);
         _metric = metric;
         InitializeComponent();
@@ -82,7 +86,12 @@ public partial class MiniParseContent : IOverlayContent
             vm.NameBrush = NameBrushFor(archetype);
         }
         EmptyHint.Visibility = data.Rows.Count == 0 && !settings.Locked ? Visibility.Visible : Visibility.Collapsed;
-        return data.Rows.Count > 0;
+        // Post-fight fade: report "nothing to show" once combat has been
+        // over for the configured hold — the shell fades a LOCKED overlay
+        // to zero on that signal (unlocked ones stay put for dragging).
+        var faded = _fade.ShouldHide(
+            data.InCombat, _manager.Settings.MiniParseFadeSeconds, DateTimeOffset.Now);
+        return data.Rows.Count > 0 && !faded;
     }
 
     /// <summary>Name in a lightened archetype tone so it stays readable on

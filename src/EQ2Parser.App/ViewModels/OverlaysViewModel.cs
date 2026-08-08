@@ -134,7 +134,7 @@ public sealed partial class OverlayConfigVm : ObservableObject
 /// <summary>The Overlays page: three mini parse meters (DPS, healing,
 /// tanking — run any combination) and both timer panels, each fully
 /// configurable with instant visual feedback.</summary>
-public sealed class OverlaysViewModel
+public sealed class OverlaysViewModel : ObservableObject
 {
     public IReadOnlyList<OverlayConfigVm> Cards { get; }
 
@@ -169,4 +169,23 @@ public sealed class OverlaysViewModel
                 _overlay.SetSuppressed(false);
         }
     }
+
+    /// <summary>One knob for all three meters: seconds after a fight before
+    /// they fade out (0 = never). Debounced save — this rides a slider.</summary>
+    public int MiniParseFadeSeconds
+    {
+        get => _manager.Settings.MiniParseFadeSeconds;
+        set
+        {
+            if (_manager.Settings.MiniParseFadeSeconds == value)
+                return;
+            _manager.Settings = _manager.Settings with { MiniParseFadeSeconds = value };
+            AppSettings.SaveSoon(() => _manager.Settings);
+            OnPropertyChanged(nameof(MiniParseFadeSecondsLabel));
+        }
+    }
+
+    public string MiniParseFadeSecondsLabel => MiniParseFadeSeconds == 0
+        ? Loc.Get("Overlays_FadeNever")
+        : Loc.Format("Overlays_FadeSecondsLabel", MiniParseFadeSeconds);
 }

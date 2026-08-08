@@ -88,7 +88,9 @@ public sealed class MiniParseSnapshot(SourceManager manager)
                 }
             }
 
-            return MiniParseBuilder.Build(title, duration, metric, maxRows, members, allyKeys, _classNames);
+            return MiniParseBuilder.Build(
+                title, duration, metric, maxRows, members, allyKeys, _classNames,
+                inCombat: live is not null);
         }
     }
 }
