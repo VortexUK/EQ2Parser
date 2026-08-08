@@ -303,8 +303,6 @@ public sealed class TriggerService
 
     private static string FilePath => Path.Combine(AppSettings.Directory, "triggers.json");
 
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-
     private void Load()
     {
         var settings = PersistedJsonFile.Load<List<TriggerSetting>>(FilePath, static () => []);
@@ -346,7 +344,7 @@ public sealed class TriggerService
         }
         try
         {
-            PersistedJsonFile.Save(FilePath, settings, JsonOptions);
+            PersistedJsonFile.Save(FilePath, settings);
         }
         catch (Exception)
         {

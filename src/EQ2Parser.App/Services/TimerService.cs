@@ -265,8 +265,6 @@ public sealed class TimerService
 
     private static string FilePath => Path.Combine(AppSettings.Directory, "timers.json");
 
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-
     private void Load()
     {
         foreach (var definition in PersistedJsonFile.Load<List<TimerDefinition>>(FilePath, static () => []))
@@ -286,7 +284,7 @@ public sealed class TimerService
         }
         try
         {
-            PersistedJsonFile.Save(FilePath, own, JsonOptions);
+            PersistedJsonFile.Save(FilePath, own);
         }
         catch (Exception)
         {

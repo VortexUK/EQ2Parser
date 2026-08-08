@@ -2,6 +2,7 @@ using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using EQ2Parser.App.Localization;
+using EQ2Parser.Core.Persistence;
 using EQ2Parser.Core.Triggers;
 
 namespace EQ2Parser.App.Services;
@@ -114,12 +115,13 @@ public sealed class LexiconSyncService
     {
         try
         {
-            if (File.Exists(PackPath))
-                Apply(JsonSerializer.Deserialize<PackRoot>(File.ReadAllText(PackPath), PackJson), cached: true);
+            // A corrupt cache is quarantined and never blocks startup — the
+            // fetch below replaces it.
+            Apply(PersistedJsonFile.Load<PackRoot?>(PackPath, static () => null, PackJson), cached: true);
         }
         catch (Exception)
         {
-            // A corrupt cache never blocks startup — the fetch replaces it.
+            // Applying a stale pack shape must not block startup either.
         }
         await SyncAsync();
     }
@@ -145,8 +147,9 @@ public sealed class LexiconSyncService
                 SetStatus(Loc.Format("LexiconSvc_StatusUpToDate", _appliedSummary, pack.Version));
                 return;
             }
-            Directory.CreateDirectory(AppSettings.Directory);
-            File.WriteAllText(PackPath, json);
+            // Cache the server's bytes verbatim, atomically — a crash
+            // mid-write must never leave a torn pack for the next startup.
+            PersistedJsonFile.SaveText(PackPath, json);
             Apply(pack, cached: false);
         }
         catch (Exception ex)
@@ -283,34 +286,26 @@ public sealed class LexiconSyncService
 
     private void LoadOverrides()
     {
-        try
-        {
-            if (!File.Exists(OverridesPath))
-                return;
-            var overrides = JsonSerializer.Deserialize<Overrides>(File.ReadAllText(OverridesPath));
-            foreach (var key in overrides?.DisabledTriggers ?? [])
-                _disabledTriggers.Add(key);
-            foreach (var key in overrides?.DisabledTimers ?? [])
-                _disabledTimers.Add(key);
-            foreach (var key in overrides?.EnabledTriggers ?? [])
-                _enabledTriggers.Add(key);
-            foreach (var key in overrides?.EnabledTimers ?? [])
-                _enabledTimers.Add(key);
-        }
-        catch (Exception)
-        {
-            // Corrupt overrides degrade to everything-enabled.
-        }
+        // Corrupt overrides quarantine (evidence survives for recovery) and
+        // degrade to everything-enabled.
+        var overrides = PersistedJsonFile.Load<Overrides?>(OverridesPath, static () => null);
+        foreach (var key in overrides?.DisabledTriggers ?? [])
+            _disabledTriggers.Add(key);
+        foreach (var key in overrides?.DisabledTimers ?? [])
+            _disabledTimers.Add(key);
+        foreach (var key in overrides?.EnabledTriggers ?? [])
+            _enabledTriggers.Add(key);
+        foreach (var key in overrides?.EnabledTimers ?? [])
+            _enabledTimers.Add(key);
     }
 
     private void SaveOverrides()
     {
         try
         {
-            Directory.CreateDirectory(AppSettings.Directory);
-            File.WriteAllText(OverridesPath, JsonSerializer.Serialize(new Overrides(
+            PersistedJsonFile.Save(OverridesPath, new Overrides(
                 [.. _disabledTriggers], [.. _disabledTimers],
-                [.. _enabledTriggers], [.. _enabledTimers])));
+                [.. _enabledTriggers], [.. _enabledTimers]));
         }
         catch (Exception)
         {

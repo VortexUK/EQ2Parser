@@ -159,15 +159,13 @@ public sealed record AppSettings
 
     private static string FilePath => Path.Combine(Directory, "settings.json");
 
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-
     public static AppSettings Load() =>
         PersistedJsonFile.Load(FilePath, static () => new AppSettings());
 
-    public void Save() => PersistedJsonFile.Save(FilePath, this, JsonOptions);
+    public void Save() => PersistedJsonFile.Save(FilePath, this);
 
     /// <summary>Debounced save for slider-drag callers — the factory runs
     /// at write time so the FINAL drag value is what lands on disk.</summary>
     public static void SaveSoon(Func<AppSettings> current) =>
-        PersistedJsonFile.SaveSoon(FilePath, current, JsonOptions);
+        PersistedJsonFile.SaveSoon(FilePath, current);
 }

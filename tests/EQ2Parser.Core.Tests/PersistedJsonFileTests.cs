@@ -141,6 +141,44 @@ public sealed class PersistedJsonFileTests : IDisposable
     }
 
     [Fact]
+    public void SaveText_Writes_Verbatim_And_Atomically()
+    {
+        var path = PathFor("cache.json");
+        const string body = "{\"version\":\"abc\",\"zones\":[]}";
+        PersistedJsonFile.SaveText(path, body);
+
+        Assert.Equal(body, File.ReadAllText(path));
+        Assert.False(File.Exists(path + ".tmp"));
+
+        // And it cancels a pending debounced write like Save does.
+        var factoryRan = false;
+        PersistedJsonFile.SaveSoon(path, () =>
+        {
+            factoryRan = true;
+            return new Payload("stale", 1);
+        });
+        PersistedJsonFile.SaveText(path, body);
+        PersistedJsonFile.FlushPending();
+        Assert.False(factoryRan);
+        Assert.Equal(body, File.ReadAllText(path));
+    }
+
+    [Fact]
+    public void Load_Honours_Custom_Serializer_Options()
+    {
+        var path = PathFor("snake.json");
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(path, "{\"name\":\"alice\",\"value\":7}");
+
+        var options = new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower,
+        };
+        var loaded = PersistedJsonFile.Load<Payload?>(path, static () => null, options);
+        Assert.Equal(new Payload("alice", 7), loaded);
+    }
+
+    [Fact]
     public void Quarantine_Keeps_Only_The_Newest_Five()
     {
         var path = PathFor("settings.json");

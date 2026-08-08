@@ -53,7 +53,7 @@ public static class PersistedJsonFile
     /// aside (never silently overwritten by the next save). Takes the path
     /// gate so a load can never race a mid-Replace write of the same file
     /// and quarantine a perfectly healthy one.</summary>
-    public static T Load<T>(string path, Func<T> fallback)
+    public static T Load<T>(string path, Func<T> fallback, JsonSerializerOptions? options = null)
     {
         lock (GateFor(path))
         {
@@ -62,7 +62,7 @@ public static class PersistedJsonFile
             {
                 if (!File.Exists(path))
                     return fallback();
-                var loaded = JsonSerializer.Deserialize<T>(File.ReadAllText(path));
+                var loaded = JsonSerializer.Deserialize<T>(File.ReadAllText(path), options);
                 if (loaded is not null)
                     return loaded;
             }
@@ -75,11 +75,15 @@ public static class PersistedJsonFile
         }
     }
 
-    public static void Save<T>(string path, T value, JsonSerializerOptions? options = null)
+    public static void Save<T>(string path, T value, JsonSerializerOptions? options = null) =>
+        SaveText(path, JsonSerializer.Serialize(value, options ?? Indented));
+
+    /// <summary>Atomic write of pre-serialized text (e.g. an HTTP body
+    /// cached verbatim). Same contract as <see cref="Save{T}"/>: cancels
+    /// the path's pending debounced write (this call carries newer state)
+    /// and writes tmp-then-Replace under the path gate.</summary>
+    public static void SaveText(string path, string text)
     {
-        // A direct Save subsumes any pending debounced write of the same
-        // path — the debounce factory reads live state, and this call's
-        // value IS that state (or newer). Cancel, don't double-write.
         lock (PendingGate)
         {
             if (Pending.Remove(path, out var pending))
@@ -87,7 +91,7 @@ public static class PersistedJsonFile
         }
         lock (GateFor(path))
         {
-            WriteAtomic(path, JsonSerializer.Serialize(value, options ?? Indented));
+            WriteAtomic(path, text);
         }
     }
 
