@@ -23,8 +23,12 @@ public static class ZoneLookbehind
     /// <summary>The newest "You have entered …" zone within the window
     /// ending at <paramref name="beforeOffset"/>, or null when none is
     /// found (or the file can't be read — callers treat both as "still
-    /// unknown", never as an error).</summary>
-    public static string? FindLastZone(string path, long beforeOffset, int maxWindowBytes = MaxWindowBytes)
+    /// unknown", never as an error). Pass the SAME encoding the source's
+    /// tail reader uses (<see cref="LogTailOptions.Encoding"/>) — decoding
+    /// the look-behind differently from the live tail can split combatant
+    /// identities on accented names.</summary>
+    public static string? FindLastZone(
+        string path, long beforeOffset, int maxWindowBytes = MaxWindowBytes, Encoding? encoding = null)
     {
         try
         {
@@ -41,7 +45,8 @@ public static class ZoneLookbehind
 
             // Same lenient decode as the tail reader — a torn multi-byte
             // char becomes U+FFFD instead of an exception.
-            var text = new UTF8Encoding(false, throwOnInvalidBytes: false).GetString(buffer);
+            var text = (encoding
+                ?? new UTF8Encoding(false, throwOnInvalidBytes: false)).GetString(buffer);
             var lines = text.Split('\n');
             // The first entry is partial unless the window starts at the
             // real beginning of the file.

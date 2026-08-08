@@ -65,15 +65,17 @@ public sealed class LogSource : IDisposable
         TriggerEngine = triggers;
         Processor = new LogLineProcessor(Engine, triggers, timers);
         _startOffset = parseFromStart ? null : startOffset;
-        _reader = new LogTailReader(path, new LogTailOptions
+        _tailOptions = new LogTailOptions
         {
             StartAtEnd = !parseFromStart,
             StartOffset = _startOffset,
             PollInterval = pollInterval,
-        });
+        };
+        _reader = new LogTailReader(path, _tailOptions);
     }
 
     private readonly long? _startOffset;
+    private readonly LogTailOptions _tailOptions;
 
     /// <summary>Current length for the StartAtEnd case (no saved offset) —
     /// 0 on any IO failure so the look-behind is skipped, never fatal.</summary>
@@ -111,7 +113,8 @@ public sealed class LogSource : IDisposable
             if (!ParseFromStart)
             {
                 var behind = _startOffset ?? TryFileLength();
-                if (behind > 0 && ZoneLookbehind.FindLastZone(Path, behind) is { } zone)
+                if (behind > 0 && ZoneLookbehind.FindLastZone(
+                        Path, behind, encoding: _tailOptions.Encoding) is { } zone)
                 {
                     lock (_sync)
                     {
