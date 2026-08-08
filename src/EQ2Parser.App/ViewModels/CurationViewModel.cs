@@ -3,6 +3,7 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EQ2Parser.App.Services;
+using EQ2Parser.Core.Analysis;
 using EQ2Parser.Core.Triggers;
 
 namespace EQ2Parser.App.ViewModels;
@@ -130,7 +131,7 @@ public sealed partial class CurationViewModel : ObservableObject
     private async Task MineAsync(string zone)
     {
         StatusLabel = $"Mining {zone}…";
-        var mined = await Task.Run(() => AbilityMiner.MineZone(_manager.History, zone));
+        var mined = await Task.Run(() => AbilityMiner.MineZone(_manager.History.EnumerateArchivedFights(zone), zone));
         if (SelectedZone != zone)
             return;
         _mined = mined;

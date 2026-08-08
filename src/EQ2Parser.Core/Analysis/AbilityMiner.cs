@@ -2,7 +2,7 @@ using EQ2Parser.Core.Combat;
 using EQ2Parser.Core.History;
 using EQ2Parser.Core.Triggers;
 
-namespace EQ2Parser.App.Services;
+namespace EQ2Parser.Core.Analysis;
 
 /// <summary>One enemy ability as observed across archived fights: how often
 /// it was cast, its measured recast rhythm — raw and swipe-adjusted — and
@@ -56,7 +56,12 @@ public static class AbilityMiner
     /// <summary>The engine's placeholder for a caster the log didn't name.</summary>
     private const string UnknownAttacker = "Unknown";
 
-    public static List<MinedMob> MineZone(HistoryService history, string zone)
+    /// <param name="fights">The archive feed — in the app,
+    /// HistoryService.EnumerateArchivedFights(zone). Taking the data
+    /// instead of the service keeps the mining maths UI-free and testable.</param>
+    public static List<MinedMob> MineZone(
+        IEnumerable<(EncounterSummary Summary, IReadOnlyList<Swing> Swings, HashSet<string> Enemies)> archivedFights,
+        string zone)
     {
         // ability key: (mob, ability) → per-fight (cast starts, that mob's
         // swiped windows) — windows travel with the fight for normalization.
@@ -71,7 +76,7 @@ public static class AbilityMiner
         // poison + disease — all meaningful shares are reported)
         Dictionary<(string Mob, string Ability), Dictionary<string, int>> damageTypes = new();
 
-        foreach (var (summary, swings, enemies) in history.EnumerateArchivedFights(zone))
+        foreach (var (summary, swings, enemies) in archivedFights)
         {
             // Pre-scan: recast-debuff windows per mob (Traumatic Swipe hits
             // on the mob, each refreshing its duration; overlaps merged).
@@ -148,7 +153,7 @@ public static class AbilityMiner
                 if (swing.Ability == Combatant.KillingAbility || swing.Ability.Length == 0)
                     continue;
                 // Auto-attacks are never timer material — pure noise here.
-                if (swing.Ability == Core.Grammar.EnglishGrammar.AutoAttackAbility)
+                if (swing.Ability == Grammar.EnglishGrammar.AutoAttackAbility)
                     continue;
                 var attacker = swing.Attacker;
                 if (attacker == UnknownAttacker)

@@ -1,7 +1,6 @@
 # ACT Core Engine — Behavioral Reference
 
-**Provenance**: behavioral analysis of decompiled `Advanced Combat Tracker.exe`
-v3.8.5.288 (closed source, unlicensed). This document describes *behavior* —
+**Provenance**: . This document describes *behavior* —
 algorithms, thresholds, formulas, field names — in our own words. **No code
 was copied and none may be**; this is the cleanroom boundary. Our engine is
 implemented from this spec and validated by diffing outputs against ACT on
