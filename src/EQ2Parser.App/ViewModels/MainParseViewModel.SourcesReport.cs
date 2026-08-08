@@ -100,16 +100,18 @@ public sealed partial class MainParseViewModel
     /// that accuses a player of padding needs a sustained stream.</summary>
     private const int MinImpossibleSchoolHits = 5;
 
-    private Dictionary<string, CombatantTag> SourceReportTags(object? fight) => fight switch
+    private Dictionary<string, CombatantTag> SourceReportTags(object? fight)
     {
-        Encounter e => new(manager.Classifier.Classify(e), StringComparer.Ordinal),
-        CorrelatedEncounter m => new(manager.Classifier.Classify(m.Primary), StringComparer.Ordinal),
-        AggregateFights a => a.Fights
-            .SelectMany(f => manager.Classifier.Classify(f.Primary))
-            .GroupBy(kv => kv.Key, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.First().Value, StringComparer.Ordinal),
-        _ => new(StringComparer.Ordinal),
-    };
+        Dictionary<string, CombatantTag> tags = new(StringComparer.Ordinal);
+        if (fight is not IFightView view)
+            return tags;
+        foreach (var primary in view.ClassificationSources)
+        {
+            foreach (var (key, tag) in manager.Classifier.Classify(primary))
+                tags.TryAdd(key, tag); // first fight's verdict wins, as before
+        }
+        return tags;
+    }
 
     /// <summary>Fight node → per-ally source-split table; combatant row →
     /// per-ability listing grouped by source.</summary>
@@ -490,34 +492,16 @@ public sealed partial class MainParseViewModel
     private List<(string Name, Combatant C)> FightAllyCombatants(object? fight)
     {
         List<(string, Combatant)> targets = [];
-        switch (fight)
+        // Aggregates have no single ClassificationSource — skipped by design.
+        if (fight is not IFightView view || view.ClassificationSource is not { } source)
+            return targets;
+        var tags = manager.Classifier.Classify(source);
+        foreach (var (key, ally) in view.AllyCombatants)
         {
-            case CorrelatedEncounter merged:
-            {
-                var tags = manager.Classifier.Classify(merged.Primary);
-                foreach (var (key, entry) in merged.MergedCombatants)
-                {
-                    if (!merged.MergedAllyKeys.Contains(key))
-                        continue;
-                    if (tags.TryGetValue(key, out var tag)
-                        && tag.Kind is CombatantKind.System or CombatantKind.Bystander or CombatantKind.Pet)
-                        continue;
-                    targets.Add((entry.Combatant.Name, entry.Combatant));
-                }
-                break;
-            }
-            case Encounter encounter:
-            {
-                var tags = manager.Classifier.Classify(encounter);
-                foreach (var ally in encounter.GetAllies())
-                {
-                    if (tags.TryGetValue(ally.Key, out var tag)
-                        && tag.Kind is CombatantKind.System or CombatantKind.Bystander or CombatantKind.Pet)
-                        continue;
-                    targets.Add((ally.Name, ally));
-                }
-                break;
-            }
+            if (tags.TryGetValue(key, out var tag)
+                && tag.Kind is CombatantKind.System or CombatantKind.Bystander or CombatantKind.Pet)
+                continue;
+            targets.Add((ally.Name, ally));
         }
         return targets;
     }

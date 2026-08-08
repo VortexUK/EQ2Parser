@@ -53,15 +53,19 @@ public sealed partial class MainParseViewModel
         SetClipboard(text);
     }
 
-    private string FightSummary(CorrelatedEncounter fight)
+    /// <summary>One summary for every fight shape (the live and merged
+    /// copies had drifted: different DPS divisors, and the live one
+    /// included damaging pets). Players only, display-rate maths.</summary>
+    private string FightSummary(IFightView fight)
     {
-        var tags = manager.Classifier.Classify(fight.Primary);
-        var seconds = Math.Max(1, fight.Duration.TotalSeconds);
-        var parts = fight.MergedCombatants
-            .Where(kv => fight.MergedAllyKeys.Contains(kv.Key)
-                && tags.TryGetValue(kv.Key, out var tag) && tag.Kind == CombatantKind.Player
-                && kv.Value.Combatant.Damage > 0)
-            .Select(kv => (kv.Value.Combatant.Name, Dps: kv.Value.Combatant.Damage / seconds))
+        var seconds = fight.DisplaySeconds;
+        var tags = fight.ClassificationSource is { } source
+            ? manager.Classifier.Classify(source)
+            : new Dictionary<string, CombatantTag>(StringComparer.Ordinal);
+        var parts = fight.AllyCombatants
+            .Where(kv => tags.TryGetValue(kv.Key, out var tag) && tag.Kind == CombatantKind.Player
+                && kv.Value.Damage > 0)
+            .Select(kv => (kv.Value.Name, Dps: kv.Value.Damage / seconds))
             .OrderByDescending(t => t.Dps)
             .Select(t => $"{t.Name} {CombatantRow.Compact(t.Dps)}");
         return $"{fight.Title} ({FmtSpan(fight.Duration)}, raid {CombatantRow.Compact(fight.EncDps)} dps): {string.Join(", ", parts)}";
@@ -69,7 +73,7 @@ public sealed partial class MainParseViewModel
 
     private string AggregateSummary(string label, IReadOnlyList<CorrelatedEncounter> fights)
     {
-        var lines = fights.Select(FightSummary);
+        var lines = fights.Select(f => FightSummary(f));
         return $"{label} — {fights.Count} fights, {FmtSpan(SumDuration(fights))}\n{string.Join("\n", lines)}";
     }
 
@@ -77,13 +81,8 @@ public sealed partial class MainParseViewModel
     {
         foreach (var source in manager.Sources)
         {
-            if (source.Engine.ActiveEncounter is not { } encounter)
-                continue;
-            var parts = encounter.GetAllies()
-                .Where(a => a.Damage > 0)
-                .OrderByDescending(a => a.Damage)
-                .Select(a => $"{a.Name} {CombatantRow.Compact(encounter.EncDpsOf(a))}");
-            return $"{encounter.Title} ({FmtSpan(encounter.Duration)}, raid {CombatantRow.Compact(encounter.EncDps)} dps): {string.Join(", ", parts)}";
+            if (source.Engine.ActiveEncounter is { } encounter)
+                return FightSummary(encounter);
         }
         return null;
     }

@@ -37,8 +37,78 @@ public sealed class ParseNode
     public IReadOnlyList<CorrelatedEncounter>? GroupFights { get; init; }
 }
 
-/// <summary>A zone rollup selection: combined stats over several fights.</summary>
-public sealed record AggregateFights(string Zone, string Label, IReadOnlyList<CorrelatedEncounter> Fights);
+/// <summary>A zone rollup selection: combined stats over several fights.
+/// Implements <see cref="IFightView"/> so shared fight maths (durations,
+/// display rates, combatant instances) needs no per-shape switch; rollup
+/// EncDPS uses the COMBINED duration (ACT's "All" maths).</summary>
+public sealed record AggregateFights(string Zone, string Label, IReadOnlyList<CorrelatedEncounter> Fights) : IFightView
+{
+    public string Title => Label;
+    public DateTimeOffset StartTime => Fights.Count > 0 ? Fights.Min(f => f.StartTime) : default;
+    public DateTimeOffset EndTime => Fights.Count > 0 ? Fights.Max(f => f.EndTime) : default;
+
+    /// <summary>Combined fight time — the sum of member durations, not the
+    /// wall-clock span (idle time between pulls never counts).</summary>
+    public TimeSpan Duration
+    {
+        get
+        {
+            var total = TimeSpan.Zero;
+            foreach (var fight in Fights)
+                total += fight.Duration;
+            return total;
+        }
+    }
+
+    public long Damage => Fights.Sum(f => f.Damage);
+
+    public double EncDps
+    {
+        get
+        {
+            var seconds = Duration.TotalSeconds;
+            return seconds > 0 ? Damage / seconds : 0;
+        }
+    }
+
+    /// <summary>A rollup spans wins and losses — no single outcome.</summary>
+    public SuccessLevel GetSuccessLevel() => SuccessLevel.Indeterminate;
+
+    /// <summary>No single source — consumers classify per member fight.</summary>
+    Encounter? IFightView.ClassificationSource => null;
+
+    IEnumerable<Encounter> IFightView.ClassificationSources => Fights.Select(f => f.Primary);
+
+    IEnumerable<KeyValuePair<string, Combatant>> IFightView.AllyCombatants
+    {
+        get
+        {
+            foreach (var fight in Fights)
+                foreach (var pair in ((IFightView)fight).AllyCombatants)
+                    yield return pair;
+        }
+    }
+
+    IEnumerable<KeyValuePair<string, Combatant>> IFightView.ViewCombatants
+    {
+        get
+        {
+            foreach (var fight in Fights)
+                foreach (var pair in ((IFightView)fight).ViewCombatants)
+                    yield return pair;
+        }
+    }
+
+    public bool ContainsCombatant(string key) => Fights.Any(f => f.ContainsCombatant(key));
+
+    public IReadOnlyList<Combatant> InstancesOf(string key)
+    {
+        List<Combatant> instances = [];
+        foreach (var fight in Fights)
+            instances.AddRange(fight.InstancesOf(key));
+        return instances;
+    }
+}
 
 /// <summary>A zone-header selection: the encounter-list summary view. The
 /// group is re-resolved from history each refresh (so a live zone gains new
@@ -589,31 +659,15 @@ public sealed partial class MainParseViewModel : ObservableObject
         return rows;
     }
 
-    /// <summary>Every per-fight instance of one combatant across the three
-    /// fight shapes (an aggregate yields one instance per member fight) —
-    /// another shape-switch that was re-implemented per call site.</summary>
-    private static List<Combatant> FightCombatantInstances(object fight, string key) => fight switch
-    {
-        Encounter e => e.Combatants.TryGetValue(key, out var c) ? [c] : [],
-        CorrelatedEncounter m => m.MergedCombatants.TryGetValue(key, out var mc) ? [mc.Combatant] : [],
-        AggregateFights a =>
-            [.. a.Fights
-                .Select(f => f.MergedCombatants.TryGetValue(key, out var mc) ? mc.Combatant : null)
-                .Where(c => c is not null)
-                .Select(c => c!)],
-        _ => [],
-    };
+    /// <summary>Every per-fight instance of one combatant, any fight shape
+    /// (an aggregate yields one instance per member fight).</summary>
+    private static IReadOnlyList<Combatant> FightCombatantInstances(object fight, string key) =>
+        fight is IFightView view ? view.InstancesOf(key) : [];
 
-    /// <summary>Canonical fight duration in seconds (≥1) for rate maths —
-    /// this shape-switch used to be re-implemented at every call site, and
-    /// forgotten arms were a recurring bug class.</summary>
-    private static double FightSeconds(object? fight) => Math.Max(1, fight switch
-    {
-        Encounter e => e.Duration.TotalSeconds,
-        CorrelatedEncounter m => m.Duration.TotalSeconds,
-        AggregateFights a => SumDuration(a.Fights).TotalSeconds,
-        _ => 1.0,
-    });
+    /// <summary>Canonical fight duration in seconds (≥1) for display rate
+    /// maths — <see cref="IFightView.DisplaySeconds"/>, shape-free.</summary>
+    private static double FightSeconds(object? fight) =>
+        fight is IFightView view ? view.DisplaySeconds : 1.0;
 
     private static TimeSpan SumDuration(IReadOnlyList<CorrelatedEncounter> fights)
     {

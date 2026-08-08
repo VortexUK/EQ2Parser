@@ -101,21 +101,20 @@ public sealed partial class MainParseViewModel
                 case Encounter encounter:
                     live = encounter.Active;
                     breadcrumb = Describe(encounter.Zone, encounter.Title, encounter.Duration, encounter.EncDps, live);
-                    SnapshotEncounter(encounter, allies, pets, enemies);
+                    SnapshotFight(encounter, allies, pets, enemies);
                     break;
                 case CorrelatedEncounter merged:
                     breadcrumb = Describe(merged.Zone, merged.Title, merged.Duration, merged.EncDps, live: false);
-                    SnapshotMerged(merged, allies, pets, enemies);
+                    SnapshotFight(merged, allies, pets, enemies);
                     break;
                 case AggregateFights aggregate:
                 {
                     SnapshotAggregate(aggregate, allies, pets, enemies);
-                    var seconds = Math.Max(1, SumDuration(aggregate.Fights).TotalSeconds);
                     var allyDamage = allies.Sum(r => r.Damage) + pets.Sum(r => r.Damage);
                     breadcrumb = Describe(
                         aggregate.Zone,
                         Loc.Format("MainVm_AggregateTitle", LocalizeAggregateLabel(aggregate.Label), aggregate.Fights.Count),
-                        SumDuration(aggregate.Fights), allyDamage / seconds, live: false);
+                        aggregate.Duration, allyDamage / ((IFightView)aggregate).DisplaySeconds, live: false);
                     break;
                 }
                 case ZoneFights zone:
@@ -325,15 +324,21 @@ public sealed partial class MainParseViewModel
         return Loc.Format("MainVm_FightBreadcrumb", zonePart, shownTitle, duration.TotalSeconds, CombatantRow.Compact(dps));
     }
 
-    private void SnapshotEncounter(Encounter encounter, List<RowData> allies, List<RowData> pets, List<RowData> enemies)
+    /// <summary>One snapshot for both single-log and merged fights (the two
+    /// copies had drifted: the live path divided by REAL seconds while the
+    /// merged path clamped to ≥1, showing different DPS rules on one screen
+    /// for zero-duration fights). <see cref="IFightView.DisplaySeconds"/> is
+    /// now the single display rule.</summary>
+    private void SnapshotFight(IFightView fight, List<RowData> allies, List<RowData> pets, List<RowData> enemies)
     {
-        var tags = manager.Classifier.Classify(encounter);
-        // One Duration derivation per tick, not one per combatant —
-        // EncDpsOf/EncHpsOf each re-derive it (same maths, hoisted).
-        var seconds = encounter.Duration.TotalSeconds;
-        foreach (var combatant in encounter.Combatants.Values)
+        if (fight.ClassificationSource is not { } source)
+            return;
+        var tags = manager.Classifier.Classify(source);
+        // One seconds derivation per tick, not one per combatant.
+        var seconds = fight.DisplaySeconds;
+        foreach (var (key, combatant) in fight.ViewCombatants)
         {
-            if (!tags.TryGetValue(combatant.Key, out var tag))
+            if (!tags.TryGetValue(key, out var tag))
                 continue;
             if (tag.Kind is CombatantKind.System or CombatantKind.Bystander)
                 continue;
@@ -343,32 +348,10 @@ public sealed partial class MainParseViewModel
             if (damage <= 0 && healed <= 0 && taken <= 0)
                 continue;
             var row = BuildRow(
-                combatant.Key, combatant.Name, tag,
-                combatant.Duration.TotalSeconds, damage,
-                seconds > 0 ? damage / seconds : 0, seconds > 0 ? healed / seconds : 0,
-                taken, combatant.Deaths, ExtOf(combatant));
-            BucketRow(tag, row, allies, pets, enemies);
-        }
-    }
-
-    private void SnapshotMerged(CorrelatedEncounter merged, List<RowData> allies, List<RowData> pets, List<RowData> enemies)
-    {
-        var tags = manager.Classifier.Classify(merged.Primary);
-        var seconds = Math.Max(1, merged.Duration.TotalSeconds);
-        foreach (var (key, entry) in merged.MergedCombatants)
-        {
-            var combatant = entry.Combatant;
-            if (!tags.TryGetValue(key, out var tag))
-                continue;
-            if (tag.Kind is CombatantKind.System or CombatantKind.Bystander)
-                continue;
-            if (combatant.Damage <= 0 && combatant.Healed <= 0 && combatant.DamageTaken <= 0)
-                continue;
-            var row = BuildRow(
                 key, combatant.Name, tag,
-                combatant.Duration.TotalSeconds, combatant.Damage,
-                combatant.Damage / seconds, combatant.Healed / seconds,
-                combatant.DamageTaken, combatant.Deaths, ExtOf(combatant));
+                combatant.Duration.TotalSeconds, damage,
+                damage / seconds, healed / seconds,
+                taken, combatant.Deaths, ExtOf(combatant));
             BucketRow(tag, row, allies, pets, enemies);
         }
     }
@@ -379,7 +362,7 @@ public sealed partial class MainParseViewModel
     /// evidence for that combatant.</summary>
     private void SnapshotAggregate(AggregateFights aggregate, List<RowData> allies, List<RowData> pets, List<RowData> enemies)
     {
-        var totalSeconds = Math.Max(1, SumDuration(aggregate.Fights).TotalSeconds);
+        var totalSeconds = ((IFightView)aggregate).DisplaySeconds;
         var acc = new Dictionary<string, (string Name, CombatantTag Tag, double Seconds, long Damage, long Healed, long Taken, int Deaths, ExtStats? Ext)>(StringComparer.Ordinal);
 
         foreach (var fight in aggregate.Fights)
@@ -505,7 +488,7 @@ public sealed partial class MainParseViewModel
             row.ClassName = data.Cls;
             row.ClassBrush = data.Brush;
             row.IsPet = data.IsPet;
-            row.Duration = TimeSpan.FromSeconds(data.Seconds).ToString(@"mm\:ss");
+            row.Duration = FmtSpan(TimeSpan.FromSeconds(data.Seconds));
             row.Damage = CombatantRow.Compact(data.Damage);
             row.Percent = $"{100.0 * MetricOf(data, metric) / total:F0}%";
             row.Dps = CombatantRow.Compact(data.Dps);

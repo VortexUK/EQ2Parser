@@ -59,17 +59,15 @@ public sealed partial class MainParseViewModel
         {
             foreach (var f in aggregate.Fights)
             {
-                var seconds = Math.Max(1, f.Duration.TotalSeconds);
+                var seconds = ((IFightView)f).DisplaySeconds;
                 double total = 0;
-                foreach (var (key, entry) in f.MergedCombatants)
+                foreach (var (_, combatant) in ((IFightView)f).AllyCombatants)
                 {
-                    if (!f.MergedAllyKeys.Contains(key))
-                        continue;
                     total += metric switch
                     {
-                        "HPS" => entry.Combatant.Healed,
-                        "Taken" => entry.Combatant.DamageTaken,
-                        _ => entry.Combatant.Damage,
+                        "HPS" => combatant.Healed,
+                        "Taken" => combatant.DamageTaken,
+                        _ => combatant.Damage,
                     };
                 }
                 var title = f.Title.Length > 16 ? f.Title[..15] + "…" : f.Title;

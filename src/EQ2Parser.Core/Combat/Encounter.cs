@@ -18,7 +18,7 @@ public enum SuccessLevel
 /// the id of the log source that produced it (multi-log correlation groups
 /// encounters across sources later).
 /// </summary>
-public sealed class Encounter(string sourceId, string ownerName, string zone)
+public sealed class Encounter(string sourceId, string ownerName, string zone) : IFightView
 {
     public const string PlaceholderTitle = "Encounter";
 
@@ -42,6 +42,25 @@ public sealed class Encounter(string sourceId, string ownerName, string zone)
     public string Title { get; private set; } = PlaceholderTitle;
 
     public IReadOnlyDictionary<string, Combatant> Combatants => _combatants;
+
+    // ── IFightView ──────────────────────────────────────────────────────────
+
+    Encounter? IFightView.ClassificationSource => this;
+    IEnumerable<Encounter> IFightView.ClassificationSources => [this];
+    IEnumerable<KeyValuePair<string, Combatant>> IFightView.ViewCombatants => _combatants;
+
+    IEnumerable<KeyValuePair<string, Combatant>> IFightView.AllyCombatants
+    {
+        get
+        {
+            foreach (var ally in GetAllies())
+                yield return new KeyValuePair<string, Combatant>(ally.Key, ally);
+        }
+    }
+
+    public bool ContainsCombatant(string key) => _combatants.ContainsKey(key);
+    public IReadOnlyList<Combatant> InstancesOf(string key) =>
+        _combatants.TryGetValue(key, out var combatant) ? [combatant] : [];
 
     public void AddSwing(Swing swing)
     {

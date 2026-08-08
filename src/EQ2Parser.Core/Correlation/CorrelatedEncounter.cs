@@ -15,7 +15,7 @@ public sealed record MergedCombatant(Combatant Combatant, string AuthoritySource
 /// per-combatant authority mirror the EQ2Lexicon mirror-grouping design,
 /// upgraded from per-fight-primary to per-combatant and computed client-side.
 /// </summary>
-public sealed class CorrelatedEncounter
+public sealed class CorrelatedEncounter : IFightView
 {
     private readonly List<Encounter> _sources = [];
     private Dictionary<string, MergedCombatant>? _mergedCache;
@@ -148,4 +148,36 @@ public sealed class CorrelatedEncounter
             return seconds > 0 ? Damage / seconds : 0;
         }
     }
+
+    // ── IFightView ──────────────────────────────────────────────────────────
+
+    Encounter? IFightView.ClassificationSource => Primary;
+    IEnumerable<Encounter> IFightView.ClassificationSources => [Primary];
+
+    IEnumerable<KeyValuePair<string, Combatant>> IFightView.ViewCombatants
+    {
+        get
+        {
+            foreach (var (key, entry) in MergedCombatants)
+                yield return new KeyValuePair<string, Combatant>(key, entry.Combatant);
+        }
+    }
+
+    IEnumerable<KeyValuePair<string, Combatant>> IFightView.AllyCombatants
+    {
+        get
+        {
+            var allies = MergedAllyKeys;
+            foreach (var (key, entry) in MergedCombatants)
+            {
+                if (allies.Contains(key))
+                    yield return new KeyValuePair<string, Combatant>(key, entry.Combatant);
+            }
+        }
+    }
+
+    public bool ContainsCombatant(string key) => MergedCombatants.ContainsKey(key);
+
+    public IReadOnlyList<Combatant> InstancesOf(string key) =>
+        MergedCombatants.TryGetValue(key, out var entry) ? [entry.Combatant] : [];
 }

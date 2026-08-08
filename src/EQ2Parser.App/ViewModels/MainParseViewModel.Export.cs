@@ -187,14 +187,18 @@ public sealed partial class MainParseViewModel
             .ShowDialog();
     }
 
-    private string CombatantTable(CorrelatedEncounter fight, ExportSpec spec)
+    /// <summary>One export table for every fight shape (the live and merged
+    /// copies had drifted: the live one skipped the players-only filter and
+    /// both hand-rolled the seconds clamp).</summary>
+    private string CombatantTable(IFightView fight, ExportSpec spec)
     {
-        var tags = manager.Classifier.Classify(fight.Primary);
-        var seconds = Math.Max(1, fight.Duration.TotalSeconds);
-        var allies = fight.MergedCombatants
-            .Where(kv => fight.MergedAllyKeys.Contains(kv.Key)
-                && tags.TryGetValue(kv.Key, out var tag) && tag.Kind == CombatantKind.Player)
-            .Select(kv => (kv.Value.Combatant, Cls: tags[kv.Key].Class.ClassName ?? ""));
+        if (fight.ClassificationSource is not { } source)
+            return "";
+        var tags = manager.Classifier.Classify(source);
+        var seconds = fight.DisplaySeconds;
+        var allies = fight.AllyCombatants
+            .Where(kv => tags.TryGetValue(kv.Key, out var tag) && tag.Kind == CombatantKind.Player)
+            .Select(kv => (Combatant: kv.Value, Cls: tags[kv.Key].Class.ClassName ?? ""));
         var summary = Loc.Format("Export_FightSummary",
             fight.Title, FmtSpan(fight.Duration), CombatantRow.Compact(fight.EncDps));
         return RenderTable(summary, allies, seconds, spec);
@@ -204,15 +208,8 @@ public sealed partial class MainParseViewModel
     {
         foreach (var source in manager.Sources)
         {
-            if (source.Engine.ActiveEncounter is not { } encounter)
-                continue;
-            var tags = manager.Classifier.Classify(encounter);
-            var seconds = Math.Max(1, encounter.Duration.TotalSeconds);
-            var allies = encounter.GetAllies()
-                .Select(a => (Combatant: a, Cls: tags.GetValueOrDefault(a.Key)?.Class.ClassName ?? ""));
-            var summary = Loc.Format("Export_FightSummary",
-                encounter.Title, FmtSpan(encounter.Duration), CombatantRow.Compact(encounter.EncDps));
-            return RenderTable(summary, allies, seconds, spec);
+            if (source.Engine.ActiveEncounter is { } encounter)
+                return CombatantTable(encounter, spec);
         }
         return null;
     }

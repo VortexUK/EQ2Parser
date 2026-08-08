@@ -210,7 +210,9 @@ public sealed partial class MainParseViewModel
     private Dictionary<string, string?> ClassMapFor(object fight)
     {
         Dictionary<string, string?> map = new(StringComparer.OrdinalIgnoreCase);
-        void AddFrom(Encounter primary)
+        if (fight is not IFightView view)
+            return map;
+        foreach (var primary in view.ClassificationSources)
         {
             var tags = manager.Classifier.Classify(primary);
             foreach (var combatant in primary.Combatants.Values)
@@ -218,15 +220,6 @@ public sealed partial class MainParseViewModel
                 if (tags.TryGetValue(combatant.Key, out var tag))
                     map[combatant.Name] = tag.Class.ClassName;
             }
-        }
-        switch (fight)
-        {
-            case Encounter e: AddFrom(e); break;
-            case CorrelatedEncounter m: AddFrom(m.Primary); break;
-            case AggregateFights a:
-                foreach (var f in a.Fights)
-                    AddFrom(f.Primary);
-                break;
         }
         return map;
     }
@@ -289,13 +282,9 @@ public sealed partial class MainParseViewModel
         {
             var targets = ReportTargets(parameter, out var context);
             var fightObj = parameter is ParseNode { Fight: { } nodeFight } ? nodeFight : ResolveFight();
-            var (fightStart, fightSeconds) = fightObj switch
-            {
-                Encounter e => (e.StartTime, Math.Max(1, e.Duration.TotalSeconds)),
-                CorrelatedEncounter m => (m.StartTime, Math.Max(1, m.Duration.TotalSeconds)),
-                AggregateFights a when a.Fights.Count > 0 => (a.Fights[0].StartTime, Math.Max(1, SumDuration(a.Fights).TotalSeconds)),
-                _ => (DateTimeOffset.MinValue, 1.0),
-            };
+            var (fightStart, fightSeconds) = fightObj is IFightView view
+                ? (view.StartTime, view.DisplaySeconds)
+                : (DateTimeOffset.MinValue, 1.0);
 
             // Aggregate rollups plot on a CUMULATIVE fight-time axis —
             // wall-clock offsets from the first fight's start piled every
@@ -853,26 +842,15 @@ public sealed partial class MainParseViewModel
     private HashSet<string> EnemyAttackerKeys(object? fight)
     {
         HashSet<string> keys = new(StringComparer.Ordinal);
-        void AddFrom(Encounter primary)
+        if (fight is not IFightView view)
+            return keys;
+        foreach (var primary in view.ClassificationSources)
         {
             foreach (var (key, tag) in manager.Classifier.Classify(primary))
             {
                 if (tag.Kind == CombatantKind.Enemy)
                     keys.Add(key);
             }
-        }
-        switch (fight)
-        {
-            case Encounter encounter:
-                AddFrom(encounter);
-                break;
-            case CorrelatedEncounter merged:
-                AddFrom(merged.Primary);
-                break;
-            case AggregateFights aggregate:
-                foreach (var f in aggregate.Fights)
-                    AddFrom(f.Primary);
-                break;
         }
         return keys;
     }
@@ -1245,13 +1223,8 @@ public sealed partial class MainParseViewModel
         }
     }
 
-    private static bool FightContains(object? fight, string key) => fight switch
-    {
-        Encounter e => e.Combatants.ContainsKey(key),
-        CorrelatedEncounter m => m.MergedCombatants.ContainsKey(key),
-        AggregateFights a => a.Fights.Any(f => f.MergedCombatants.ContainsKey(key)),
-        _ => false,
-    };
+    private static bool FightContains(object? fight, string key) =>
+        fight is IFightView view && view.ContainsCombatant(key);
 
     private void CloseOverlay()
     {
