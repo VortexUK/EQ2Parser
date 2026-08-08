@@ -71,15 +71,23 @@ public partial class MiniParseContent : IOverlayContent
             _rows.RemoveAt(_rows.Count - 1);
         while (_rows.Count < data.Rows.Count)
             _rows.Add(new MiniParseRowVm());
+        // Column toggles: an off column renders as empty text, and its
+        // Auto grid column collapses to nothing. Null = all on (default).
+        var columns = settings.MeterColumns;
+        bool On(string key) => columns is null || columns.Contains(key);
+        var showClass = On("Class");
+        var showDeaths = On("Deaths");
+        var showValue = On("Value");
+        var showShare = On("Share");
         for (var i = 0; i < data.Rows.Count; i++)
         {
             var row = data.Rows[i];
             var vm = _rows[i];
             vm.Name = row.Name;
-            vm.ClassText = row.ClassName is { Length: > 0 } cls ? $" <{cls}>" : "";
-            vm.DeathsText = row.Deaths > 0 ? $"☠{row.Deaths}" : "";
-            vm.ValueText = CombatantRow.Compact(row.Value);
-            vm.ShareText = $"{row.Fraction:P0}";
+            vm.ClassText = showClass && row.ClassName is { Length: > 0 } cls ? $" <{cls}>" : "";
+            vm.DeathsText = showDeaths && row.Deaths > 0 ? $"☠{row.Deaths}" : "";
+            vm.ValueText = showValue ? CombatantRow.Compact(row.Value) : "";
+            vm.ShareText = showShare ? $"{row.Fraction:P0}" : "";
             vm.Fraction = Math.Clamp(row.Fraction, 0, 1);
             var archetype = (SolidColorBrush)ClassColors.For(row.ClassName);
             vm.BarBrush = archetype;

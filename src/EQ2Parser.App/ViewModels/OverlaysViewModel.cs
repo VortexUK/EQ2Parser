@@ -23,6 +23,9 @@ public sealed partial class OverlayConfigVm : ObservableObject
     /// <summary>Notifications only: the toast stay-duration slider.</summary>
     public bool HasToastSeconds { get; }
 
+    /// <summary>Mini parses only: the row-column toggles.</summary>
+    public bool HasMeterColumns => IsResizable;
+
     public OverlayConfigVm(OverlayController controller, OverlayKind kind, string title, string itemsLabel)
     {
         _controller = controller;
@@ -49,7 +52,25 @@ public sealed partial class OverlayConfigVm : ObservableObject
         Width = s.Width;
         MaxItems = s.MaxItems;
         ToastSeconds = s.ToastSeconds;
+        ColClass = s.MeterColumns is null || s.MeterColumns.Contains("Class");
+        ColDeaths = s.MeterColumns is null || s.MeterColumns.Contains("Deaths");
+        ColValue = s.MeterColumns is null || s.MeterColumns.Contains("Value");
+        ColShare = s.MeterColumns is null || s.MeterColumns.Contains("Share");
         _syncing = false;
+    }
+
+    /// <summary>Persist the four column toggles. All on → null, the
+    /// "defaults" state old settings files already have.</summary>
+    private void SaveColumns()
+    {
+        if (_syncing)
+            return;
+        List<string> picked = [];
+        if (ColClass) picked.Add("Class");
+        if (ColDeaths) picked.Add("Deaths");
+        if (ColValue) picked.Add("Value");
+        if (ColShare) picked.Add("Share");
+        _controller.Update(_kind, s => s with { MeterColumns = picked.Count == 4 ? null : picked });
     }
 
     [ObservableProperty]
@@ -72,6 +93,23 @@ public sealed partial class OverlayConfigVm : ObservableObject
 
     [ObservableProperty]
     private double _toastSeconds;
+
+    [ObservableProperty]
+    private bool _colClass;
+
+    [ObservableProperty]
+    private bool _colDeaths;
+
+    [ObservableProperty]
+    private bool _colValue;
+
+    [ObservableProperty]
+    private bool _colShare;
+
+    partial void OnColClassChanged(bool value) => SaveColumns();
+    partial void OnColDeathsChanged(bool value) => SaveColumns();
+    partial void OnColValueChanged(bool value) => SaveColumns();
+    partial void OnColShareChanged(bool value) => SaveColumns();
 
     public string OpacityLabel => $"{Opacity:P0}";
     public string ScaleLabel => $"{Scale:0.00}×";

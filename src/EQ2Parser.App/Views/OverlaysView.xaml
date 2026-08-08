@@ -67,6 +67,25 @@
                                    FontSize="11" VerticalAlignment="Center" TextAlignment="Right"
                                    Visibility="{Binding HasToastSeconds, Converter={StaticResource BoolToVis}}" />
                     </Grid>
+
+                    <!-- Mini parses only: which row columns render. WrapPanel:
+                         four toggles overflow the card width on one line. -->
+                    <StackPanel Margin="0,8,0,0"
+                                Visibility="{Binding HasMeterColumns, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{loc:Tr Overlays_ColumnsLabel}" Style="{StaticResource MutedText}"
+                                   FontSize="12" Margin="0,0,0,4" />
+                        <WrapPanel>
+                            <CheckBox Content="{loc:Tr Cols_Class}" IsChecked="{Binding ColClass}"
+                                      Foreground="{StaticResource TextBrush}" FontSize="11.5" Margin="0,0,12,4" />
+                            <CheckBox Content="{loc:Tr Cols_Deaths}" IsChecked="{Binding ColDeaths}"
+                                      Foreground="{StaticResource TextBrush}" FontSize="11.5" Margin="0,0,12,4" />
+                            <CheckBox Content="{loc:Tr Overlays_ColValue}" IsChecked="{Binding ColValue}"
+                                      Foreground="{StaticResource TextBrush}" FontSize="11.5" Margin="0,0,12,4" />
+                            <CheckBox Content="{loc:Tr Overlays_ColShare}" IsChecked="{Binding ColShare}"
+                                      Foreground="{StaticResource TextBrush}" FontSize="11.5" Margin="0,0,0,4" />
+                        </WrapPanel>
+                    </StackPanel>
+
                     <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"
                                Text="{loc:Tr Overlays_ResizeHint}"
                                Visibility="{Binding IsResizable, Converter={StaticResource BoolToVis}}" />

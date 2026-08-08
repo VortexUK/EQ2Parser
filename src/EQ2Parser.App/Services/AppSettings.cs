@@ -27,6 +27,11 @@ public sealed record OverlayWindowSettings
     public double Scale { get; init; } = 1.0;
     public int MaxItems { get; init; } = 10;
 
+    /// <summary>Mini parse meters only: which row columns render. Known
+    /// keys: Class, Deaths, Value, Share (Name always shows). Null = all
+    /// of them — the pre-feature look and the default.</summary>
+    public List<string>? MeterColumns { get; init; }
+
     /// <summary>Notifications overlay only: seconds a toast stays before
     /// fading out.</summary>
     public double ToastSeconds { get; init; } = 6;

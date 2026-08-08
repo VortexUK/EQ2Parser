@@ -71,6 +71,22 @@ public sealed class AppSettingsCompatTests : IDisposable
     }
 
     [Fact]
+    public void Meter_Columns_Default_Null_And_Round_Trip()
+    {
+        // Absent = null = every column (the pre-feature look).
+        WriteSettings("""{ "MiniParseOverlay": { "Visible": true } }""");
+        Assert.Null(AppSettings.Load().MiniParseOverlay!.MeterColumns);
+
+        // A custom pick survives save/load.
+        var settings = AppSettings.Load() with
+        {
+            MiniParseOverlay = new OverlayWindowSettings { Visible = true, MeterColumns = ["Value", "Share"] },
+        };
+        settings.Save();
+        Assert.Equal(["Value", "Share"], AppSettings.Load().MiniParseOverlay!.MeterColumns);
+    }
+
+    [Fact]
     public void Legacy_Single_Overlay_Fields_Still_Deserialize()
     {
         // Pre-multi-overlay releases persisted one overlay's shape in flat
