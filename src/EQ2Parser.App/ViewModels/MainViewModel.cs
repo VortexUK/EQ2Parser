@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using EQ2Parser.App.Localization;
 using EQ2Parser.App.Services;
 
 namespace EQ2Parser.App.ViewModels;
@@ -34,12 +35,12 @@ public sealed partial class MainViewModel : ObservableObject
 
         NavItems =
         [
-            new NavItem("Main", Main),
-            new NavItem("Sources", Sources),
-            new NavItem("Triggers", Triggers),
-            new NavItem("Timers", Timers),
-            new NavItem("Overlays", Overlays),
-            new NavItem("Settings", Settings),
+            new NavItem(Loc.Get("Nav_Main"), Main),
+            new NavItem(Loc.Get("Nav_Sources"), Sources),
+            new NavItem(Loc.Get("Nav_Triggers"), Triggers),
+            new NavItem(Loc.Get("Nav_Timers"), Timers),
+            new NavItem(Loc.Get("Nav_Overlays"), Overlays),
+            new NavItem(Loc.Get("Nav_Settings"), Settings),
         ];
         _selectedItem = NavItems[0];
         Sources.SyncFromManager();

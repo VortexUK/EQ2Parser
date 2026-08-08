@@ -392,10 +392,15 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Button Content="{loc:Tr Timers_Import}" Style="{StaticResource GoldButton}" Command="{Binding ImportXmlCommand}" />
+                            <!-- Top-aligned: the result text wraps to many
+                                 lines in verbose locales (RU) and the grid
+                                 row grows — stretched buttons ballooned. -->
+                            <Button Content="{loc:Tr Timers_Import}" Style="{StaticResource GoldButton}" Command="{Binding ImportXmlCommand}"
+                                    VerticalAlignment="Top" />
                             <Button Grid.Column="1" Content="{loc:Tr Timers_ImportXmlFile}" Style="{StaticResource GoldButton}" Margin="8,0,0,0"
                                     ToolTip="{loc:Tr Timers_ImportXmlFileTip}"
-                                    Command="{Binding ImportXmlFileCommand}" />
+                                    Command="{Binding ImportXmlFileCommand}"
+                                    VerticalAlignment="Top" />
                             <TextBlock Grid.Column="2" Text="{Binding ImportResult}" Style="{StaticResource MutedText}"
                                        FontSize="12" Margin="10,5,0,0" TextWrapping="Wrap" />
                         </Grid>

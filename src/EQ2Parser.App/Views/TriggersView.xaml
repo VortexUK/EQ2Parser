@@ -194,7 +194,9 @@
                                             <TextBlock Text="{Binding RegexText}" FontFamily="Consolas" FontSize="13"
                                                        Foreground="{StaticResource GoldBrightBrush}" TextWrapping="Wrap" />
                                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                                <TextBlock Text="{loc:Tr Triggers_ZoneLocked}" FontSize="10" Margin="0,2,0,0"
+                                                <!-- Right margin is the separator from the sound label —
+                                                     without it "zone-locked" and "Say …" run together. -->
+                                                <TextBlock Text="{loc:Tr Triggers_ZoneLocked}" FontSize="10" Margin="0,2,8,0"
                                                            Foreground="{StaticResource WarningBrush}"
                                                            Visibility="{Binding ZoneRestricted, Converter={StaticResource BoolToVis}}" />
                                                 <TextBlock Text="{Binding SoundLabel}" FontSize="11" Margin="0,1,0,0"
@@ -352,10 +354,15 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Button Content="{loc:Tr Triggers_Import}" Style="{StaticResource GoldButton}" Command="{Binding ImportXmlCommand}" />
+                            <!-- Top-aligned: the result text wraps to many
+                                 lines in verbose locales (RU) and the grid
+                                 row grows — stretched buttons ballooned. -->
+                            <Button Content="{loc:Tr Triggers_Import}" Style="{StaticResource GoldButton}" Command="{Binding ImportXmlCommand}"
+                                    VerticalAlignment="Top" />
                             <Button Grid.Column="1" Content="{loc:Tr Triggers_ImportXmlFile}" Style="{StaticResource GoldButton}" Margin="8,0,0,0"
                                     ToolTip="{loc:Tr Triggers_ImportXmlFileTip}"
-                                    Command="{Binding ImportXmlFileCommand}" />
+                                    Command="{Binding ImportXmlFileCommand}"
+                                    VerticalAlignment="Top" />
                             <TextBlock Grid.Column="2" Text="{Binding ImportResult}" Style="{StaticResource MutedText}"
                                        FontSize="12" Margin="10,5,0,0" TextWrapping="Wrap" />
                         </Grid>
