@@ -520,10 +520,14 @@ public sealed partial class MainParseViewModel : ObservableObject
                 if (shown.Count == 0)
                     continue;
 
-                // Date sections: one header per local calendar day (the
-                // day the zone run STARTED). Every non-today section
-                // starts collapsed; toggles stick for the session.
-                var day = items[0].StartTime.ToLocalTime().Date;
+                // Date sections: one header per local calendar day, by the
+                // group's LATEST activity — resuming a persisted instance
+                // days later surfaces the whole group under Today instead
+                // of leaving it buried in a collapsed old date. Groups are
+                // consecutive runs, so last-activity dates stay ordered.
+                // Every non-today section starts collapsed; toggles stick
+                // for the session.
+                var day = items[^1].StartTime.ToLocalTime().Date;
                 if (currentSection != day)
                 {
                     currentSection = day;
@@ -552,7 +556,10 @@ public sealed partial class MainParseViewModel : ObservableObject
                     IsHeader = true,
                     GroupKey = groupKey,
                     Arrow = collapsed ? "▸" : "▾",
-                    Title = $"{zoneName} - [{shown.Count}] {items[0].StartTime.ToLocalTime():HH:mm:ss}",
+                    // Latest-activity time, matching the date sectioning —
+                    // under a "Today" header, a resumed group's Saturday
+                    // start time would read as today's.
+                    Title = $"{zoneName} - [{shown.Count}] {items[^1].StartTime.ToLocalTime():HH:mm:ss}",
                     TitleBrush = ClassColors.TreeHeader,
                     IsDeletable = true,
                     GroupFights = [.. items],
