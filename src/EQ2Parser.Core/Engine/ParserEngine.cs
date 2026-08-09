@@ -13,7 +13,7 @@ public sealed record EngineOptions
 /// <summary>
 /// Per-log-source combat engine (one instance per tailed log — the multi-log
 /// correlator consumes the encounters of many engines). Reproduces ACT's
-/// lifecycle contract (docs/act-behavior.md §2):
+/// lifecycle contract (docs/engine-behaviour.md §2):
 ///   * the grammar calls <see cref="SetEncounter"/> before each action and
 ///     drops the action if it returns false,
 ///   * <see cref="AddSwing"/> throws when not in combat,

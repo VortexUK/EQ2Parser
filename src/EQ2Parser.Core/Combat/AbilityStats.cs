@@ -1,8 +1,8 @@
 namespace EQ2Parser.Core.Combat;
 
 /// <summary>
-/// Per-ability swing list + derived statistics (ACT's AttackType), with the
-/// exact counting rules from docs/act-behavior.md §3:
+/// Per-ability swing list + derived statistics, with the
+/// exact counting rules from docs/engine-behaviour.md §3:
 ///   * Hits count zero-damage swings ("block is hit" default behaviour),
 ///   * Misses are the string-sensitive Miss equality,
 ///   * Avoids are codes −2…−9 excluding Death,
@@ -73,7 +73,7 @@ public sealed class AbilityStats(string name)
     public int Misses => _misses;
 
     /// <summary>Resist/Parry/Riposte/Block/Unknown — everything below Miss
-    /// except Death (string-sensitive, matching ACT's Dnum inequality).</summary>
+    /// except Death (string-sensitive Dnum inequality).</summary>
     public int Avoids => _avoids;
 
     /// <summary>Death-coded swings — the O(1) source for death counting.</summary>

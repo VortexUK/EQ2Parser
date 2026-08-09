@@ -2,7 +2,7 @@ using EQ2Parser.Core.Combat;
 
 namespace EQ2Parser.Core.Tests;
 
-/// <summary>Pins the ACT-compatibility traps from docs/act-behavior.md §3.</summary>
+/// <summary>Pins the ACT-compatibility traps from docs/engine-behaviour.md §3.</summary>
 public class DamageValueTests
 {
     [Fact]

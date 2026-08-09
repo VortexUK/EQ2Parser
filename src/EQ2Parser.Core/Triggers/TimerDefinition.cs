@@ -2,7 +2,7 @@ namespace EQ2Parser.Core.Triggers;
 
 /// <summary>
 /// A spell-timer definition (ACT's TimerData) — field set mirrors ACT so the
-/// &lt;Spell&gt; share format round-trips losslessly (docs/act-behavior.md §4).
+/// &lt;Spell&gt; share format round-trips losslessly (docs/engine-behaviour.md §4).
 /// </summary>
 public sealed record TimerDefinition
 {

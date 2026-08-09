@@ -24,7 +24,7 @@ public sealed partial class ColumnToggle(string key, string label, bool defaultV
 }
 
 /// <summary>
-/// ACT-style "View Options" for one grid: which columns show. The name
+/// Configurable "View Options" for one grid: which columns show. The name
 /// column is always on; everything else toggles and persists in settings
 /// (null = never customised, so future default changes apply cleanly).
 /// </summary>
@@ -91,7 +91,7 @@ public sealed partial class ColumnSetVm : ObservableObject
     }
 }
 
-/// <summary>The app's configurable grids, ACT's view-options catalogue.</summary>
+/// <summary>The app's configurable grids: the view-options catalogue.</summary>
 public static class ColumnSets
 {
     /// <summary>Encounter view: the main combatant grid. The classic column

@@ -11,7 +11,7 @@ public sealed record MergedCombatant(Combatant Combatant, string AuthoritySource
 
 /// <summary>
 /// One fight as witnessed by one or more log sources (the multi-log headline
-/// feature — docs/act-behavior.md "Improvements over ACT" §1). Grouping and
+/// feature — docs/engine-behaviour.md "Key capabilities" §1). Grouping and
 /// per-combatant authority mirror the EQ2Lexicon mirror-grouping design,
 /// upgraded from per-fight-primary to per-combatant and computed client-side.
 /// </summary>

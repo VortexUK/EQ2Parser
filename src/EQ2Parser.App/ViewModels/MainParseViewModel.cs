@@ -41,7 +41,7 @@ public sealed class ParseNode
 /// <summary>A zone rollup selection: combined stats over several fights.
 /// Implements <see cref="IFightView"/> so shared fight maths (durations,
 /// display rates, combatant instances) needs no per-shape switch; rollup
-/// EncDPS uses the COMBINED duration (ACT's "All" maths).</summary>
+/// EncDPS uses the COMBINED duration (over the merged fight).</summary>
 public sealed record AggregateFights(string Zone, string Label, IReadOnlyList<CorrelatedEncounter> Fights) : IFightView
 {
     public string Title => Label;
@@ -197,7 +197,7 @@ public sealed record SwingRow(
 public sealed record LogRow(IReadOnlyList<LogSegment> Segments, bool IsFocus);
 
 /// <summary>
-/// The ACT-style Main page: zone/fight tree on the left, sortable combatant
+/// The Main page: zone/fight tree on the left, sortable combatant
 /// grid on the right with allies and enemies in separate sections. "Follow
 /// live" keeps the grid on the active fight; clicking a tree node pins it.
 /// </summary>
@@ -219,7 +219,7 @@ public sealed partial class MainParseViewModel : ObservableObject
     /// <summary>Exposed for view-owned windows (the Archive).</summary>
     public SourceManager Manager => manager;
 
-    /// <summary>ACT-style configurable columns: encounter grid + drill table.</summary>
+    /// <summary>Configurable columns: encounter grid + drill table.</summary>
     public ColumnSetVm Columns { get; }
 
     public ColumnSetVm DrillColumns { get; }
@@ -503,7 +503,7 @@ public sealed partial class MainParseViewModel : ObservableObject
                     TitleBrush = ClassColors.OutcomeWin,
                 });
             }
-            // Newest first: group consecutive same-zone fights, ACT-sidebar
+            // Newest first: group consecutive same-zone fights, sidebar
             // style ("The Emerald Halls - [25] 18:57:04") with per-zone
             // "All" / "All Bosses" rollup nodes. The arrow collapses; the
             // header body selects the zone's encounter summary. The

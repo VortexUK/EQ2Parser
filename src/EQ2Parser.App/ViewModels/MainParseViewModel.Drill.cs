@@ -102,7 +102,7 @@ public sealed partial class MainParseViewModel
         _ => swing.Special == group,
     };
 
-    /// <summary>ACT's bucket order, outgoing then incoming.</summary>
+    /// <summary>The canonical bucket order, outgoing then incoming.</summary>
     private static readonly string[] BucketOrder =
     [
         BucketConfig.AutoAttackOut, BucketConfig.SkillOut, BucketConfig.OutgoingDamage,
@@ -150,7 +150,7 @@ public sealed partial class MainParseViewModel
         var seconds = FightSeconds(fight);
         var isAutoBucket = _detailBucket == BucketConfig.AutoAttackOut;
 
-        // Depth 1 — the combatant's buckets, canonical ACT order, with
+        // Depth 1 — the combatant's buckets, canonical order, with
         // explicit OUTGOING/INCOMING dividers so the directions can never
         // read as one mixed table.
         if (_detailBucket is null)

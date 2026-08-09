@@ -89,15 +89,15 @@ public sealed record AppSettings
     /// Null = never dragged, use the XAML default.</summary>
     public double? TreeColumnWidth { get; init; }
 
-    /// <summary>Visible encounter-grid columns (ColumnToggle keys, ACT's
+    /// <summary>Visible encounter-grid columns (ColumnToggle keys, the
     /// "Encounter View Options"). Null = never customised, use defaults.</summary>
     public List<string>? EncounterColumns { get; init; }
 
-    /// <summary>Visible drill-table columns (ACT's "Combatant View Options").
+    /// <summary>Visible drill-table columns (the "Combatant View Options").
     /// Null = never customised, use defaults.</summary>
     public List<string>? CombatantColumns { get; init; }
 
-    /// <summary>Visible swing-log columns (ACT's "AttackType View Options").
+    /// <summary>Visible swing-log columns (the "AttackType View Options").
     /// Null = never customised, use defaults.</summary>
     public List<string>? AttackTypeColumns { get; init; }
 

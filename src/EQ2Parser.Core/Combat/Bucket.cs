@@ -1,7 +1,7 @@
 namespace EQ2Parser.Core.Combat;
 
 /// <summary>
-/// A stat bucket (ACT's DamageTypeData): a named collection of per-ability
+/// A stat bucket: a named collection of per-ability
 /// stats plus the synthetic "All" ability. The EQ2 bucket set, the
 /// swing-category links, and the ally-polarity values that feed the ally
 /// graph are in <see cref="BucketConfig"/>.
@@ -32,7 +32,7 @@ public sealed class Bucket(string name)
     }
 }
 
-/// <summary>The EQ2 default bucket universe (docs/act-behavior.md §3).
+/// <summary>The EQ2 default bucket universe (docs/engine-behaviour.md §3).
 /// Compatibility-critical asymmetry: outgoing damage lands in TWO buckets
 /// (its melee/non-melee split bucket AND the aggregate), incoming in one.</summary>
 public static class BucketConfig

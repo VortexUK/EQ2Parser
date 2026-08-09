@@ -98,7 +98,7 @@
         </Setter>
     </Style>
 
-    <!-- Top tab (ACT-style tab strip, site TabButton look: gold underline). -->
+    <!-- Top tab (site TabButton look: gold underline). -->
     <Style x:Key="TopTabStyle" TargetType="ListBoxItem">
         <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
         <Setter Property="FontFamily" Value="{StaticResource BodySemiBoldFont}" />

@@ -60,7 +60,7 @@ public sealed class TimerFrame(TimerDefinition definition, string combatant)
 
 /// <summary>
 /// The spell-timer runtime (ACT's FormSpellTimers.NotifySpell semantics,
-/// docs/act-behavior.md §4). UI-free: consumers subscribe to the events and
+/// docs/engine-behaviour.md §4). UI-free: consumers subscribe to the events and
 /// call <see cref="Tick"/> on their display cadence with interpolated log
 /// time — timers tick on LOG time, not wall time.
 /// </summary>
@@ -272,7 +272,7 @@ public sealed class SpellTimerService(TimerOptions? options = null)
         return frame;
     }
 
-    // ---- timer mods (ACT ApplyTimerMod, docs/act-behavior.md §4) ----
+    // ---- timer mods (ACT ApplyTimerMod, docs/engine-behaviour.md §4) ----
 
     /// <summary>Add or refresh a named recast mod on a combatant for
     /// <paramref name="duration"/>. Same name never stacks (re-apply

@@ -20,7 +20,7 @@ public sealed record TriggerFired(
 /// <summary>
 /// Evaluates the active trigger set against each log line's message
 /// (timestamp already stripped by the LogLine parse). ACT-compatible
-/// semantics (docs/act-behavior.md §4):
+/// semantics (docs/engine-behaviour.md §4):
 ///   * a capture group literally named YOU must contain the owner's name or
 ///     the match is dropped,
 ///   * zone restriction is a case-insensitive substring test of Category
@@ -28,7 +28,7 @@ public sealed record TriggerFired(
 ///   * audio is rate-limited per trigger (configurable, ACT hardcoded 1 s),
 ///   * timer requests read optional "attacker"/"victim" groups (default
 ///     "None").
-/// Improvements over ACT: the active set rebuilds on ANY edit (not just zone
+/// The active set rebuilds on ANY edit (not just zone
 /// change), and a per-trigger literal prefilter skips the regex for most
 /// lines. Synchronous by design — matching is microseconds, and firing in
 /// the line path is what makes alerts feel instant.

@@ -9,7 +9,7 @@ namespace EQ2Parser.Core.Triggers;
 /// that lets 20 years of community triggers (and the EQ2Lexicon raids.db
 /// trigger packs, which use the same format) work here unchanged.
 ///
-/// Formats (docs/act-behavior.md §4):
+/// Formats (docs/engine-behaviour.md §4):
 ///   &lt;Trigger R="..." SD="..." ST="n" CR="T|F" C="..." T="T|F" TN="..." Ta="T|F" /&gt;
 ///   &lt;Spell N="..." T="n" OM="T|F" R="T|F" A="T|F" WV="n" RD="T|F" M="T|F"
 ///          Tt="..." FC="argb" RV="n" C="..." RC="T|F" [SS="..." WS="..."] /&gt;

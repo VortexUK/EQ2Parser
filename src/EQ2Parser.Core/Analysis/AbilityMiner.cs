@@ -47,8 +47,8 @@ public static class AbilityMiner
     private static readonly TimeSpan CastCluster = TimeSpan.FromSeconds(2);
 
     /// <summary>Volleys within this window of the previous volley are the
-    /// same APPLICATION — a DoT's tick series, not fresh casts (ACT's
-    /// sub-timer window, mirrored). Recast is measured between application
+    /// same APPLICATION — a DoT's tick series, not fresh casts (a
+    /// sub-timer window). Recast is measured between application
     /// starts; the trade-off is that true recasts under ~12 s can't be
     /// measured, and aren't timer material anyway.</summary>
     private static readonly TimeSpan ApplicationChain = TimeSpan.FromSeconds(12);

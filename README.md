@@ -4,16 +4,14 @@
 [![CodeQL](https://github.com/VortexUK/EQ2Parser/actions/workflows/codeql.yml/badge.svg)](https://github.com/VortexUK/EQ2Parser/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A modern, native Windows replacement for Advanced Combat Tracker, purpose-built
-for EverQuest II (TLE) raiding and the [EQ2 Lexicon](https://eq2lexicon.com)
-ecosystem.
+A modern, native Windows combat parser for EverQuest II (TLE) raiding, built
+around the [EQ2 Lexicon](https://eq2lexicon.com) ecosystem.
 
 ## Why
 
-ACT is a 20-year-old closed-source .NET Framework application. It works, but it
-can't be modernized from outside, its plugin model is frozen on net48, and the
-features EQ2 raiders actually use are a fraction of its surface. EQ2Parser
-reimplements that working set on a modern stack, with first-class EQ2 Lexicon
+EQ2 raiders need live damage/healing parsing, triggers, and spell timers, plus
+a clean path to share parses and trigger packs through EQ2 Lexicon. EQ2Parser
+delivers that on a modern stack (.NET 10, WPF), with first-class Lexicon
 integration (parse uploads, trigger/spell-timer pack subscriptions) built in
 rather than bolted on.
 
@@ -22,7 +20,7 @@ rather than bolted on.
 - **Live log parsing** — tail the EQ2 log, detect encounters, per-combatant
   damage/healing breakdowns.
 - **Triggers** — regex on log lines → sound / TTS / countdown timers, with
-  capture groups. Imports ACT's trigger XML share format so existing community
+  capture groups. Imports the community trigger XML share format so existing
   triggers keep working.
 - **Spell timers** — countdown window driven by parsed casts and triggers.
 - **Overlay** — click-through "mini parse" window over the game.
@@ -63,7 +61,7 @@ Requires the .NET 10 SDK (pinned via `global.json`).
 ## Contributing & Security
 
 - Dev setup, the gates, and the PR checklist live in [CONTRIBUTING.md](CONTRIBUTING.md) — including the non-negotiable cleanroom rule.
-- Architecture and key decisions are documented in [CLAUDE.md](CLAUDE.md) and [docs/act-behavior.md](docs/act-behavior.md).
+- Architecture and key decisions are documented in [CLAUDE.md](CLAUDE.md) and [docs/engine-behaviour.md](docs/engine-behaviour.md).
 - Found a security issue? See [SECURITY.md](SECURITY.md) — please report privately, not via public issues.
 
 ## License

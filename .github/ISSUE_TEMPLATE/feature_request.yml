@@ -7,7 +7,7 @@ body:
       value: |
         Check [open issues](https://github.com/VortexUK/EQ2Parser/issues?q=is%3Aissue) first — it might already be tracked.
 
-        For non-trivial changes, expect a conversation about scope before code lands. See [CONTRIBUTING.md](https://github.com/VortexUK/EQ2Parser/blob/main/CONTRIBUTING.md). Note the deliberate non-goals: multi-game support, binary ACT-plugin compatibility, and anything that changes ACT-compatible stat numbers.
+        For non-trivial changes, expect a conversation about scope before code lands. See [CONTRIBUTING.md](https://github.com/VortexUK/EQ2Parser/blob/main/CONTRIBUTING.md). Note the deliberate non-goals: multi-game support, binary ACT-plugin compatibility, and anything that changes the stable stat numbers.
 
   - type: textarea
     id: problem
@@ -45,6 +45,6 @@ body:
     id: alternatives
     attributes:
       label: Alternatives considered
-      description: Other approaches you thought about (including "how ACT does it") and why this one is better.
+      description: Other approaches you thought about (including how other tools do it) and why this one is better.
     validations:
       required: false

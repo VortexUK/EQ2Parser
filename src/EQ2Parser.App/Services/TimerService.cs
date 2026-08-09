@@ -55,7 +55,7 @@ public sealed class TimerService
         Load();
     }
 
-    /// <summary>A WAV/MP3 path, spoken text, or ACT's "tts" convention —
+    /// <summary>A WAV/MP3 path, spoken text, or the "tts" convention —
     /// "tts some words" speaks the words, a bare "tts" speaks the timer's
     /// name (plus "soon" for the warning), matching what 20 years of
     /// exported spell timers expect.</summary>

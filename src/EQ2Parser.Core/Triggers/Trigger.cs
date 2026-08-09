@@ -15,7 +15,7 @@ public enum TriggerSound
 /// One custom trigger: a regex watched against every log line (timestamp
 /// stripped), with the actions to take on match. Field set mirrors ACT's
 /// CustomTrigger so the XML share format round-trips losslessly
-/// (docs/act-behavior.md §4); our additions are per-trigger knobs for the
+/// (docs/engine-behaviour.md §4); our additions are per-trigger knobs for the
 /// values ACT hardcodes.
 /// </summary>
 public sealed class Trigger

@@ -88,7 +88,7 @@ public class FightViewTests
     {
         // A same-second fight: whole-second log timestamps make 0 the only
         // sub-1 duration. Display maths clamp to 1; the upload-parity EncDps
-        // stays 0 (act-behavior.md §3 — no invented duration in the numbers).
+        // stays 0 (engine-behaviour.md §3 — no invented duration in the numbers).
         var a = Engine("log-a", "Alice");
         Hit(a, 0, "Alice", "a gnoll", 500);
         a.EndCombat();

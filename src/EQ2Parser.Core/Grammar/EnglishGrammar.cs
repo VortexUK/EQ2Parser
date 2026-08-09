@@ -6,7 +6,7 @@ namespace EQ2Parser.Core.Grammar;
 
 /// <summary>
 /// EQ2 English combat-line grammar (cleanroom — patterns derived from real
-/// TLE-era logs, see docs/act-behavior.md for the compatibility rules).
+/// TLE-era logs, see docs/engine-behaviour.md for the compatibility rules).
 ///
 /// Perspective: "YOU"/"YOUR" resolve to the log owner's name at the driver
 /// level, not here — the grammar returns the literal "YOU" marker.

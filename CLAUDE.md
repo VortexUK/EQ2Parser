@@ -2,8 +2,8 @@
 
 ## What this is
 
-A modern Windows replacement for Advanced Combat Tracker (ACT), purpose-built
-for EverQuest II TLE raiding and the EQ2 Lexicon site. .NET 10, WPF (Fluent
+A modern Windows combat parser for EverQuest II TLE raiding and the EQ2
+Lexicon site. .NET 10, WPF (Fluent
 theme), Velopack distribution, MIT. See README.md for the decision table.
 
 Sibling repos: `EQ2Lexicon` (the website this app uploads to — checked
@@ -31,11 +31,11 @@ needed; only EQ2Lexicon is checked out locally.
   EQ2Lexicon `backend/server/api/parses/ingest.py` + `core/gzip_request.py`.
 - ACT **trigger XML share-format import** is a compatibility promise; binary
   ACT plugin compatibility is explicitly NOT.
-- **Match the numbers, improve everything around them**: stat definitions that
-  feed visible numbers (EncDPS, durations, ally graph, success level, 6 s idle
-  rule) stay ACT-compatible so site rankings remain comparable. Improvements
+- **Keep the numbers stable, improve everything around them**: stat definitions
+  that feed visible numbers (EncDPS, durations, ally graph, success level, 6 s
+  idle rule) stay stable so site rankings remain comparable. Improvements
   (multi-log, catch-up, grammar-as-data, etc.) live in
-  docs/act-behavior.md → "Key capabilities".
+  docs/engine-behaviour.md → "Key capabilities".
 - **Multi-log architecture**: one parse pipeline per log source (own tail
   reader / grammar / perspective state), feeding an encounter correlator that
   merges concurrent encounters across sources (zone + time overlap + shared
@@ -83,7 +83,7 @@ EQ2Lexicon" context item that sends every source's view of the fight
 (manual upload works with the auto toggle off and clears an auth pause —
 the explicit click is the consent/retry).
 
-Uploads mirror the ACT-plugin fleet model: every finished encounter per
+Uploads follow a fleet model: every finished encounter per
 source uploads (trash included — the site's retention sweep handles it);
 multi-log mirrors of one fight are mirror-grouped server-side by distinct
 logger_names, longest duration wins as primary. Token test button hits
@@ -115,7 +115,8 @@ historically — the tail reader must handle encoding defensively.
 Owner-name aliasing: some temp pets act entirely under the OWNER's name —
 the Templar hammer's swings log as "Menludiir's Divine Smash …" AND its
 expiry logs as "Menludiir has died", indistinguishable from a real player
-death (ACT miscounts it identically; parity preserves it). Consequences:
+death (indistinguishable in the log — owner deaths are corrected via the
+second-person "has killed you" signal, third parties left as-is). Consequences:
 pet abilities need source_overrides.json entries, and death counts/lines
 are NOT a trustworthy signal for heuristics (this killed the death-window
 idea for two-dirge raid-buff disambiguation — see RaidBuffAttributor: an

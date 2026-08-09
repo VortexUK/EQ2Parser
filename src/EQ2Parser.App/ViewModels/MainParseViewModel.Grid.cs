@@ -357,7 +357,7 @@ public sealed partial class MainParseViewModel
     }
 
     /// <summary>Combined stats over a zone rollup — sums per combatant, with
-    /// EncDPS/EncHPS over the COMBINED fight duration (ACT's "All" maths).
+    /// EncDPS/EncHPS over the COMBINED fight duration.
     /// The class/kind tag is taken from the fight with the strongest class
     /// evidence for that combatant.</summary>
     private void SnapshotAggregate(AggregateFights aggregate, List<RowData> allies, List<RowData> pets, List<RowData> enemies)

@@ -719,7 +719,7 @@ public sealed partial class TimersViewModel : ObservableObject
         row.StyleKey = styleKey;
         var argb = unchecked((uint)bar.FillColorArgb);
         var fill = Color.FromArgb(0xFF, (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb);
-        // ACT's untouched default (pure #0000FF) is nobody's choice — show
+        // The untouched default (pure #0000FF) is nobody's choice — show
         // it as the app gold instead. Any deliberately picked colour,
         // including a real blue that isn't exactly the default, is kept.
         if (bar.FillColorArgb == unchecked((int)0xFF0000FF))

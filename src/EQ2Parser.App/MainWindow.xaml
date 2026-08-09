@@ -58,7 +58,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- ACT-style top bar: title + tab strip + window controls; doubles
+        <!-- Top bar: title + tab strip + window controls; doubles
              as the drag caption. -->
         <Border Background="#0B0D13" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
                 MinHeight="48">

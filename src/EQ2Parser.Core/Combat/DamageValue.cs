@@ -1,8 +1,8 @@
 namespace EQ2Parser.Core.Combat;
 
 /// <summary>
-/// A combat amount with ACT-compatible negative sentinel codes
-/// (docs/act-behavior.md §3, "Dnum"). Positive = a real amount; the negative
+/// A combat amount with the stable negative sentinel codes
+/// (docs/engine-behaviour.md §3, "Dnum"). Positive = a real amount; the negative
 /// codes carry miss/avoid/death semantics. Compatibility notes we deliberately
 /// preserve:
 ///   * converting a number below -10 CLAMPS to Unknown (-9),
@@ -26,7 +26,7 @@ public readonly struct DamageValue : IEquatable<DamageValue>, IComparable<Damage
 
     public DamageValue(long number, string? text = null)
     {
-        // ACT clamps anything below the death code to Unknown.
+        // Anything below the death code clamps to Unknown.
         Number = number < DeathNumber ? UnknownNumber : number;
         _text = string.IsNullOrEmpty(text) ? null : text;
     }
@@ -58,7 +58,7 @@ public readonly struct DamageValue : IEquatable<DamageValue>, IComparable<Damage
     };
 
 
-    /// <summary>ACT-compatible equality: number AND display text must match.</summary>
+    /// <summary>Equality: number AND display text must match.</summary>
     public bool Equals(DamageValue other) =>
         Number == other.Number && TextOrDefault == other.TextOrDefault;
 

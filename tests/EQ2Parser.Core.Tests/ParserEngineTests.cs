@@ -4,7 +4,7 @@ using EQ2Parser.Core.Engine;
 namespace EQ2Parser.Core.Tests;
 
 /// <summary>
-/// The ACT lifecycle contract (docs/act-behavior.md §2) — the compatibility
+/// The ACT lifecycle contract (docs/engine-behaviour.md §2) — the compatibility
 /// surface site rankings depend on: the 6s idle rule, hostile-only encounter
 /// starts, the AddSwing-requires-SetEncounter throw, and placeholder-fight
 /// discard.

@@ -24,8 +24,8 @@ that don't apply.
 
 <!-- Tick the ones that apply; delete the rest. -->
 
-- [ ] **No ACT source copied** — behaviour derived from real logs / docs/act-behavior.md only (the cleanroom rule)
-- [ ] **Stat-surface change** — the stat definitions (EncDPS, durations, idle rule, success levels) stay stable so site rankings remain comparable, or docs/act-behavior.md's "Key capabilities" documents the deliberate divergence
+- [ ] **No ACT source copied** — behaviour derived from real logs / docs/engine-behaviour.md only (the cleanroom rule)
+- [ ] **Stat-surface change** — the stat definitions (EncDPS, durations, idle rule, success levels) stay stable so site rankings remain comparable, or docs/engine-behaviour.md's "Key capabilities" documents the deliberate divergence
 - [ ] **New grammar shape** — pattern added with a literal pre-guard, grammar test added, golden corpus line added
 - [ ] **Core vs App placement** — testable logic landed in Core, not the App shell; `Combat` gained no upward dependency
 - [ ] **New user-facing strings** — added to all four `strings.*.json` dictionaries

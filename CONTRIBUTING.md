@@ -40,10 +40,10 @@ To auto-fix formatting: `dotnet format EQ2Parser.slnx`. Analyzer policy (and eve
 
 ## Architecture ground rules
 
-Full detail in [CLAUDE.md](CLAUDE.md) and [docs/act-behavior.md](docs/act-behavior.md); the short version:
+Full detail in [CLAUDE.md](CLAUDE.md) and [docs/engine-behaviour.md](docs/engine-behaviour.md); the short version:
 
 - **Core stays UI-free.** `EQ2Parser.Core` targets plain `net10.0` and must never reference WPF. Everything testable lives there; the App project is a thin shell. Within Core, `Combat` is the bottom layer (enforced by `LayeringTests`).
-- **Match the numbers.** Stat definitions that feed visible numbers (EncDPS, durations, the 6s idle rule, success levels) stay ACT-compatible so EQ2Lexicon rankings remain comparable. Improvements go around the numbers, not through them.
+- **Match the numbers.** Stat definitions that feed visible numbers (EncDPS, durations, the 6s idle rule, success levels) stay stable so EQ2Lexicon rankings remain comparable. Improvements go around the numbers, not through them.
 - **Multi-log first.** Engine types are source-aware; one parse pipeline per log, merged by the correlator. Don't add state that assumes a single log.
 - **Server-supplied content is hostile until proven otherwise.** Regexes get `MatchTimeout`, sound paths go through the non-local refusal, upload URLs stay HTTPS. See [SECURITY.md](SECURITY.md).
 - Comments explain *why*, not *what*.

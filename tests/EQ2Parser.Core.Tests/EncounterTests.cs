@@ -4,7 +4,7 @@ using EQ2Parser.Core.Engine;
 namespace EQ2Parser.Core.Tests;
 
 /// <summary>
-/// Pins the encounter/stat semantics from docs/act-behavior.md §§2-3 through
+/// Pins the encounter/stat semantics from docs/engine-behaviour.md §§2-3 through
 /// the engine's public contract (grammar-eye view: SetEncounter + AddSwing).
 /// </summary>
 public class EncounterTests

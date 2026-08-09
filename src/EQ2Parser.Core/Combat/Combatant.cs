@@ -1,9 +1,9 @@
 namespace EQ2Parser.Core.Combat;
 
 /// <summary>
-/// One participant in an encounter (ACT's CombatantData), keyed by upper-case
+/// One participant in an encounter, keyed by upper-case
 /// name. Holds the outgoing/incoming buckets and the incremental ally
-/// interaction graph. Stat definitions per docs/act-behavior.md §3.
+/// interaction graph. Stat definitions per docs/engine-behaviour.md §3.
 /// </summary>
 public sealed class Combatant(string name)
 {
@@ -142,7 +142,7 @@ public sealed class Combatant(string name)
     /// name (the Templar hammer logs "X has killed Menludiir" — third person,
     /// owner's own name, in the owner's own log; a REAL self-death is always
     /// second person "has killed you"). Excluded from Deaths so a raiding
-    /// Templar's count isn't ~6× inflated the way ACT counts it.</summary>
+    /// Templar's count isn't ~6× inflated by counting pet-hammer expiries.</summary>
     public const string PetDeathExtra = "pet-death";
 
     /// <summary>Deaths: the incoming Killing pseudo-ability count (pet

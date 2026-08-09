@@ -53,7 +53,7 @@ body:
       description: |
         For wrong-numbers / missed-lines bugs, paste the relevant raw lines from your
         `logs/<server>/eq2log_<character>.txt` — they're the whole bug report for a parser.
-        A comparison against ACT's numbers for the same fight is even better.
+        A comparison against another parser's numbers for the same fight is even better.
       render: text
     validations:
       required: false

@@ -451,7 +451,7 @@ public sealed partial class MainParseViewModel
 
     /// <summary>The shared avoidance accumulation state: enemy attacks only,
     /// ward pairing by log adjacency, stoneskin as an avoid, per-kind
-    /// auto/skill splits with optional actor attribution, and the ACT-style
+    /// auto/skill splits with optional actor attribution, and the
     /// per-type damage-avoided estimate. Was duplicated (~90 lines) between
     /// the raid and per-combatant reports and already drifting.</summary>
     private sealed class AvoidanceTally
@@ -476,7 +476,7 @@ public sealed partial class MainParseViewModel
         public int Stoneskin => StoneskinAuto + StoneskinSkill;
         public int Avoided => Attempts - Hits - Warded;
 
-        /// <summary>ACT-style per-type averages (fall back to the other
+        /// <summary>Per-type averages (fall back to the other
         /// type's average when one never landed).</summary>
         public double AvgAuto => LandedAutoCount > 0 ? (double)LandedAutoTotal / LandedAutoCount
             : LandedSkillCount > 0 ? (double)LandedSkillTotal / LandedSkillCount : 0;
@@ -722,7 +722,7 @@ public sealed partial class MainParseViewModel
             ];
             // Shared accumulation, with per-(kind, actor) attribution — the
             // auto/skill split matters because autos hit far softer than
-            // skills (a blended average roughly doubled the totals vs ACT).
+            // skills (a blended average roughly doubled the totals).
             var tally = new AvoidanceTally();
             var enemies = EnemyAttackerKeys(ResolveFight());
             foreach (var (targetName, combatant) in targets)
@@ -836,7 +836,7 @@ public sealed partial class MainParseViewModel
     };
 
     /// <summary>Keys of combatants classified Enemy in the current fight —
-    /// the avoidance population is enemy attacks only, matching ACT (self
+    /// the avoidance population is enemy attacks only (self
     /// lifetap procs and ally utility hits would otherwise flood the
     /// stoneskin/landed counts).</summary>
     private HashSet<string> EnemyAttackerKeys(object? fight)

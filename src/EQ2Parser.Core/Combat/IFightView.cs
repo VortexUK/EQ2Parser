@@ -19,7 +19,7 @@ public interface IFightView
     long Damage { get; }
 
     /// <summary>The upload/ranking-parity rate: damage over the REAL
-    /// duration, 0 when the duration is 0 (act-behavior.md §3).</summary>
+    /// duration, 0 when the duration is 0 (engine-behaviour.md §3).</summary>
     double EncDps { get; }
 
     SuccessLevel GetSuccessLevel();

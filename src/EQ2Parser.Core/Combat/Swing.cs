@@ -1,7 +1,7 @@
 namespace EQ2Parser.Core.Combat;
 
-/// <summary>ACT-compatible swing categories. The numeric values are part of
-/// the compatibility surface (docs/act-behavior.md §3); categories without a
+/// <summary>The swing categories. The numeric values are part of
+/// the compatibility surface (docs/engine-behaviour.md §3); categories without a
 /// bucket link contribute only to the reference buckets.</summary>
 public enum SwingCategory
 {
@@ -14,7 +14,7 @@ public enum SwingCategory
     CureDispel = 20,
 
     /// <summary>Control-effect apply/release lines ("X is stunned!" /
-    /// "X is no longer stunned."). Ours, not ACT's — files only into the
+    /// "X is no longer stunned."). Ours alone — files only into the
     /// Ref buckets (no damage stats), archived for CC-kind mining.</summary>
     StatusEffect = 30,
 }

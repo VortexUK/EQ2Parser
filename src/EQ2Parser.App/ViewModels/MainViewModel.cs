@@ -6,7 +6,7 @@ namespace EQ2Parser.App.ViewModels;
 
 public sealed record NavItem(string Label, object Page);
 
-/// <summary>The shell: ACT-style top tabs + current page + the ~100ms
+/// <summary>The shell: top tabs + current page + the ~100ms
 /// coalescing tick that refreshes whichever page is visible.</summary>
 public sealed partial class MainViewModel : ObservableObject
 {

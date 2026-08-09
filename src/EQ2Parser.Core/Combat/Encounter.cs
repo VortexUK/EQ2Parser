@@ -1,6 +1,6 @@
 namespace EQ2Parser.Core.Combat;
 
-/// <summary>Encounter outcome, ACT-compatible (docs/act-behavior.md §2):
+/// <summary>Encounter outcome (docs/engine-behaviour.md §2):
 /// 0 indeterminate, 1 = enemy died AND an ally survived, 2 = exactly one of
 /// those, 3 = neither.</summary>
 public enum SuccessLevel
@@ -12,9 +12,9 @@ public enum SuccessLevel
 }
 
 /// <summary>
-/// One fight (ACT's EncounterData): combatants keyed by upper-case name,
+/// One fight: combatants keyed by upper-case name,
 /// Start/End time segments, and the derived encounter-level stats. Stat and
-/// lifecycle semantics per docs/act-behavior.md §§2-3. Source-aware: carries
+/// lifecycle semantics per docs/engine-behaviour.md §§2-3. Source-aware: carries
 /// the id of the log source that produced it (multi-log correlation groups
 /// encounters across sources later).
 /// </summary>
@@ -78,7 +78,7 @@ public sealed class Encounter(string sourceId, string ownerName, string zone, Da
         }
         _alliesCache = null;
         // Self-damage (lifetap procs like Vampiric Requiem hitting the
-        // caster) records on the TAKEN side only — ACT never credits it as
+        // caster) records on the TAKEN side only — it is never credited as
         // outgoing, or it would inflate the attacker's own DPS. Self-heals
         // and self-buffs still count as outgoing.
         var selfDamage = swing.Category is SwingCategory.Melee or SwingCategory.NonMelee
@@ -188,7 +188,7 @@ public sealed class Encounter(string sourceId, string ownerName, string zone, Da
     // ── Allies (sign-propagation over the interaction graph) ────────────────
 
     /// <summary>
-    /// ACT-compatible ally resolution: seed the owner at 0, repeatedly walk
+    /// Ally resolution: seed the owner at 0, repeatedly walk
     /// every discovered node's interaction entries — a node with positive
     /// value adds each entry's polarity to the other party, a non-positive
     /// node subtracts it — until no new node appears. Allies are the nodes

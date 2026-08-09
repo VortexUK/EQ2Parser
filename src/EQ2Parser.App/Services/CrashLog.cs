@@ -11,7 +11,7 @@ namespace EQ2Parser.App.Services;
 /// app just died" always leaves evidence with a stack trace.
 ///
 /// UI-thread exceptions are logged and swallowed — mid-raid, a broken
-/// button beats a dead parser (ACT behaves the same way). Genuinely fatal
+/// button beats a dead parser. Genuinely fatal
 /// exceptions still take the process down, but log on the way out. The
 /// exception to the swallow rule: five UI exceptions inside a minute is a
 /// crash LOOP (a broken template re-throws per frame) — the app exits
