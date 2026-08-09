@@ -118,10 +118,10 @@
                                   ToolTip="{loc:Tr Settings_UploadFinishedFightsTip}" />
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="{loc:Tr Settings_ApiToken}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                            <TextBlock Text="{loc:Tr Settings_ApiToken}" Style="{StaticResource MutedText}" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0" />
                             <PasswordBox Grid.Column="1" x:Name="UploadTokenBox" Margin="0,2" FontSize="13" />
                         </Grid>
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
