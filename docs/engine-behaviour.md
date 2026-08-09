@@ -251,3 +251,44 @@ for keying; "Unknown" (dumbfire/ground-effect damage with no real source) is
 excluded from ally bookkeeping; the space-in-name heuristic marks NPCs/pets.
 These heuristics are inherited from 20 years of EQ2 log conventions, not from
 any one tool — the log format is the shared reality every EQ2 parser reads.
+
+## 6. Concurrency model
+
+One **writer** (each log source's pump thread) runs against many **readers**
+(the parse grid, the mini-parse and timer overlays, clipboard/Discord export,
+compare, reports, uploads, the history save). The combat model — `Encounter`,
+`Combatant`, `Bucket`, and the `EncounterCorrelator` — is deliberately **not
+internally synchronized**: it is plain mutable state with no locks of its own.
+All thread-safety comes from a single lock.
+
+**The one lock — `SourceManager.Sync`.** Everything that touches live encounter
+data takes it:
+
+- **Writer.** Every parsed line is applied under the lock —
+  `LogSource` does `lock (Sync) { Processor.Process(line); }`. All mutation of
+  encounters/combatants/buckets and all correlator create/merge/delete/restore
+  is serialized through that one gate, so there is never more than one writer
+  inside the model.
+- **Readers.** Each consumer takes the same lock, copies what it needs into an
+  **immutable snapshot record**, and releases the lock before rendering. The
+  parse grid (`RebuildTree` / `SnapshotFight`), the ~4 Hz mini-parse overlay
+  (`MiniParseSnapshot`), export / compare / reports, and the Sources status
+  line all follow this shape. Readers hold the lock only long enough to
+  snapshot, so the critical section stays short and the UI never observes a
+  half-applied update — no torn reads, no "Collection was modified".
+
+**The invariant.** Because the model does not guard itself, *any* code that
+reads the live graph (`Engine.ActiveEncounter`, `Engine.History`,
+`Correlator.History`, or a `CorrelatedEncounter`'s combatants) MUST hold
+`SourceManager.Sync` and snapshot before use. New consumers follow the same
+pattern; helper methods that assume the caller already holds the lock
+(`GroupHistoryZones`, `LiveTable`, `LiveSummary`) say so in their doc comment.
+
+**Outside the live model.** The archive (`HistoryService`) is a separate
+SQLite-backed subsystem with its own lock; fights it loads or mines (e.g.
+`AbilityMiner` on a background task) are fresh objects deserialized from disk,
+not the live ones the pump is mutating, so they carry no race with the writer.
+
+This is the same guarantee ACT achieved with its internal table locks — a
+single serialization point that keeps the combat data thread-safe across many
+consumers — implemented here as one App-level lock plus copy-on-read snapshots.
