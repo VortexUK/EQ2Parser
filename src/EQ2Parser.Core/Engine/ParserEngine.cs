@@ -53,12 +53,35 @@ public sealed class ParserEngine(string sourceId, string ownerName, EngineOption
             EndCombat();
     }
 
-    public void ChangeZone(string zoneName)
+    /// <summary>Lockout expiry of the CURRENT zone instance, when the
+    /// zone-in was followed by the instance-lockout line (or the attach
+    /// seed recovered one). Stamped onto every encounter started here.</summary>
+    public DateTimeOffset? ZoneInstanceExpiry { get; private set; }
+
+    private DateTimeOffset? _zoneChangedAt;
+
+    public void ChangeZone(string zoneName, DateTimeOffset? time = null)
     {
         // Zone changes do NOT end combat by themselves (ACT semantics);
         // the grammar decides whether a zone line should also EndCombat.
         CurrentZone = zoneName;
+        ZoneInstanceExpiry = null;
+        _zoneChangedAt = time;
     }
+
+    /// <summary>The "This instance will expire in …" line. Only honoured
+    /// within a short window after the zone-in it annotates — the line
+    /// never appears elsewhere, but a malformed replay shouldn't be able
+    /// to stamp a stale lockout on the wrong zone.</summary>
+    public void ApplyInstanceLockout(TimeSpan remaining, DateTimeOffset time)
+    {
+        if (_zoneChangedAt is { } changed && (time - changed) is { TotalSeconds: >= 0 and <= 10 })
+            ZoneInstanceExpiry = time + remaining;
+    }
+
+    /// <summary>Attach-time seed (zone look-behind): the instance expiry
+    /// recovered from the log tail behind the start offset.</summary>
+    public void SeedInstanceExpiry(DateTimeOffset expiry) => ZoneInstanceExpiry = expiry;
 
     /// <summary>Start-or-continue contract: call before every parsed action.
     /// Returns false when the action should be dropped.
@@ -74,7 +97,7 @@ public sealed class ParserEngine(string sourceId, string ownerName, EngineOption
         {
             if (!hostile)
                 return false;
-            ActiveEncounter = new Encounter(SourceId, OwnerName, CurrentZone);
+            ActiveEncounter = new Encounter(SourceId, OwnerName, CurrentZone, ZoneInstanceExpiry);
             _history.Add(ActiveEncounter);
             InCombat = true;
         }

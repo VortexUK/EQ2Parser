@@ -15,7 +15,8 @@ public sealed record EncounterSummary(
     SuccessLevel Success,
     long Damage,
     string? CorrelationId,
-    bool IsBoss);
+    bool IsBoss,
+    DateTimeOffset? ZoneInstanceExpiry = null);
 
 public sealed record CombatantSummary(
     string Name,
@@ -35,7 +36,7 @@ public sealed record CombatantSummary(
 /// </summary>
 public sealed class HistoryStore : IDisposable
 {
-    private const int SchemaVersion = 2;
+    private const int SchemaVersion = 3;
     private readonly SqliteConnection _conn;
 
     public HistoryStore(string path)
@@ -71,6 +72,10 @@ public sealed class HistoryStore : IDisposable
                    AND substr(title, 1, 3) <> 'an ';
                 """);
         }
+        // v3: zone-instance identity (lockout expiry). Old rows stay NULL —
+        // grouping treats null as compatible with anything.
+        if (fromVersion is 1 or 2)
+            Execute("ALTER TABLE encounters ADD COLUMN zone_instance_expiry INTEGER;");
     }
 
     public void Dispose() => _conn.Dispose();
@@ -101,7 +106,8 @@ public sealed class HistoryStore : IDisposable
                 damage         INTEGER NOT NULL,
                 correlation_id TEXT,
                 saved_at       INTEGER NOT NULL,
-                is_boss        INTEGER NOT NULL DEFAULT 0
+                is_boss        INTEGER NOT NULL DEFAULT 0,
+                zone_instance_expiry INTEGER
             );
             CREATE INDEX IF NOT EXISTS idx_encounters_start ON encounters(start_ts);
             CREATE INDEX IF NOT EXISTS idx_encounters_zone ON encounters(zone);
@@ -151,8 +157,8 @@ public sealed class HistoryStore : IDisposable
         using var insertEnc = _conn.CreateCommand();
         insertEnc.Transaction = tx;
         insertEnc.CommandText = """
-            INSERT INTO encounters (source_id, owner, zone, title, start_ts, end_ts, duration_s, success, damage, correlation_id, saved_at, is_boss)
-            VALUES ($source, $owner, $zone, $title, $start, $end, $duration, $success, $damage, $correlation, unixepoch(), $boss)
+            INSERT INTO encounters (source_id, owner, zone, title, start_ts, end_ts, duration_s, success, damage, correlation_id, saved_at, is_boss, zone_instance_expiry)
+            VALUES ($source, $owner, $zone, $title, $start, $end, $duration, $success, $damage, $correlation, unixepoch(), $boss, $instanceExpiry)
             RETURNING id;
             """;
         insertEnc.Parameters.AddWithValue("$source", encounter.SourceId);
@@ -166,6 +172,8 @@ public sealed class HistoryStore : IDisposable
         insertEnc.Parameters.AddWithValue("$damage", encounter.Damage);
         insertEnc.Parameters.AddWithValue("$correlation", (object?)correlationId ?? DBNull.Value);
         insertEnc.Parameters.AddWithValue("$boss", encounter.IsBossFight ? 1 : 0);
+        insertEnc.Parameters.AddWithValue("$instanceExpiry",
+            (object?)encounter.ZoneInstanceExpiry?.ToUnixTimeSeconds() ?? DBNull.Value);
         var encounterId = (long)insertEnc.ExecuteScalar()!;
 
         var allyKeys = new HashSet<string>(encounter.GetAllies().Select(a => a.Key), StringComparer.Ordinal);
@@ -271,7 +279,7 @@ public sealed class HistoryStore : IDisposable
         }
         cmd.Parameters.AddWithValue("$limit", limit);
         cmd.CommandText = $"""
-            SELECT id, source_id, owner, zone, title, start_ts, end_ts, duration_s, success, damage, correlation_id, is_boss
+            SELECT id, source_id, owner, zone, title, start_ts, end_ts, duration_s, success, damage, correlation_id, is_boss, zone_instance_expiry
             FROM encounters
             {(where.Count > 0 ? "WHERE " + string.Join(" AND ", where) : "")}
             ORDER BY start_ts DESC LIMIT $limit;
@@ -287,7 +295,8 @@ public sealed class HistoryStore : IDisposable
                 DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64(6)),
                 reader.GetDouble(7), (SuccessLevel)reader.GetInt32(8), reader.GetInt64(9),
                 reader.IsDBNull(10) ? null : reader.GetString(10),
-                reader.GetInt32(11) == 1));
+                reader.GetInt32(11) == 1,
+                reader.IsDBNull(12) ? null : DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64(12))));
         }
         return results;
     }
@@ -346,7 +355,7 @@ public sealed class HistoryStore : IDisposable
     /// parsing uses — a restored fight drills exactly like a live one.</summary>
     public Encounter RestoreEncounter(EncounterSummary summary)
     {
-        var encounter = new Encounter(summary.SourceId, summary.Owner, summary.Zone);
+        var encounter = new Encounter(summary.SourceId, summary.Owner, summary.Zone, summary.ZoneInstanceExpiry);
         foreach (var swing in LoadSwings(summary.Id))
             encounter.AddSwing(swing);
         encounter.End();

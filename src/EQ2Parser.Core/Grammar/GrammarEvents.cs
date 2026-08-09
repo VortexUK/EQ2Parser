@@ -22,3 +22,10 @@ public sealed record DeathEvent(string Killer, string Victim) : GrammarEvent;
 
 /// <summary>"You have entered X." — zone change (does not end combat by itself).</summary>
 public sealed record ZoneEvent(string ZoneName) : GrammarEvent;
+
+/// <summary>"This instance will expire in 7 days." — printed on the line
+/// after (or the same second as) the zone-in when entering a persisted
+/// instance. Remaining is the lockout left; entry time + Remaining is the
+/// instance's expiry, which identifies the instance: a reset produces a
+/// fresh full-lockout expiry, a re-entry reproduces the old one.</summary>
+public sealed record InstanceLockoutEvent(TimeSpan Remaining) : GrammarEvent;

@@ -18,7 +18,7 @@ public enum SuccessLevel
 /// the id of the log source that produced it (multi-log correlation groups
 /// encounters across sources later).
 /// </summary>
-public sealed class Encounter(string sourceId, string ownerName, string zone) : IFightView
+public sealed class Encounter(string sourceId, string ownerName, string zone, DateTimeOffset? zoneInstanceExpiry = null) : IFightView
 {
     public const string PlaceholderTitle = "Encounter";
 
@@ -32,6 +32,13 @@ public sealed class Encounter(string sourceId, string ownerName, string zone) : 
     public string OwnerName { get; } = ownerName;
 
     public string Zone { get; } = zone;
+
+    /// <summary>The zone INSTANCE's lockout expiry, when known ("This
+    /// instance will expire in …" followed the zone-in). Identifies the
+    /// instance: a reset yields a fresh full-lockout expiry, a re-entry
+    /// reproduces the old one (hour precision — the client truncates).
+    /// Null for non-instanced zones and lockout-less zone-ins.</summary>
+    public DateTimeOffset? ZoneInstanceExpiry { get; } = zoneInstanceExpiry;
 
     /// <summary>Segment starts. [0] is stamped by the first swing; further
     /// segments come from silence cutting (not yet implemented).</summary>

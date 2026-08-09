@@ -367,8 +367,46 @@ public static partial class EnglishGrammar
         if (message.StartsWith("You have entered ", StringComparison.Ordinal)
             && (m = ZoneEntered().Match(message)).Success)
             return new ZoneEvent(m.Groups["zone"].Value);
+        if (message.StartsWith("This instance will expire in ", StringComparison.Ordinal)
+            && ParseLockoutRemaining(message) is { } remaining)
+            return new InstanceLockoutEvent(remaining);
 
         return null;
+    }
+
+    /// <summary>Public form of the instance-lockout parse for the
+    /// attach-time look-behind, which scans raw history outside TryParse.</summary>
+    public static TimeSpan? TryParseInstanceLockout(string message) =>
+        message.StartsWith("This instance will expire in ", StringComparison.Ordinal)
+            ? ParseLockoutRemaining(message)
+            : null;
+
+    /// <summary>"This instance will expire in 3 days 23 hours." → the
+    /// TimeSpan. The client prints whole units largest-first ("7 days",
+    /// "3 days 23 hours", "45 minutes"); anything unrecognised yields null
+    /// rather than a wrong lockout.</summary>
+    private static TimeSpan? ParseLockoutRemaining(string message)
+    {
+        var body = message["This instance will expire in ".Length..].TrimEnd('.', ' ');
+        var parts = body.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length is 0 or > 6 || parts.Length % 2 != 0)
+            return null;
+        var total = TimeSpan.Zero;
+        for (var i = 0; i < parts.Length; i += 2)
+        {
+            if (!int.TryParse(parts[i], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n))
+                return null;
+            total += parts[i + 1].TrimEnd('s') switch
+            {
+                "day" => TimeSpan.FromDays(n),
+                "hour" => TimeSpan.FromHours(n),
+                "minute" => TimeSpan.FromMinutes(n),
+                _ => TimeSpan.MinValue,
+            };
+            if (total < TimeSpan.Zero)
+                return null;
+        }
+        return total > TimeSpan.Zero ? total : null;
     }
 
     private static SwingEvent Damage(Match m, string attacker, string ability)

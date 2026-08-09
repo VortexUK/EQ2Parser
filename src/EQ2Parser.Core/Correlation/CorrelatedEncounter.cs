@@ -44,6 +44,11 @@ public sealed class CorrelatedEncounter : IFightView
     }
 
     public string Zone => Primary.Zone;
+
+    /// <summary>The zone instance's lockout expiry from whichever source
+    /// knows it (a mid-session attach may not) — null when none do.</summary>
+    public DateTimeOffset? ZoneInstanceExpiry =>
+        _sources.Select(e => e.ZoneInstanceExpiry).FirstOrDefault(x => x is not null);
     public string Title => Primary.Title;
     /// <summary>Any source that saw a scripted-win say line wins the whole
     /// merged fight — the speaker's line may only appear in one log's

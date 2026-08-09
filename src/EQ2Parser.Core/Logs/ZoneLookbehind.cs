@@ -27,7 +27,16 @@ public static class ZoneLookbehind
     /// tail reader uses (<see cref="LogTailOptions.Encoding"/>) — decoding
     /// the look-behind differently from the live tail can split combatant
     /// identities on accented names.</summary>
+    /// <summary>What the look-behind recovered: the zone, plus the
+    /// instance lockout expiry when the "This instance will expire in …"
+    /// line followed the zone-in inside the window.</summary>
+    public sealed record ZoneSeed(string Zone, DateTimeOffset? InstanceExpiry);
+
     public static string? FindLastZone(
+        string path, long beforeOffset, int maxWindowBytes = MaxWindowBytes, Encoding? encoding = null) =>
+        FindLastZoneSeed(path, beforeOffset, maxWindowBytes, encoding)?.Zone;
+
+    public static ZoneSeed? FindLastZoneSeed(
         string path, long beforeOffset, int maxWindowBytes = MaxWindowBytes, Encoding? encoding = null)
     {
         try
@@ -57,7 +66,22 @@ public static class ZoneLookbehind
                 if (!LogLine.TryParse(raw, out var line))
                     continue;
                 if (Grammar.EnglishGrammar.TryParseZoneEntered(line.Message) is { } zone)
-                    return zone;
+                {
+                    // The lockout line lands on the zone-in's own second —
+                    // check the next couple of complete lines for it.
+                    DateTimeOffset? expiry = null;
+                    for (var j = i + 1; j < Math.Min(i + 4, lines.Length); j++)
+                    {
+                        if (!LogLine.TryParse(lines[j].TrimEnd('\r'), out var next))
+                            continue;
+                        if (Grammar.EnglishGrammar.TryParseInstanceLockout(next.Message) is { } remaining)
+                        {
+                            expiry = next.Timestamp + remaining;
+                            break;
+                        }
+                    }
+                    return new ZoneSeed(zone, expiry);
+                }
             }
             return null;
         }

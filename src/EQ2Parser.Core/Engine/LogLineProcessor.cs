@@ -101,8 +101,12 @@ public sealed class LogLineProcessor
         switch (parsed)
         {
             case ZoneEvent zone:
-                Engine.ChangeZone(zone.ZoneName);
+                Engine.ChangeZone(zone.ZoneName, line.Timestamp);
                 _triggers?.SetZone(zone.ZoneName);
+                break;
+
+            case InstanceLockoutEvent lockout:
+                Engine.ApplyInstanceLockout(lockout.Remaining, line.Timestamp);
                 break;
 
             case SwingEvent swing:

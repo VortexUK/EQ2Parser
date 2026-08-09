@@ -509,6 +509,9 @@ public sealed partial class MainParseViewModel : ObservableObject
             // header body selects the zone's encounter summary. The
             // Bosses-only filter trims trash fights.
             var groups = GroupHistoryZones();
+            var today = DateTime.Now.Date;
+            DateTime? currentSection = null;
+            var sectionCollapsed = false;
             for (var g = groups.Count - 1; g >= 0; g--)
             {
                 var (zone, items) = groups[g];
@@ -516,6 +519,32 @@ public sealed partial class MainParseViewModel : ObservableObject
                 var shown = BossesOnly ? items.Where(f => IsBossTitle(f.Title)).ToList() : items;
                 if (shown.Count == 0)
                     continue;
+
+                // Date sections: one header per local calendar day (the
+                // day the zone run STARTED). Every non-today section
+                // starts collapsed; toggles stick for the session.
+                var day = items[0].StartTime.ToLocalTime().Date;
+                if (currentSection != day)
+                {
+                    currentSection = day;
+                    var dayKey = $"day|{day:yyyy-MM-dd}";
+                    sectionCollapsed = _dateExpandOverrides.TryGetValue(dayKey, out var expand)
+                        ? !expand
+                        : day != today;
+                    nodes.Add(new ParseNode
+                    {
+                        IsHeader = true,
+                        GroupKey = dayKey,
+                        Arrow = sectionCollapsed ? "▸" : "▾",
+                        Title = day == today
+                            ? Loc.Get("MainVm_Today")
+                            : day.ToString("dddd d MMMM", System.Globalization.CultureInfo.CurrentCulture),
+                        TitleBrush = ClassColors.TreeText,
+                    });
+                }
+                if (sectionCollapsed)
+                    continue;
+
                 var groupKey = $"{zoneName}|{items[0].StartTime.Ticks}";
                 var collapsed = _collapsedZones.Contains(groupKey);
                 nodes.Add(new ParseNode
@@ -583,11 +612,27 @@ public sealed partial class MainParseViewModel : ObservableObject
     private List<(string Zone, List<CorrelatedEncounter> Items)> GroupHistoryZones()
     {
         List<(string Zone, List<CorrelatedEncounter> Items)> groups = [];
+        DateTimeOffset? groupExpiry = null;
         foreach (var fight in manager.Correlator.History)
         {
-            if (groups.Count == 0 || !string.Equals(groups[^1].Zone, fight.Zone, StringComparison.OrdinalIgnoreCase))
+            var newGroup = groups.Count == 0
+                || !string.Equals(groups[^1].Zone, fight.Zone, StringComparison.OrdinalIgnoreCase)
+                // A fresh INSTANCE of the same zone (zone out, reset, zone
+                // back in with nothing between) is its own group: the
+                // lockout expiry identifies the instance. The client
+                // truncates the remaining time to hours, so two sightings
+                // of one instance can disagree by up to an hour — split
+                // only past a 90-minute gap. Null (non-instanced zone or a
+                // source that missed the lockout line) matches anything.
+                || (groupExpiry is { } known && fight.ZoneInstanceExpiry is { } seen
+                    && (seen - known).Duration() > TimeSpan.FromMinutes(90));
+            if (newGroup)
+            {
                 groups.Add((fight.Zone, []));
+                groupExpiry = null;
+            }
             groups[^1].Items.Add(fight);
+            groupExpiry ??= fight.ZoneInstanceExpiry;
         }
         return groups;
     }
@@ -706,6 +751,11 @@ public sealed partial class MainParseViewModel : ObservableObject
 
     private readonly HashSet<string> _collapsedZones = new(StringComparer.Ordinal);
 
+    /// <summary>Per-day expand/collapse choices for the date sections
+    /// (session-scoped). Absent = the default: expanded for today,
+    /// collapsed for every earlier day.</summary>
+    private readonly Dictionary<string, bool> _dateExpandOverrides = new(StringComparer.Ordinal);
+
     [ObservableProperty]
     private bool _bossesOnly;
 
@@ -741,8 +791,19 @@ public sealed partial class MainParseViewModel : ObservableObject
     {
         if (node?.GroupKey is not { } groupKey)
             return;
-        if (!_collapsedZones.Remove(groupKey))
+        if (groupKey.StartsWith("day|", StringComparison.Ordinal))
+        {
+            var day = DateTime.TryParse(groupKey[4..], System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var parsed) ? parsed : DateTime.Now.Date;
+            var expandedNow = !_dateExpandOverrides.TryGetValue(groupKey, out var expand)
+                ? day == DateTime.Now.Date
+                : expand;
+            _dateExpandOverrides[groupKey] = !expandedNow;
+        }
+        else if (!_collapsedZones.Remove(groupKey))
+        {
             _collapsedZones.Add(groupKey);
+        }
         RebuildTree();
     }
 

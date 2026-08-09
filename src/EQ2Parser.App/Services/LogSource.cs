@@ -113,12 +113,14 @@ public sealed class LogSource : IDisposable
             if (!ParseFromStart)
             {
                 var behind = _startOffset ?? TryFileLength();
-                if (behind > 0 && ZoneLookbehind.FindLastZone(
-                        Path, behind, encoding: _tailOptions.Encoding) is { } zone)
+                if (behind > 0 && ZoneLookbehind.FindLastZoneSeed(
+                        Path, behind, encoding: _tailOptions.Encoding) is { } seed)
                 {
                     lock (_sync)
                     {
-                        Engine.ChangeZone(zone);
+                        Engine.ChangeZone(seed.Zone);
+                        if (seed.InstanceExpiry is { } expiry)
+                            Engine.SeedInstanceExpiry(expiry);
                     }
                 }
             }

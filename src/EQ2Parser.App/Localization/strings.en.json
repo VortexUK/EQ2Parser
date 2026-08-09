@@ -104,6 +104,7 @@
   "MainVm_PetsHeader": "Pets ({0})",
   "MainVm_SourcesSuffix": " ·{0}L",
   "MainVm_SwingCrit": "crit",
+  "MainVm_Today": "Today",
   "MainVm_UnknownZone": "Unknown zone",
   "MainVm_ZoneBreadcrumb": "{0}  ·  {1} encounters  ·  {2}",
   "Main_Archive": "Archive",
