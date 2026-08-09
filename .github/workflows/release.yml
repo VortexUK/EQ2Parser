@@ -137,7 +137,35 @@ jobs:
           }
           Write-Host 'RELEASES_PAT present.'
 
-      - name: Publish GitHub Release
+      # Primary/canonical feed: this repo (public). Same-repo publish uses
+      # the workflow's own GITHUB_TOKEN (contents:write granted above) — no
+      # PAT needed. Main starts as an empty feed, so this is a clean full
+      # release; run FIRST so the fresh post-pack dir isn't perturbed.
+      - name: Publish GitHub Release (main repo)
+        if: ${{ github.event_name == 'push' || inputs.publish }}
+        shell: pwsh
+        run: >
+          vpk upload github --repoUrl https://github.com/VortexUK/EQ2Parser
+          --publish --releaseName "EQ2Parser ${{ steps.ver.outputs.version }}"
+          --tag "v${{ steps.ver.outputs.version }}"
+          --token ${{ secrets.GITHUB_TOKEN }} --outputDir Releases
+
+      - name: Attach checksums to release (main repo)
+        if: ${{ github.event_name == 'push' || inputs.publish }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          gh release upload "v${{ steps.ver.outputs.version }}" Releases/SHA256SUMS.txt
+          --clobber -R VortexUK/EQ2Parser
+
+      # TRANSITIONAL — also publish to the old releases-only repo so installs
+      # still on the pre-move updater (RepoUrl = EQ2Parser-releases, i.e.
+      # anything <= v0.3.2) find this release and migrate onto the main feed.
+      # REMOVE this step (and the RELEASES_PAT preflight) once testers are on
+      # v0.3.3+; from then on they poll the main repo. vpk re-syncs the old
+      # repo's own release history, so running it second is safe.
+      - name: Publish GitHub Release (transitional — old releases repo)
         if: ${{ github.event_name == 'push' || inputs.publish }}
         shell: pwsh
         run: >
@@ -145,13 +173,3 @@ jobs:
           --publish --releaseName "EQ2Parser ${{ steps.ver.outputs.version }}"
           --tag "v${{ steps.ver.outputs.version }}"
           --token ${{ secrets.RELEASES_PAT }} --outputDir Releases
-
-      # Attach the checksums to the release vpk just created.
-      - name: Attach checksums to release
-        if: ${{ github.event_name == 'push' || inputs.publish }}
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_PAT }}
-        run: >
-          gh release upload "v${{ steps.ver.outputs.version }}" Releases/SHA256SUMS.txt
-          --clobber -R VortexUK/EQ2Parser-releases
