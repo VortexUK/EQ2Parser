@@ -130,12 +130,22 @@
                             <!-- DownOnly Viewbox: long names shrink to fit
                                  instead of ellipsising — the full name is
                                  always readable. -->
+                            <!-- Text stays light on every bar colour; the
+                                 readability comes from a dark HALO around
+                                 the glyphs (two stacked shadows — one on
+                                 the text, one on its host), which is what
+                                 keeps white legible on a bright fill.
+                                 Flipping the text dark instead read as a
+                                 glitch in a dark overlay. -->
                             <Viewbox StretchDirection="DownOnly" Stretch="Uniform" MaxHeight="16"
                                      HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Label}" FontSize="12" Foreground="#F0F2FA"
-                                           FontFamily="Segoe UI">
+                                <Viewbox.Effect>
+                                    <DropShadowEffect ShadowDepth="0" BlurRadius="4" Color="#000000" Opacity="1" />
+                                </Viewbox.Effect>
+                                <TextBlock Text="{Binding Label}" FontSize="12" Foreground="#FFFFFF"
+                                           FontFamily="Segoe UI" FontWeight="SemiBold">
                                     <TextBlock.Effect>
-                                        <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                                        <DropShadowEffect ShadowDepth="0" BlurRadius="2" Color="#000000" Opacity="1" />
                                     </TextBlock.Effect>
                                 </TextBlock>
                             </Viewbox>
@@ -192,17 +202,29 @@
                                     </TextBlock.Effect>
                                 </TextBlock>
                             </StackPanel>
-                            <!-- Foreground + halo are picked per tick for
-                                 contrast against whatever is behind the
-                                 digits (flame front vs dark glass). -->
-                            <TextBlock Grid.Column="2" Text="{Binding SecondsText}" FontSize="12"
-                                       Foreground="{Binding SecondsBrush}"
-                                       VerticalAlignment="Center" FontFamily="Consolas" FontWeight="Bold">
-                                <TextBlock.Effect>
-                                    <DropShadowEffect ShadowDepth="0" BlurRadius="3" Opacity="0.9"
-                                                      Color="{Binding SecondsShadowColor}" />
-                                </TextBlock.Effect>
-                            </TextBlock>
+                            <!-- Same halo treatment: the countdown crosses
+                                 the flame front near full duration. -->
+                            <Grid Grid.Column="2">
+                                <Grid.Effect>
+                                    <DropShadowEffect ShadowDepth="0" BlurRadius="4" Color="#000000" Opacity="1" />
+                                </Grid.Effect>
+                                <TextBlock Text="{Binding SecondsText}" FontSize="12"
+                                           VerticalAlignment="Center" FontFamily="Consolas" FontWeight="Bold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#FFFFFF" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                                    <Setter Property="Foreground" Value="#FF9B9B" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect ShadowDepth="0" BlurRadius="2" Color="#000000" Opacity="1" />
+                                    </TextBlock.Effect>
+                                </TextBlock>
+                            </Grid>
                         </Grid>
                     </Grid>
                 </DataTemplate>

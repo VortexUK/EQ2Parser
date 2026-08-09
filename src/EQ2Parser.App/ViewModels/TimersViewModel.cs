@@ -5,7 +5,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EQ2Parser.App.Localization;
 using EQ2Parser.App.Services;
-using EQ2Parser.Core.Analysis;
 using EQ2Parser.Core.Triggers;
 using Trigger = EQ2Parser.Core.Triggers.Trigger;
 
@@ -164,24 +163,6 @@ public sealed partial class TimerBarRow : ObservableObject
     [ObservableProperty]
     private string _swipeText = "";
 
-    /// <summary>Countdown colour, chosen per tick for contrast against
-    /// whatever is actually behind the digits (see
-    /// <see cref="TimersViewModel.ApplyReadableSeconds"/>).</summary>
-    [ObservableProperty]
-    private Brush _secondsBrush = Brushes.White;
-
-    /// <summary>Halo behind the digits — dark under light text, light under
-    /// dark text, so the glyph edges separate either way.</summary>
-    [ObservableProperty]
-    private Color _secondsShadowColor = Colors.Black;
-
-    /// <summary>The bar's base colour, kept for the per-tick contrast maths
-    /// (the brushes themselves are rebuilt only when the style changes).</summary>
-    internal Color FillColor = Colors.Gray;
-
-    /// <summary>Last colour handed to <see cref="SecondsBrush"/> — brushes
-    /// are only rebuilt when the decision actually changes.</summary>
-    internal Color SecondsColor = Colors.Transparent;
 }
 
 /// <summary>
@@ -711,10 +692,8 @@ public sealed partial class TimersViewModel : ObservableObject
             ApplyBar(LiveBars[i], bars[i]);
     }
 
-    /// <summary>Shared bar shaping for the preview and the overlay.
-    /// <paramref name="barWidth"/> is the rendered bar width, used to work
-    /// out whether the fill reaches under the countdown digits.</summary>
-    public static void ApplyBar(TimerBarRow row, TimerBarSnapshot bar, double barWidth = DefaultBarWidth)
+    /// <summary>Shared bar shaping for the preview and the overlay.</summary>
+    public static void ApplyBar(TimerBarRow row, TimerBarSnapshot bar)
     {
         var combatant = bar.Combatant;
         if (combatant.Length > 0 && char.IsLower(combatant[0]))
@@ -736,12 +715,7 @@ public sealed partial class TimersViewModel : ObservableObject
         row.SwipeText = bar.SwipedPercent > 0 ? $"⇑{bar.SwipedPercent}%" : "";
         var styleKey = $"{bar.FillColorArgb}|{bar.DamageType}|{bar.ControlEffect}";
         if (row.StyleKey == styleKey)
-        {
-            // Styles unchanged, but the countdown's backdrop moves every
-            // tick as the fill shrinks past the digits.
-            ApplyReadableSeconds(row, barWidth);
             return;
-        }
         row.StyleKey = styleKey;
         var argb = unchecked((uint)bar.FillColorArgb);
         var fill = Color.FromArgb(0xFF, (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb);
@@ -761,78 +735,6 @@ public sealed partial class TimersViewModel : ObservableObject
         row.SchoolBrush = schoolBrush;
         row.DamageText = bar.DamageType;
         row.ControlText = bar.ControlEffect.Length > 0 ? bar.ControlEffect.ToUpperInvariant() : "";
-        row.FillColor = fill;
-        ApplyReadableSeconds(row, barWidth);
     }
 
-    /// <summary>Default rendered bar width (the overlay's default) — used
-    /// when a caller doesn't know its own width yet.</summary>
-    private const double DefaultBarWidth = 280;
-
-    /// <summary>Roughly how much of the bar's right end the countdown digits
-    /// plus their margin occupy ("1:30" in bold Consolas 12 + 7px).</summary>
-    private const double SecondsTextWidth = 44;
-
-    // The card's glass under the bar, and the semi-transparent fill drawn
-    // on top of it (Border Opacity="0.78" in the bar template).
-    private static readonly Rgb BarBackdrop = new(0x14, 0x17, 0x24);
-    private const double FillOpacity = 0.78;
-
-    // Candidates, most-preferred first: the established look wins unless a
-    // rival is clearly more legible (Contrast.Best's tolerance).
-    private static readonly Rgb CalmLight = new(0xE2, 0xE4, 0xF0);
-    private static readonly Rgb CalmDark = new(0x10, 0x12, 0x1C);
-    private static readonly Rgb WarnLight = new(0xF8, 0x71, 0x71);
-    private static readonly Rgb WarnDark = new(0x6B, 0x0F, 0x0F);
-
-    /// <summary>
-    /// Pick a countdown colour that actually reads on what's behind it. The
-    /// digits sit at the bar's right end while the fill shrinks leftward
-    /// past them, so the backdrop flips from the FLAME FRONT (the gradient's
-    /// brightest stop — user-chosen colours blended toward white, which the
-    /// old fixed near-white text disappeared into) to the dark card glass.
-    /// The warning wash tints both. Colours only change at the crossover, so
-    /// there's no per-tick flicker — and a countdown only crosses once.
-    /// </summary>
-    internal static void ApplyReadableSeconds(TimerBarRow row, double barWidth)
-    {
-        var width = barWidth > 0 ? barWidth : DefaultBarWidth;
-        var digitsStart = 1 - Math.Clamp(SecondsTextWidth / width, 0, 1);
-        // Once the fill reaches the digits, the brightest thing under them
-        // is the flame front itself (it rides the leading edge).
-        var behind = row.Fraction > digitsStart
-            ? Contrast.Over(
-                ToRgb(SchoolPalette.SampleFlame(row.FillColor, row.GlowColor, 1.0)),
-                FillOpacity, BarBackdrop)
-            : BarBackdrop;
-        // The warning shimmer washes the whole bar red while it pulses; use
-        // its mid opacity so the choice holds across the pulse.
-        if (row.IsWarning)
-            behind = Contrast.Over(new Rgb(0xF8, 0x71, 0x71), 0.30 * 0.40, behind);
-
-        var chosen = row.IsWarning ? WarningColour(behind) : Contrast.Best(behind, 1.5, CalmLight, CalmDark);
-        var color = Color.FromRgb(chosen.R, chosen.G, chosen.B);
-        if (color == row.SecondsColor)
-            return;
-        row.SecondsColor = color;
-        var brush = new SolidColorBrush(color);
-        brush.Freeze();
-        row.SecondsBrush = brush;
-        // Dark digits need a light halo to separate; light digits keep the
-        // black one they've always had.
-        row.SecondsShadowColor = Contrast.RelativeLuminance(chosen) < 0.3
-            ? Color.FromRgb(0xFF, 0xFF, 0xFF)
-            : Colors.Black;
-    }
-
-    /// <summary>Warning digits stay RED — the hue is the signal. Only when
-    /// neither red can be read at all does it fall back to the neutral
-    /// pair (the pulsing bar still carries the warning).</summary>
-    private static Rgb WarningColour(Rgb behind)
-    {
-        var red = Contrast.Best(behind, 1.5, WarnLight, WarnDark);
-        return Contrast.IsReadable(red, behind) ? red : Contrast.Best(behind, 0, CalmLight, CalmDark);
-    }
-
-    private static Rgb ToRgb(Color c) => new(c.R, c.G, c.B);
 }

@@ -63,22 +63,4 @@ public static class SchoolPalette
         return brush;
     }
 
-    /// <summary>The gradient's colour at <paramref name="position"/> (0 = bar
-    /// start, 1 = the flame front) — what a pixel of the fill actually
-    /// looks like there.</summary>
-    public static Color SampleFlame(Color fill, Color glow, double position)
-    {
-        var stops = FlameStops(fill, glow);
-        var t = Math.Clamp(position, 0, 1);
-        for (var i = 1; i < stops.Length; i++)
-        {
-            var (offset, color) = stops[i];
-            if (t > offset)
-                continue;
-            var (prevOffset, prevColor) = stops[i - 1];
-            var span = offset - prevOffset;
-            return Blend(prevColor, color, span <= 0 ? 1 : (t - prevOffset) / span);
-        }
-        return stops[^1].Color;
-    }
 }
