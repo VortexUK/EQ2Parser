@@ -196,4 +196,49 @@ public sealed class LexiconSyncServiceTests : IDisposable
         Assert.Equal(2, handler.Requests);
         Assert.Equal(1, applies); // second sync: same version, no re-apply
     }
+
+    [Fact]
+    public async Task Disabled_Service_Neither_Fetches_Nor_Applies()
+    {
+        var handler = new CannedHandler(() => Pack("v1"));
+        var service = new LexiconSyncService(_triggers, _timers, "https://example.test", new HttpClient(handler), enabled: false);
+
+        await service.StartupAsync();
+        await service.SyncAsync();
+
+        Assert.False(service.Enabled);
+        Assert.Equal(0, handler.Requests); // no network touched at all
+        Assert.Empty(_triggers.Definitions);
+        Assert.Empty(_timers.Definitions);
+    }
+
+    [Fact]
+    public async Task Disabling_At_Runtime_Removes_The_Lexicon_Rows()
+    {
+        var service = Service(() => Pack("v1"), out _);
+        await service.SyncAsync();
+        Assert.NotEmpty(_triggers.Definitions);
+        Assert.NotEmpty(_timers.Definitions);
+
+        await service.SetEnabledAsync(false);
+
+        Assert.False(service.Enabled);
+        Assert.Empty(_triggers.Definitions);
+        Assert.Empty(_timers.Definitions);
+    }
+
+    [Fact]
+    public async Task Re_Enabling_ReApplies_From_The_Cache()
+    {
+        var service = Service(() => Pack("v1"), out _);
+        await service.SyncAsync();          // caches the pack
+        await service.SetEnabledAsync(false);
+        Assert.Empty(_triggers.Definitions);
+
+        await service.SetEnabledAsync(true);
+
+        Assert.True(service.Enabled);
+        Assert.Single(_triggers.Definitions, t => t.RegexText == "casts Death Sweep");
+        Assert.Single(_timers.Definitions, d => d.Name == "Death Sweep");
+    }
 }

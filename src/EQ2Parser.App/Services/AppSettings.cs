@@ -121,6 +121,12 @@ public sealed record AppSettings
     /// local dev server to test curation before it ships.</summary>
     public string LexiconBaseUrl { get; init; } = "https://varsoon.eq2lexicon.com";
 
+    /// <summary>Subscribe to the curated EQ2Lexicon trigger/timer library.
+    /// On by default. Off = the parser applies ONLY the triggers and timers
+    /// the user made themselves; the Lexicon-sourced ones are removed and no
+    /// sync runs (for people who prefer to manage their own).</summary>
+    public bool LexiconTriggersEnabled { get; init; } = true;
+
     /// <summary>Auto-upload finished fights to EQ2Lexicon. Off until the
     /// user opts in AND a token is saved.</summary>
     public bool UploadEnabled { get; init; }

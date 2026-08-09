@@ -250,6 +250,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _lexiconStatus = manager.Lexicon.Status;
         manager.Lexicon.StatusChanged += () =>
             System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => LexiconStatus = manager.Lexicon.Status);
+        _lexiconTriggersEnabled = manager.Settings.LexiconTriggersEnabled;
         // A broken neural voice must say SO — the silent Windows-voice
         // fallback cost a tester a session of confusion.
         manager.Audio.NeuralVoiceFailed += reason =>
@@ -332,7 +333,20 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _lexiconStatus = "";
 
+    /// <summary>Subscribe to the curated Lexicon trigger/timer library. Off =
+    /// only the user's own triggers/timers apply (the Lexicon-sourced ones are
+    /// removed live). Persists + applies immediately.</summary>
+    [ObservableProperty]
+    private bool _lexiconTriggersEnabled;
+
     public string LexiconUrlLabel => _manager.Lexicon.BaseUrl;
+
+    partial void OnLexiconTriggersEnabledChanged(bool value)
+    {
+        _manager.Settings = _manager.Settings with { LexiconTriggersEnabled = value };
+        _manager.Settings.Save();
+        _ = _manager.Lexicon.SetEnabledAsync(value);
+    }
 
     [RelayCommand]
     private void LexiconSyncNow() => _ = _manager.Lexicon.SyncAsync();

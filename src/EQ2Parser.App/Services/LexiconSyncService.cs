@@ -41,8 +41,16 @@ public sealed class LexiconSyncService
     private readonly HashSet<string> _enabledTimers = new(StringComparer.OrdinalIgnoreCase);
     private string _appliedVersion = "";
     private string _appliedSummary = "";
+    private bool _enabled;
 
     public string BaseUrl { get; }
+
+    /// <summary>Whether the curated Lexicon library is subscribed. When false,
+    /// no sync runs and no lexicon-sourced rows live in the engines.</summary>
+    public bool Enabled
+    {
+        get { lock (_gate) return _enabled; }
+    }
 
     private string? _status;
 
@@ -54,18 +62,19 @@ public sealed class LexiconSyncService
     /// <summary>Raised (on whatever thread) whenever Status changes.</summary>
     public event Action? StatusChanged;
 
-    public LexiconSyncService(TriggerService triggers, TimerService timers, string baseUrl)
-        : this(triggers, timers, baseUrl, SharedHttp)
+    public LexiconSyncService(TriggerService triggers, TimerService timers, string baseUrl, bool enabled = true)
+        : this(triggers, timers, baseUrl, SharedHttp, enabled)
     {
     }
 
     /// <summary>Test seam: inject the HTTP transport (App.Tests drives the
     /// sync flow against a canned pack without a network).</summary>
-    internal LexiconSyncService(TriggerService triggers, TimerService timers, string baseUrl, HttpClient http)
+    internal LexiconSyncService(TriggerService triggers, TimerService timers, string baseUrl, HttpClient http, bool enabled = true)
     {
         _triggers = triggers;
         _timers = timers;
         _http = http;
+        _enabled = enabled;
         BaseUrl = baseUrl.TrimEnd('/');
         LoadOverrides();
         triggers.LexiconEnabledChanged += (key, enabled) => SetOverride(_disabledTriggers, _enabledTriggers, key, enabled);
@@ -123,6 +132,11 @@ public sealed class LexiconSyncService
     /// then fetch in the background. Never throws.</summary>
     public async Task StartupAsync()
     {
+        if (!Enabled)
+        {
+            SetStatus(Loc.Get("LexiconSvc_Disabled"));
+            return;
+        }
         try
         {
             // A corrupt cache is quarantined and never blocks startup — the
@@ -136,10 +150,57 @@ public sealed class LexiconSyncService
         await SyncAsync();
     }
 
+    /// <summary>Turn the Lexicon library on or off at runtime (the Settings
+    /// toggle). Off: every lexicon-sourced trigger/timer is removed from the
+    /// engines (the user's own are untouched) and syncing stops. On: the
+    /// cached pack re-applies immediately, then a background fetch refreshes
+    /// it. Never throws. A no-op if the state is unchanged.</summary>
+    public async Task SetEnabledAsync(bool enabled)
+    {
+        lock (_gate)
+        {
+            if (_enabled == enabled)
+                return;
+            _enabled = enabled;
+        }
+        if (enabled)
+        {
+            await StartupAsync().ConfigureAwait(false);
+        }
+        else
+        {
+            ClearLexicon();
+            SetStatus(Loc.Get("LexiconSvc_Disabled"));
+        }
+    }
+
+    /// <summary>Drop every lexicon-sourced row from both engines (apply an
+    /// empty set — ApplyLexicon replaces the lexicon set wholesale) and forget
+    /// the applied version so re-enabling re-applies from cache.</summary>
+    private void ClearLexicon()
+    {
+        lock (_gate)
+        {
+            _timers.ApplyLexicon([],
+                _disabledTimers.ToHashSet(StringComparer.OrdinalIgnoreCase),
+                _enabledTimers.ToHashSet(StringComparer.OrdinalIgnoreCase));
+            _triggers.ApplyLexicon([],
+                _disabledTriggers.ToHashSet(StringComparer.OrdinalIgnoreCase),
+                _enabledTriggers.ToHashSet(StringComparer.OrdinalIgnoreCase));
+            _appliedVersion = "";
+            _appliedSummary = "";
+        }
+    }
+
     /// <summary>Fetch the pack and apply it if the version moved. Safe to
     /// call any time (the Settings "Sync now" button). Never throws.</summary>
     public async Task SyncAsync()
     {
+        if (!Enabled)
+        {
+            SetStatus(Loc.Get("LexiconSvc_Disabled"));
+            return;
+        }
         try
         {
             SetStatus(Loc.Get("LexiconSvc_Syncing"));

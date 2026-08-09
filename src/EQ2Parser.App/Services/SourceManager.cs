@@ -69,7 +69,7 @@ public sealed class SourceManager : IDisposable
         Triggers = new TriggerService(Audio, Sync);
         SpellTimers = new TimerService(Audio, Sync);
         SharedTriggers = new SharedTriggerPrompter(this);
-        Lexicon = new LexiconSyncService(Triggers, SpellTimers, Settings.LexiconBaseUrl);
+        Lexicon = new LexiconSyncService(Triggers, SpellTimers, Settings.LexiconBaseUrl, Settings.LexiconTriggersEnabled);
         Callouts.MinVictims = Settings.CalloutMinPlayers;
         Callouts.Cooldown = TimeSpan.FromSeconds(Settings.CalloutCooldownSeconds);
         Callouts.Callout += (effect, count) =>
