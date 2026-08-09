@@ -36,6 +36,16 @@ public static class SchoolPalette
         (byte)Math.Clamp(c.G * f, 0, 255),
         (byte)Math.Clamp(c.B * f, 0, 255));
 
+    // The flame gradient's stops, shared by the brush and the sampler so
+    // the readability maths can never drift from what's drawn.
+    private static (double Offset, Color Color)[] FlameStops(Color fill, Color glow) =>
+    [
+        (0.0, Scale(fill, 0.5)),
+        (0.7, fill),
+        (0.88, Blend(fill, glow, 0.6)),
+        (1.0, Blend(glow, Colors.White, 0.35)),
+    ];
+
     /// <summary>The bar fill: dark base burning brighter along the bar and
     /// tipping into the school colour at the leading edge — the flame
     /// front. The fill scales with the countdown, so the gradient (and the
@@ -46,15 +56,29 @@ public static class SchoolPalette
         {
             StartPoint = new Point(0, 0.5),
             EndPoint = new Point(1, 0.5),
-            GradientStops =
-            {
-                new GradientStop(Scale(fill, 0.5), 0),
-                new GradientStop(fill, 0.7),
-                new GradientStop(Blend(fill, glow, 0.6), 0.88),
-                new GradientStop(Blend(glow, Colors.White, 0.35), 1.0),
-            },
         };
+        foreach (var (offset, color) in FlameStops(fill, glow))
+            brush.GradientStops.Add(new GradientStop(color, offset));
         brush.Freeze();
         return brush;
+    }
+
+    /// <summary>The gradient's colour at <paramref name="position"/> (0 = bar
+    /// start, 1 = the flame front) — what a pixel of the fill actually
+    /// looks like there.</summary>
+    public static Color SampleFlame(Color fill, Color glow, double position)
+    {
+        var stops = FlameStops(fill, glow);
+        var t = Math.Clamp(position, 0, 1);
+        for (var i = 1; i < stops.Length; i++)
+        {
+            var (offset, color) = stops[i];
+            if (t > offset)
+                continue;
+            var (prevOffset, prevColor) = stops[i - 1];
+            var span = offset - prevOffset;
+            return Blend(prevColor, color, span <= 0 ? 1 : (t - prevOffset) / span);
+        }
+        return stops[^1].Color;
     }
 }

@@ -192,20 +192,15 @@
                                     </TextBlock.Effect>
                                 </TextBlock>
                             </StackPanel>
+                            <!-- Foreground + halo are picked per tick for
+                                 contrast against whatever is behind the
+                                 digits (flame front vs dark glass). -->
                             <TextBlock Grid.Column="2" Text="{Binding SecondsText}" FontSize="12"
+                                       Foreground="{Binding SecondsBrush}"
                                        VerticalAlignment="Center" FontFamily="Consolas" FontWeight="Bold">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="#E2E4F0" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsWarning}" Value="True">
-                                                <Setter Property="Foreground" Value="#F87171" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
                                 <TextBlock.Effect>
-                                    <DropShadowEffect ShadowDepth="0" BlurRadius="3" Color="#000000" Opacity="0.9" />
+                                    <DropShadowEffect ShadowDepth="0" BlurRadius="3" Opacity="0.9"
+                                                      Color="{Binding SecondsShadowColor}" />
                                 </TextBlock.Effect>
                             </TextBlock>
                         </Grid>
