@@ -42,7 +42,6 @@ ODBC/FTP exports, LCD hardware, embedded web servers.
 | Distribution | [Velopack](https://velopack.io) | One-click installer + delta auto-updates from GitHub Releases, no admin rights. |
 | Storage | SQLite | Local encounter history; same operational comfort zone as the Lexicon server. |
 | Licence | MIT | Community trust + contributions. |
-| Parse grammar | Cleanroom | ACT's parser sources are unlicensed (all rights reserved); they serve as a behavioural reference only. Correctness is validated by diffing against ACT output on real logs. |
 
 ## Solution layout
 
