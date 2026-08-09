@@ -35,7 +35,7 @@ needed; only EQ2Lexicon is checked out locally.
   feed visible numbers (EncDPS, durations, ally graph, success level, 6 s idle
   rule) stay ACT-compatible so site rankings remain comparable. Improvements
   (multi-log, catch-up, grammar-as-data, etc.) live in
-  docs/act-behavior.md → "Improvements over ACT".
+  docs/act-behavior.md → "Key capabilities".
 - **Multi-log architecture**: one parse pipeline per log source (own tail
   reader / grammar / perspective state), feeding an encounter correlator that
   merges concurrent encounters across sources (zone + time overlap + shared
