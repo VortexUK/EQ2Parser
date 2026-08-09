@@ -13,13 +13,17 @@ namespace EQ2Parser.App.Services;
 /// </summary>
 public sealed class UpdateService
 {
-    /// <summary>The PUBLIC releases-only repo — the updater reads it
-    /// anonymously, so it must stay public while the code repo is private.
-    /// If releases ever move back to the code repo, ship a transitional
+    /// <summary>The public releases-only repo — the updater reads it
+    /// anonymously, so it must stay public (distribution is kept separate
+    /// from the code repo). If releases ever move, ship a transitional
     /// build from THIS feed first or existing installs never see the move.</summary>
     public const string RepoUrl = "https://github.com/VortexUK/EQ2Parser-releases";
 
-    private readonly UpdateManager _manager = new(new GithubSource(RepoUrl, null, prerelease: true));
+    // Stable channel: full releases only. (During the tester phase this was
+    // prerelease: true; releases are now published as full releases, and
+    // an install still on the old prerelease:true feed also sees a newer
+    // full release, so the first stable release migrates it over cleanly.)
+    private readonly UpdateManager _manager = new(new GithubSource(RepoUrl, null, prerelease: false));
 
     /// <summary>Raised (on a background thread) whenever the status line
     /// changes — Settings shows it.</summary>

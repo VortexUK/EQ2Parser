@@ -91,10 +91,10 @@ jobs:
           $lines | Set-Content -Path Releases/SHA256SUMS.txt -Encoding ascii
           Write-Host "SHA256SUMS.txt:"; Get-Content Releases/SHA256SUMS.txt
 
-      # Attestations are gated to public repos (private needs Enterprise) —
-      # non-fatal while the code repo is private, and starts succeeding
-      # automatically the day the repo goes public. SHA256SUMS.txt is the
-      # verification story in the meantime.
+      # Build-provenance attestation (the repo is public, so this succeeds):
+      # cryptographic proof the binary was built from this repo in CI.
+      # continue-on-error stays as a belt-and-braces net. SHA256SUMS.txt
+      # complements it.
       - name: Attest build provenance
         continue-on-error: true
         uses: actions/attest-build-provenance@v3
@@ -115,13 +115,17 @@ jobs:
             Releases/SHA256SUMS.txt
 
       # Real release (tag push, or manual with publish ticked). Publishes to
-      # the PUBLIC EQ2Parser-releases repo — the code repo is private and the
-      # in-app updater reads the feed anonymously. Cross-repo publishing is
-      # beyond GITHUB_TOKEN's scope, hence the RELEASES_PAT secret
-      # (fine-grained PAT: Contents read+write on EQ2Parser-releases only).
-      # NOTE: still `--pre` — installed apps follow pre-releases (the right
-      # setup for the tester phase); dropping --pre needs a coordinated
-      # transitional release first or existing installs are stranded.
+      # the public EQ2Parser-releases repo (distribution is kept separate
+      # from the code repo; the in-app updater reads that feed anonymously).
+      # Cross-repo publishing is beyond GITHUB_TOKEN's scope, hence the
+      # RELEASES_PAT secret (fine-grained PAT: Contents read+write on
+      # EQ2Parser-releases only).
+      # STABLE channel: releases are full (not pre-release). The in-app
+      # updater reads stable releases (GithubSource prerelease: false).
+      # Transition note: existing installs still on the prerelease:true
+      # updater also see a newer FULL release (include-prereleases is a
+      # superset), so the first stable release upgrades them onto the
+      # stable channel with no stranding.
       - name: Preflight — releases-repo credential is present
         if: ${{ github.event_name == 'push' || inputs.publish }}
         shell: pwsh
@@ -138,7 +142,7 @@ jobs:
         shell: pwsh
         run: >
           vpk upload github --repoUrl https://github.com/VortexUK/EQ2Parser-releases
-          --publish --pre --releaseName "EQ2Parser ${{ steps.ver.outputs.version }}"
+          --publish --releaseName "EQ2Parser ${{ steps.ver.outputs.version }}"
           --tag "v${{ steps.ver.outputs.version }}"
           --token ${{ secrets.RELEASES_PAT }} --outputDir Releases
 
