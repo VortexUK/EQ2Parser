@@ -108,6 +108,26 @@ public class EnglishGrammarTests
         Assert.True(s.Critical);
     }
 
+    // Second-person autoattack verbs are conjugated WITHOUT the s ("YOU multi
+    // attack", "YOU flurry"). These went unmatched until 2026-08, silently
+    // dropping every player's own multi/flurry/AoE hits from their own parse
+    // (guildmates' logs showed them fine — third person parses). Real lines
+    // from eq2log_Bridgerton Zylphax 2026-08-23.
+    [Theory]
+    [InlineData("YOU multi attack Zylphax the Shredder for a critical of 1,423 piercing damage.", "Multi Attack", 1423, true)]
+    [InlineData("YOU multi attack Zylphax the Shredder for 882 piercing damage.", "Multi Attack", 882, false)]
+    [InlineData("YOU flurry Zylphax the Shredder for 1,102 slashing damage.", "Flurry", 1102, false)]
+    [InlineData("YOU aoe attack a training dummy for 501 crushing damage.", "AoE Attack", 501, false)]
+    public void SecondPerson_Multi_Verbs_Parse_As_AutoAttack(string line, string special, long damage, bool crit)
+    {
+        var s = Swing(line);
+        Assert.Equal(("YOU", EnglishGrammar.AutoAttackAbility), (s.Attacker, s.Ability));
+        Assert.Equal(special, s.Special);
+        Assert.Equal(SwingCategory.Melee, s.Category);
+        Assert.Equal(damage, s.Damage.Number);
+        Assert.Equal(crit, s.Critical);
+    }
+
     [Theory]
     [InlineData("a krait patriarch tries to pierce YOU, but misses.", DamageValue.MissNumber)]
     [InlineData("a krait patriarch tries to crush Menludiir, but Menludiir parries.", DamageValue.ParryNumber)]

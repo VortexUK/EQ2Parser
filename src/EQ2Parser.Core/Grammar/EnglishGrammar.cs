@@ -30,7 +30,15 @@ public static partial class EnglishGrammar
     // Badbang's Magic Feedback hits Delhagin the Frightful for 14 magic damage.
     // Menludiir's unswerving hammer multi attacks a krait patriarch for a critical of 2,378 crushing damage.
 
-    private const string DamageVerbs = "hits|hit|multi attacks|double attacks|flurries|aoe attacks";
+    // Both conjugations of every autoattack verb: third person ("Lirianna
+    // multi attacks") AND second person ("YOU multi attack" / "YOU flurry").
+    // The second-person forms were missing until 2026-08 — every player's OWN
+    // multi/flurry/AoE hits fell through unmatched and vanished from their own
+    // parse (while guildmates' logs showed them fine, third-person). Plural
+    // before singular so the alternation matches greedily without backtracking.
+    private const string DamageVerbs =
+        "hits|hit|multi attacks|multi attack|double attacks|double attack|"
+        + "flurries|flurry|aoe attacks|aoe attack";
 
     [GeneratedRegex($@"^YOUR (?<ability>.+?) (?<verb>{DamageVerbs}) (?<victim>.+?) for (?<crit>a critical of )?(?<amount>[\d,]+(?:\.\d+)?[KMB]?) (?<school>\w+) damage\.$")]
     private static partial Regex YourAbilityDamage();
@@ -559,10 +567,10 @@ public static partial class EnglishGrammar
     private static string SpecialFromVerb(string verb) => verb switch
     {
         "hits" or "hit" => "None",
-        "multi attacks" => "Multi Attack",
-        "double attacks" => "Multi Attack", // era rename - same mechanic
-        "flurries" => "Flurry",
-        "aoe attacks" => "AoE Attack",
+        "multi attacks" or "multi attack" => "Multi Attack",
+        "double attacks" or "double attack" => "Multi Attack", // era rename - same mechanic
+        "flurries" or "flurry" => "Flurry",
+        "aoe attacks" or "aoe attack" => "AoE Attack",
         _ => "None",
     };
 
