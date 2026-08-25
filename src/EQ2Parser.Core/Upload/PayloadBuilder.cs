@@ -78,6 +78,8 @@ public static class PayloadBuilder
                     EndTime = Ts(all.EndTime),
                     Damage = all.Damage,
                     EncDps = Rate(all.Damage, encounterSeconds),
+                    Dps = Rate(all.Damage, Math.Max(1, (all.EndTime - all.StartTime).TotalSeconds)),
+                    CritPerc = all.Hits > 0 ? Math.Round(100.0 * all.CritHits / all.Hits, 1) : 0,
                     Median = all.Median,
                     MinHit = all.MinHit,
                     MaxHit = all.MaxHit,
@@ -107,6 +109,11 @@ public static class PayloadBuilder
                         SwingType = (int)ability.Swings[0].Category,
                         Damage = ability.Damage,
                         EncDps = Rate(ability.Damage, encounterSeconds),
+                        // ACT's per-attacktype DPS: damage over the type's own
+                        // first-to-last-swing window, min 1 s (a single-swing
+                        // window is 0 s and would divide away the damage).
+                        Dps = Rate(ability.Damage, Math.Max(1, (ability.EndTime - ability.StartTime).TotalSeconds)),
+                        CritPerc = ability.Hits > 0 ? Math.Round(100.0 * ability.CritHits / ability.Hits, 1) : 0,
                         Median = ability.Median,
                         MinHit = ability.MinHit,
                         MaxHit = ability.MaxHit,

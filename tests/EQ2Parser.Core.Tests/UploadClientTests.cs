@@ -68,6 +68,12 @@ public class UploadClientTests
             .First(a => a.GetProperty("type").GetString() == "Smite");
         Assert.Equal(2, at.GetProperty("swingtype").GetInt32());
         Assert.Equal(500, at.GetProperty("damage").GetInt64());
+        // dps + critperc back the site's per-attack DPS + CRIT% columns —
+        // they were absent pre-v0.3.5 and rendered as 0 on the parse page.
+        Assert.True(at.GetProperty("dps").GetDouble() > 0);
+        Assert.InRange(at.GetProperty("critperc").GetDouble(), 0, 100);
+        Assert.True(dt.GetProperty("dps").GetDouble() > 0);
+        Assert.InRange(dt.GetProperty("critperc").GetDouble(), 0, 100);
     }
 
     [Fact]

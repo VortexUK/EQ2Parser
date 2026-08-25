@@ -84,6 +84,8 @@ public sealed record PayloadDamageType
     [JsonPropertyName("endtime")] public string? EndTime { get; init; }
     [JsonPropertyName("damage")] public long Damage { get; init; }
     [JsonPropertyName("encdps")] public double EncDps { get; init; }
+    [JsonPropertyName("dps")] public double Dps { get; init; }
+    [JsonPropertyName("critperc")] public double CritPerc { get; init; }
     [JsonPropertyName("median")] public long Median { get; init; }
     [JsonPropertyName("minhit")] public long MinHit { get; init; }
     [JsonPropertyName("maxhit")] public long MaxHit { get; init; }
@@ -101,6 +103,17 @@ public sealed record PayloadAttackType
     [JsonPropertyName("swingtype")] public int SwingType { get; init; }
     [JsonPropertyName("damage")] public long Damage { get; init; }
     [JsonPropertyName("encdps")] public double EncDps { get; init; }
+
+    /// <summary>Damage over THIS attack type's own active window (first to
+    /// last swing) — ACT's per-attacktype DPS, which the site's per-attack
+    /// DPS column displays. Absent before v0.3.5, so those uploads rendered
+    /// DPS 0 on the parse page (the server now falls back to encdps).</summary>
+    [JsonPropertyName("dps")] public double Dps { get; init; }
+
+    /// <summary>Crit percentage (0-100) — the site's CRIT% column. ACT ships
+    /// it pre-formatted; we compute 100*crithits/hits.</summary>
+    [JsonPropertyName("critperc")] public double CritPerc { get; init; }
+
     [JsonPropertyName("median")] public long Median { get; init; }
     [JsonPropertyName("minhit")] public long MinHit { get; init; }
     [JsonPropertyName("maxhit")] public long MaxHit { get; init; }
