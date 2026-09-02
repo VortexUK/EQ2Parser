@@ -108,6 +108,58 @@ public class UploadClientTests
         }
     }
 
+    [Fact]
+    public async Task FetchRaidMains_Parses_The_Map_Case_Insensitively()
+    {
+        var handler = new GetHandler(HttpStatusCode.OK,
+            """{"world":"Varsoon","guild":"Exordium","mains":{"Mainy":"Mainy","Alty":"Mainy"}}""");
+        using var client = new LexiconUploadClient("https://parses.example.com/", "eq2c_test_token", handler);
+
+        var mains = await client.FetchRaidMainsAsync("Menludiir", "Varsoon");
+
+        Assert.NotNull(mains);
+        Assert.Equal("Mainy", mains["ALTY"]); // EQ2 names are case-insensitive
+        Assert.Equal("/api/attendance/mains?character=Menludiir&server=Varsoon", handler.Request!.RequestUri!.PathAndQuery);
+        Assert.Equal("Bearer eq2c_test_token", handler.Request.Headers.Authorization!.ToString());
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound, "{}")] // older server without the endpoint
+    [InlineData(HttpStatusCode.OK, "not json")]
+    [InlineData(HttpStatusCode.OK, """{"detail":"no mains key"}""")]
+    public async Task FetchRaidMains_Returns_Null_On_Any_Failure(HttpStatusCode status, string body)
+    {
+        var handler = new GetHandler(status, body);
+        using var client = new LexiconUploadClient("https://parses.example.com/", "eq2c_test_token", handler);
+        Assert.Null(await client.FetchRaidMainsAsync("Menludiir", "Varsoon"));
+    }
+
+    [Theory]
+    [InlineData("""{"is_admin":true,"static_roles":[]}""", true)]
+    [InlineData("""{"is_admin":false,"static_roles":["subscriber"]}""", true)]
+    [InlineData("""{"is_admin":false,"static_roles":["contributor","subscriber"]}""", true)]
+    [InlineData("""{"is_admin":false,"static_roles":["supporter"]}""", false)]
+    [InlineData("""{"is_admin":false}""", false)] // pre-static_roles server
+    [InlineData("not json", false)]
+    public void ParseAttendanceAccess_Reads_Admin_Or_Subscriber(string body, bool expected)
+    {
+        Assert.Equal(expected, LexiconUploadClient.ParseAttendanceAccess(body));
+    }
+
+    private sealed class GetHandler(HttpStatusCode status, string body) : HttpMessageHandler
+    {
+        public HttpRequestMessage? Request;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Request = request;
+            return Task.FromResult(new HttpResponseMessage(status)
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/json"),
+            });
+        }
+    }
+
     private sealed class CapturingHandler(HttpStatusCode status, string body) : HttpMessageHandler
     {
         public HttpRequestMessage? Request;

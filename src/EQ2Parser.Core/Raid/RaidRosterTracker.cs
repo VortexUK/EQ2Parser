@@ -9,6 +9,15 @@ public sealed class RaidMemberState
     public bool InRaid { get; set; }
     public bool Online { get; set; }
     public bool Afk { get; set; }
+
+    /// <summary>Guild membership evidence: true = seen in the guild who /
+    /// Guildmate lines; false = in raid but PROVABLY absent from a completed
+    /// guild who (can't receive guild points — excluded from DKP files);
+    /// null = unknown (treated as guildie, best effort). True is sticky —
+    /// wrongly excluding a real guildie from DKP outweighs one harmless
+    /// failed points command for an outsider.</summary>
+    public bool? InGuild { get; set; }
+
     public string? Class { get; set; }
     public string? Guild { get; set; }
     public DateTimeOffset? RaidFirstSeen { get; set; }
@@ -23,12 +32,15 @@ public sealed class RaidMemberState
 /// (shapes mined from real logs, 2026-09):
 ///
 ///  1. /who blocks (via <see cref="WhoParser"/>) — the only true roster dump.
-///     The refresh macro this app writes runs "/who all raid" then
-///     "/who all guild", so two blocks completing within
-///     <see cref="PairWindow"/> are classified positionally: first = raid
-///     seed, second = online-guildies seed. A lone block only contributes
-///     online evidence (safe default — raid membership then builds from
-///     deltas and fight allies).
+///     The refresh macro this app writes runs "whoraid" then
+///     "who all guild". A whoraid block is self-identifying (its header
+///     says so) and seeds the raid immediately. A PLAIN /who block is
+///     ambiguous — "/who", "/who all" and "/who all guild" all echo the
+///     same header shape — so it is trusted as the online-guildies seed
+///     ONLY when it completes within <see cref="PairWindow"/> of a whoraid
+///     block (the macro contract); any other plain block is ignored
+///     entirely (a bare "/who all" lists arbitrary server players and
+///     must never pollute the sit-out list).
 ///  2. Raid deltas: "X has joined the raid." / "X has left the raid." /
 ///     "X's group has joined/left the raid." (leader-change suffix variant).
 ///     Blind to members present before our own join — hence 1 and 4.
@@ -81,6 +93,7 @@ public sealed partial class RaidRosterTracker
                 InRaid = m.InRaid,
                 Online = m.Online,
                 Afk = m.Afk,
+                InGuild = m.InGuild,
                 Class = m.Class,
                 Guild = m.Guild,
                 RaidFirstSeen = m.RaidFirstSeen,
@@ -108,7 +121,8 @@ public sealed partial class RaidRosterTracker
     public static bool LooksRelevant(string message) =>
         message.Contains(" the raid", StringComparison.Ordinal)
         || message.StartsWith("Guildmate: ", StringComparison.Ordinal)
-        || WhoParser.LooksRelevant(message);
+        || WhoParser.LooksRelevant(message)
+        || DkpAwardProgress.LooksRelevant(message);
 
     /// <summary>Feed one LIVE log line (any source).</summary>
     public void OnLine(string message, DateTimeOffset time)
@@ -192,6 +206,7 @@ public sealed partial class RaidRosterTracker
     {
         var m = Get(name);
         m.Online = loggedIn;
+        m.InGuild = true; // "Guildmate:" lines are guild-membership proof either way
         if (loggedIn)
         {
             m.OnlineFirstSeen ??= time;
@@ -210,31 +225,29 @@ public sealed partial class RaidRosterTracker
         return true;
     }
 
-    /// <summary>Positional classification of /who blocks (see class docs):
-    /// the FIRST block of a close pair seeds the raid, the SECOND seeds the
-    /// online-guildies set. A block with no partner inside PairWindow is
-    /// online-evidence only.</summary>
+    /// <summary>Classification of /who blocks (see class docs): whoraid
+    /// blocks are self-identifying raid seeds; a plain block is the guild
+    /// half only when it follows a whoraid block inside PairWindow. Any
+    /// other plain block ("/who", "/who all", a manual lookup) is ignored
+    /// — its rows are arbitrary players, not online guildies.</summary>
     private bool ApplyWhoBlock(WhoResult who)
     {
-        bool changed;
-        if (_pendingWho is { } first && who.CompletedAt - first.CompletedAt <= PairWindow)
+        if (who.FromWhoraid)
         {
-            changed = ApplyWhoRows(first, asRaid: true);
-            changed |= ApplyWhoRows(who, asRaid: false);
-            _pendingWho = null;
-        }
-        else
-        {
-            // Hold this block; if a partner lands inside the window the pair
-            // rule fires above. Apply online evidence immediately either way
-            // (it is correct under both interpretations).
-            changed = ApplyWhoRows(who, asRaid: false);
             _pendingWho = who;
+            return ApplyWhoRows(who, asRaid: true);
         }
-        return changed;
+        if (_pendingWho is { } raidHalf && who.CompletedAt - raidHalf.CompletedAt <= PairWindow)
+        {
+            _pendingWho = null;
+            var changed = ApplyWhoRows(who, asRaid: false, asGuild: true);
+            changed |= SweepNotInGuild(who);
+            return changed;
+        }
+        return false;
     }
 
-    private bool ApplyWhoRows(WhoResult who, bool asRaid)
+    private bool ApplyWhoRows(WhoResult who, bool asRaid, bool asGuild = false)
     {
         var changed = false;
         foreach (var row in who.Rows)
@@ -243,6 +256,8 @@ public sealed partial class RaidRosterTracker
             m.Afk = row.Afk;
             m.Class ??= row.Class;
             m.Guild ??= row.Guild;
+            if (asGuild)
+                m.InGuild = true;
             if (asRaid)
             {
                 changed |= MarkInRaid(m, who.CompletedAt);
@@ -252,6 +267,31 @@ public sealed partial class RaidRosterTracker
                 m.Online = true;
                 m.OnlineFirstSeen ??= who.CompletedAt;
                 m.OnlineLastSeen = who.CompletedAt;
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    /// <summary>A /who block this large may have hit the in-game display cap
+    /// — absence from a truncated list proves nothing.</summary>
+    public const int WhoDisplayCap = 100;
+
+    /// <summary>The guild who lists EVERY online guildie, so an in-raid
+    /// member absent from it is provably not in the guild (they can't
+    /// receive guild points). Only flips unknown → false: confirmed-guildie
+    /// evidence is sticky (see <see cref="RaidMemberState.InGuild"/>).</summary>
+    private bool SweepNotInGuild(WhoResult guildWho)
+    {
+        if (guildWho.Rows.Count >= WhoDisplayCap)
+            return false; // possibly truncated — draw no absence conclusions
+        var guildNames = new HashSet<string>(guildWho.Rows.Select(r => r.Name), StringComparer.OrdinalIgnoreCase);
+        var changed = false;
+        foreach (var m in _members.Values)
+        {
+            if (m.InRaid && m.InGuild is null && !guildNames.Contains(m.Name))
+            {
+                m.InGuild = false;
                 changed = true;
             }
         }

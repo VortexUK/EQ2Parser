@@ -64,16 +64,22 @@ public sealed class UploadService : IDisposable
         _client = null;
         if (string.IsNullOrWhiteSpace(apiToken))
         {
+            SetAttendanceAccess(null);
             Set(enabled ? Loc.Get("UploadSvc_NoTokenSaveBelow") : "");
             return;
         }
         if (LexiconUploadClient.UrlProblem(baseUrl) is { } problem)
         {
+            SetAttendanceAccess(null);
             Set(problem);
             return;
         }
         _client = new LexiconUploadClient(baseUrl, apiToken);
         _queue.ResetAuthPause();
+        // Raid-tab entitlement check — regardless of the auto-upload toggle
+        // (the tab's local features don't need uploads on).
+        _lastAccessProbe = DateTimeOffset.Now;
+        ProbeAttendanceAccess(_client);
         if (enabled)
             Set(Loc.Get("UploadSvc_Ready"));
     }
@@ -83,13 +89,66 @@ public sealed class UploadService : IDisposable
     private DateTimeOffset _lastAttendanceSend = DateTimeOffset.MinValue;
     private static readonly TimeSpan AttendanceInterval = TimeSpan.FromMinutes(5);
 
+    /// <summary>Best-effort {character → raid main} map from the site,
+    /// refreshed alongside the attendance tick. Null until the first
+    /// successful fetch — the DKP builder falls back to the bulk raid grant.
+    /// Case-insensitive keys.</summary>
+    public IReadOnlyDictionary<string, string>? RaidMains { get; private set; }
+
+    /// <summary>Does the configured token's account hold the site's
+    /// attendance-preview entitlement ('subscriber' role or admin)? Drives
+    /// the Raid tab's visibility. null = unknown (no token / probe not yet
+    /// answered / network trouble) — treated as no access, re-probed
+    /// periodically from the shell tick.</summary>
+    public bool? AttendanceAccess { get; private set; }
+
+    /// <summary>Raised (possibly on a background thread) when
+    /// <see cref="AttendanceAccess"/> changes.</summary>
+    public event Action? AttendanceAccessChanged;
+
+    private DateTimeOffset _lastAccessProbe = DateTimeOffset.MinValue;
+    private static readonly TimeSpan AccessProbeRetry = TimeSpan.FromMinutes(2);
+
+    private void SetAttendanceAccess(bool? value)
+    {
+        if (AttendanceAccess == value)
+            return;
+        AttendanceAccess = value;
+        AttendanceAccessChanged?.Invoke();
+    }
+
+    private void ProbeAttendanceAccess(LexiconUploadClient client)
+    {
+        _ = Task.Run(async () =>
+        {
+            var result = await client.WhoAmIAsync().ConfigureAwait(false);
+            if (!ReferenceEquals(_client, client))
+                return; // reconfigured while the probe was in flight
+            // Auth rejections are a definitive no; network trouble stays
+            // unknown so the tick retries.
+            SetAttendanceAccess(result.Success
+                ? LexiconUploadClient.ParseAttendanceAccess(result.Body)
+                : result.StatusCode == 0 ? null : false);
+        });
+    }
+
     /// <summary>Periodic attendance snapshot upload — call from the shell
     /// tick (cheap no-op most ticks). Dark until the server grows the
     /// /api/attendance/ingest endpoint: every failure (404 included) is
     /// swallowed quietly, the roster tab works fine without it. Sends only
-    /// while a session has at least one raid member and uploads are on.</summary>
+    /// while a session has at least one raid member and uploads are on.
+    /// The raid-mains map rides the same cadence (one extra GET / 5 min).</summary>
     public void TickAttendance(SourceManager manager, DateTimeOffset now)
     {
+        // Entitlement unknown (e.g. offline at startup) → keep re-probing so
+        // the Raid tab appears once the site answers.
+        if (_client is { } probeClient && AttendanceAccess is null && now - _lastAccessProbe > AccessProbeRetry)
+        {
+            _lastAccessProbe = now;
+            ProbeAttendanceAccess(probeClient);
+        }
+        if (AttendanceAccess != true)
+            return; // no entitlement — uploads would 403; stay silent
         if (!Active || _client is not { } client || now - _lastAttendanceSend < AttendanceInterval)
             return;
         var snapshot = manager.RaidRoster.Snapshot();
@@ -108,6 +167,12 @@ public sealed class UploadService : IDisposable
             OnlineGuildies = [.. snapshot.Where(m => m is { InRaid: false, Online: true }).Select(ToMember)],
         };
         _ = Task.Run(() => client.UploadAttendanceAsync(payload));
+        _ = Task.Run(async () =>
+        {
+            // A stale map beats no map — only overwrite on success.
+            if (await client.FetchRaidMainsAsync(payload.LoggerName, payload.LoggerServer).ConfigureAwait(false) is { } mains)
+                RaidMains = mains;
+        });
     }
 
     private static AttendanceMember ToMember(Core.Raid.RaidMemberState m) => new()
@@ -151,10 +216,15 @@ public sealed class UploadService : IDisposable
             return Loc.Get("UploadSvc_NoTokenSaved");
         var result = await client.WhoAmIAsync().ConfigureAwait(false);
         if (!result.Success)
+        {
+            if (result.StatusCode != 0)
+                SetAttendanceAccess(false); // definitive rejection, not a network blip
             return result.StatusCode == 0
                 ? result.Message
                 : Loc.Format("UploadSvc_TokenRejected", result.StatusCode, result.Message);
+        }
         _queue.ResetAuthPause();
+        SetAttendanceAccess(LexiconUploadClient.ParseAttendanceAccess(result.Body));
         var name = ExtractDiscordName(result.Body);
         return name is null ? Loc.Get("UploadSvc_TokenOk") : Loc.Format("UploadSvc_TokenOkSignedIn", name);
     }

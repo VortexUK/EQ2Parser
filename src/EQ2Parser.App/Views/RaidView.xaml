@@ -46,7 +46,11 @@
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="44" />
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding Name}" FontSize="13" />
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Name}" FontSize="13" />
+                                            <TextBlock Text="{Binding StatusTag}" Foreground="#E0A030" FontSize="11"
+                                                       FontStyle="Italic" Margin="6,1,0,0" />
+                                        </StackPanel>
                                         <TextBlock Grid.Column="1" Text="{Binding Class}" Style="{StaticResource MutedText}" FontSize="12" Margin="8,0" />
                                         <TextBlock Grid.Column="2" Text="{Binding LastSeen}" Style="{StaticResource MutedText}" FontSize="11"
                                                    HorizontalAlignment="Right" />
@@ -116,6 +120,8 @@
                                 Command="{Binding WriteDkpFileCommand}" />
                         <TextBlock Text="{loc:Tr Raid_DkpHint}" Style="{StaticResource MutedText}" FontSize="11"
                                    TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding MainsStatus}" Style="{StaticResource MutedText}" FontSize="11"
+                                   TextWrapping="Wrap" Margin="0,4,0,0" />
                     </StackPanel>
                 </Border>
 

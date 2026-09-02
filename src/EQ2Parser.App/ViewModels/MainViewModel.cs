@@ -19,7 +19,13 @@ public sealed partial class MainViewModel : ObservableObject
     public RaidViewModel Raid { get; }
     public SettingsViewModel Settings { get; }
 
-    public IReadOnlyList<NavItem> NavItems { get; }
+    public System.Collections.ObjectModel.ObservableCollection<NavItem> NavItems { get; }
+
+    /// <summary>The Raid nav entry — inserted/removed by
+    /// <see cref="SyncRaidNav"/> based on the site entitlement (the
+    /// attendance feature set is in limited preview behind the
+    /// 'subscriber' role; admins pass).</summary>
+    private readonly NavItem _raidNav;
 
     [ObservableProperty]
     private NavItem _selectedItem;
@@ -42,11 +48,35 @@ public sealed partial class MainViewModel : ObservableObject
             new NavItem(Loc.Get("Nav_Triggers"), Triggers),
             new NavItem(Loc.Get("Nav_Timers"), Timers),
             new NavItem(Loc.Get("Nav_Overlays"), Overlays),
-            new NavItem(Loc.Get("Nav_Raid"), Raid),
             new NavItem(Loc.Get("Nav_Settings"), Settings),
         ];
+        _raidNav = new NavItem(Loc.Get("Nav_Raid"), Raid);
         _selectedItem = NavItems[0];
+        // Entitlement changes arrive on background threads (whoami probe) —
+        // marshal onto the UI thread before touching the nav collection.
+        manager.Uploads.AttendanceAccessChanged += () =>
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(SyncRaidNav);
+        SyncRaidNav();
         Sources.SyncFromManager();
+    }
+
+    /// <summary>Show the Raid tab only while the configured token's account
+    /// holds the attendance-preview entitlement (subscriber role / admin).</summary>
+    private void SyncRaidNav()
+    {
+        var show = Manager.Uploads.AttendanceAccess == true;
+        var present = NavItems.Contains(_raidNav);
+        if (show && !present)
+        {
+            NavItems.Insert(NavItems.Count - 1, _raidNav); // before Settings
+        }
+        else if (!show && present)
+        {
+            NavItems.Remove(_raidNav);
+            _tabHistory.RemoveAll(n => ReferenceEquals(n, _raidNav));
+            if (ReferenceEquals(SelectedItem, _raidNav))
+                SelectedItem = NavItems[0];
+        }
     }
 
     // ── Back navigation (mouse XButton1) ────────────────────────────────────

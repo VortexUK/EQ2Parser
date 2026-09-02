@@ -6,19 +6,29 @@ namespace EQ2Parser.Core.Raid;
 /// (and possibly the AFK suffix) — every other field is null for them.</summary>
 public sealed record WhoRow(string Name, int? Level, string? Class, string? Race, string? Guild, string? Zone, bool Afk);
 
-/// <summary>A complete /who result block (header → rows → "N players found").</summary>
-public sealed record WhoResult(string? ZoneFilter, IReadOnlyList<WhoRow> Rows, DateTimeOffset CompletedAt);
+/// <summary>A complete /who result block (header → rows → "N players found").
+/// <paramref name="FromWhoraid"/>: the block came from the self-identifying
+/// "/whoraid search results…" header — definitively the raid roster. Plain
+/// "/who search results…" headers are ambiguous (guild / zone / server-wide
+/// "/who all") and are only trusted as guild data by pair position.</summary>
+public sealed record WhoResult(string? ZoneFilter, IReadOnlyList<WhoRow> Rows, DateTimeOffset CompletedAt, bool FromWhoraid);
 
 /// <summary>
 /// Stateful assembler for /who output blocks (verbatim live shapes, mined
 /// from real logs 2026-09):
 ///
 ///   /who search results:                          (or "…results for &lt;Zone&gt;:")
+///   /whoraid search results for Qeynos Province District:
 ///   ------------------------------------------
 ///   [70 Conjuror] Tsuna (Freeblood) &lt;Exordium&gt; Zone: Throne of New Tunaria
+///   [70 Templar] Menludiir (Gnome)                (whoraid rows: no guild/zone)
 ///   [Anonymous] Betabonk
 ///   [Anonymous] Ashtar (AFK)
 ///   24 players found                              (or "1 player found")
+///
+/// The refresh macro runs "whoraid" (echoed as "/whoraid search results for
+/// &lt;your zone&gt;:") then "who all guild" — both header shapes are one block
+/// start here; positional raid/guild classification is the tracker's job.
 ///
 /// Feed every candidate line with its log timestamp; a completed block is
 /// returned from <see cref="Feed"/> when the footer lands. Unrelated lines
@@ -33,10 +43,14 @@ public sealed partial class WhoParser
     public const int MaxRows = 200;
     public static readonly TimeSpan BlockTimeout = TimeSpan.FromSeconds(5);
 
-    [GeneratedRegex(@"^/who search results(?: for (?<zone>.+?))?:$")]
+    [GeneratedRegex(@"^/who(?<raidcmd>raid)? search results(?: for (?<zone>.+?))?:$")]
     private static partial Regex HeaderRegex();
 
-    [GeneratedRegex(@"^\[(?<level>\d+) (?<cls>[A-Za-z]+)\] (?<name>[A-Za-z]+) \((?<race>[A-Za-z ']+)\)(?: <(?<guild>[^>]+)>)?(?: Zone: (?<zone>.+?))?(?<afk> \(AFK\))?$")]
+    // (AFK) appears in two live positions: after the zone (zone who) and
+    // between the guild tag and "Zone:" (guild who — see the 2026-09-02
+    // macro capture) — both are accepted.
+    [GeneratedRegex(
+        @"^\[(?<level>\d+) (?<cls>[A-Za-z]+)\] (?<name>[A-Za-z]+) \((?<race>[A-Za-z ']+)\)(?: <(?<guild>[^>]+)>)?(?<afk1> \(AFK\))?(?: Zone: (?<zone>.+?))?(?<afk2> \(AFK\))?$")]
     private static partial Regex DetailRowRegex();
 
     [GeneratedRegex(@"^\[Anonymous\] (?<name>[A-Za-z]+)(?<afk> \(AFK\))?$")]
@@ -48,10 +62,12 @@ public sealed partial class WhoParser
     private string? _zoneFilter;
     private List<WhoRow>? _rows;
     private DateTimeOffset _headerAt;
+    private bool _fromWhoraid;
 
     /// <summary>Cheap pre-check callers can use before paying for Feed.</summary>
     public static bool LooksRelevant(string message) =>
         message.StartsWith("/who search results", StringComparison.Ordinal)
+        || message.StartsWith("/whoraid search results", StringComparison.Ordinal)
         || message.StartsWith('[')
         || message.EndsWith("player found", StringComparison.Ordinal)
         || message.EndsWith("players found", StringComparison.Ordinal);
@@ -64,6 +80,7 @@ public sealed partial class WhoParser
         if (header.Success)
         {
             _zoneFilter = header.Groups["zone"].Success ? header.Groups["zone"].Value : null;
+            _fromWhoraid = header.Groups["raidcmd"].Success;
             _rows = [];
             _headerAt = time;
             return null;
@@ -77,7 +94,7 @@ public sealed partial class WhoParser
         }
         if (FooterRegex().IsMatch(message))
         {
-            var result = new WhoResult(_zoneFilter, _rows, time);
+            var result = new WhoResult(_zoneFilter, _rows, time, _fromWhoraid);
             _rows = null;
             return result;
         }
@@ -90,8 +107,8 @@ public sealed partial class WhoParser
                 detail.Groups["cls"].Value,
                 detail.Groups["race"].Value,
                 detail.Groups["guild"].Success ? detail.Groups["guild"].Value : null,
-                detail.Groups["zone"].Success ? detail.Groups["zone"].Value : null,
-                detail.Groups["afk"].Success));
+                detail.Groups["zone"].Success ? detail.Groups["zone"].Value.Trim() : null,
+                detail.Groups["afk1"].Success || detail.Groups["afk2"].Success));
         }
         else
         {

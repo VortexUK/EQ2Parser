@@ -29,6 +29,10 @@ public sealed class SourceManager : IDisposable
     public EncounterCorrelator Correlator { get; } = new();
     public Core.Raid.RaidRosterTracker RaidRoster { get; } = new();
 
+    /// <summary>Counts throttled award lines + the marker per DKP-macro
+    /// press (see DkpCommandFile) — the Raid tab auto-advances its queue.</summary>
+    public Core.Raid.DkpAwardProgress DkpProgress { get; } = new();
+
     /// <summary>Curated source corrections + an optional local hot-fix file
     /// (%LocalAppData%\EQ2Parser\source_overrides.json, rules win over the
     /// embedded set) so a mislabel is fixable without waiting on a release.</summary>
@@ -165,6 +169,7 @@ public sealed class SourceManager : IDisposable
                 source.Processor.StatusApplied += Callouts.OnStatusApplied;
                 source.Processor.TriggerShared += SharedTriggers.OnShared;
                 source.Processor.RaidLine += RaidRoster.OnLine;
+                source.Processor.RaidLine += DkpProgress.OnLine;
                 source.Engine.EncounterEnded += OnEncounterEndedFeedRaid;
                 _sources.Add(source);
             }
@@ -187,6 +192,7 @@ public sealed class SourceManager : IDisposable
             source.Processor.StatusApplied -= Callouts.OnStatusApplied;
             source.Processor.TriggerShared -= SharedTriggers.OnShared;
             source.Processor.RaidLine -= RaidRoster.OnLine;
+            source.Processor.RaidLine -= DkpProgress.OnLine;
             source.Engine.EncounterEnded -= OnEncounterEndedFeedRaid;
             _removedPaths.Add(source.Path);
         }

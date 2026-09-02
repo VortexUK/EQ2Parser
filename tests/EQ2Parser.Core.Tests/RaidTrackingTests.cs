@@ -97,11 +97,15 @@ public sealed class RaidTrackingTests
     }
 
     [Fact]
-    public void Who_Pair_Classifies_Raid_Then_Guild()
+    public void Plain_Who_Blocks_Are_Ignored_Without_A_Whoraid_Partner()
     {
+        // Live bug 2026-09-02: a manual "/who all" (arbitrary server
+        // players, same header shape as the guild who) was polluting the
+        // sit-out list. Plain blocks now count ONLY as the guild half of
+        // the whoraid pair — alone (or paired with each other) they are
+        // ignored entirely.
         var t = new RaidRosterTracker();
         t.StartNewSession(T0);
-        // Block 1 (raid): Tsuna. Block 2 within the pair window (guild): Coyi.
         t.OnLine("/who search results:", At(0));
         t.OnLine("[70 Conjuror] Tsuna (Freeblood) <Exordium> Zone: Throne of New Tunaria", At(0));
         t.OnLine("1 player found", At(0));
@@ -109,25 +113,107 @@ public sealed class RaidTrackingTests
         t.OnLine("[70 Templar] Coyi (High Elf) <Exordium> Zone: Qeynos Harbor", At(2));
         t.OnLine("1 player found", At(2));
 
-        var by = t.Snapshot().ToDictionary(m => m.Name);
-        Assert.True(by["Tsuna"].InRaid);              // first of the pair = raid seed
-        Assert.False(by["Coyi"].InRaid);              // second = online guildies
-        Assert.True(by["Coyi"].Online);
-        Assert.Equal("Templar", by["Coyi"].Class);
+        Assert.Empty(t.Snapshot());
     }
 
     [Fact]
-    public void Lone_Who_Block_Is_Online_Evidence_Only()
+    public void Zone_Who_During_A_Session_Does_Not_Touch_The_Roster()
+    {
+        // A "/who" of the current zone mid-raid (strangers + a guildie who
+        // IS raiding) must change nothing — not even for known members.
+        var t = new RaidRosterTracker();
+        t.StartNewSession(T0);
+        t.OnLine("Shadynecro has joined the raid.", At(0));
+        t.OnLine("/who search results for The Commonlands:", At(60));
+        t.OnLine("[70 Brigand] Xantos (Dark Elf) <Some Other Guild> Zone: The Commonlands", At(60));
+        t.OnLine("[70 Necromancer] Shadynecro (Gnome) <Paragon> Zone: The Commonlands", At(60));
+        t.OnLine("2 players found", At(60));
+
+        var by = t.Snapshot().ToDictionary(m => m.Name);
+        Assert.False(by.ContainsKey("Xantos"));       // stranger never enters the roster
+        Assert.True(by["Shadynecro"].InRaid);         // known member untouched
+    }
+
+    [Fact]
+    public void Whoraid_Then_Guild_Pair_Classifies_From_Live_Macro_Output()
+    {
+        // Verbatim lines from the live macro run 2026-09-02 (the whoraid
+        // echo has its own header shape and its rows carry no guild/zone —
+        // the original header regex missed it, dumping everyone into the
+        // guild-only lone-block path = the whole raid shown as sitting out).
+        var t = new RaidRosterTracker();
+        t.StartNewSession(T0);
+        t.OnLine("/whoraid search results for Qeynos Province District:", At(0));
+        t.OnLine("----------------------------------------", At(0));
+        t.OnLine("[70 Templar] Menludiir (Gnome)", At(0));
+        t.OnLine("[70 Berserker] Badbang (Ogre)", At(0));
+        t.OnLine("[70 Inquisitor] Avacii (Dwarf)", At(0));
+        t.OnLine("3 players found", At(0));
+        t.OnLine("/who search results:", At(1));
+        t.OnLine("[70 Coercer] Adomia (Ratonga) <Paragon> (AFK) Zone: The Feerrott", At(1));
+        t.OnLine("[70 Berserker] Badbang (Ogre) <Paragon> Zone: The Sinking Sands", At(1));
+        t.OnLine("[70 Wizard] Masqueraid (High Elf) <Paragon> Zone: Qeynos Capitol District", At(1));
+        t.OnLine("[70 Illusionist] Neomi (Fae) <Paragon> Zone:    12 Qeynos Place", At(1));
+        t.OnLine("10 players found", At(1));
+
+        var by = t.Snapshot().ToDictionary(m => m.Name);
+        Assert.True(by["Menludiir"].InRaid);
+        Assert.True(by["Badbang"].InRaid);            // in both blocks — raid wins
+        Assert.True(by["Avacii"].InRaid);
+        Assert.False(by["Adomia"].InRaid);            // guild who = online only
+        Assert.True(by["Adomia"].Online);
+        Assert.True(by["Adomia"].Afk);                // (AFK) between guild tag and Zone
+        Assert.False(by["Masqueraid"].InRaid);
+        Assert.True(by.ContainsKey("Neomi"));         // house-address zone with padded spaces
+        Assert.Equal("Templar", by["Menludiir"].Class); // whoraid rows still carry class
+
+        // Guild-membership evidence from the pair: in the guild who = true;
+        // in raid but absent from the guild who = provably not in guild.
+        Assert.True(by["Badbang"].InGuild);
+        Assert.True(by["Adomia"].InGuild);
+        Assert.False(by["Menludiir"].InGuild);
+        Assert.False(by["Avacii"].InGuild);
+    }
+
+    [Fact]
+    public void Not_In_Guild_Is_Unknown_Without_A_Guild_Who_And_Sticky_Once_True()
     {
         var t = new RaidRosterTracker();
         t.StartNewSession(T0);
-        t.OnLine("/who search results:", At(0));
-        t.OnLine("[70 Conjuror] Tsuna (Freeblood) <Exordium> Zone: Throne of New Tunaria", At(0));
+        // Delta join + guildmate line, no who pair yet: no false conclusions.
+        t.OnLine("Shadynecro has joined the raid.", At(0));
+        t.OnLine("Guildmate: Coyi has logged in.", At(1));
+        var by = t.Snapshot().ToDictionary(m => m.Name);
+        Assert.Null(by["Shadynecro"].InGuild);        // unknown — still gets DKP (best effort)
+        Assert.True(by["Coyi"].InGuild);
+
+        // A later pair whose guild block misses Coyi must NOT downgrade the
+        // sticky guildmate evidence; Shadynecro (absent) flips to false.
+        t.OnLine("/whoraid search results for Veeshan's Peak:", At(10));
+        t.OnLine("[70 Necromancer] Shadynecro (Gnome)", At(10));
+        t.OnLine("1 player found", At(10));
+        t.OnLine("/who search results:", At(11));
+        t.OnLine("[70 Templar] Menludiir (Gnome) <Paragon> Zone: Veeshan's Peak", At(11));
+        t.OnLine("1 player found", At(11));
+        by = t.Snapshot().ToDictionary(m => m.Name);
+        Assert.False(by["Shadynecro"].InGuild);
+        Assert.True(by["Coyi"].InGuild);
+    }
+
+    [Fact]
+    public void Lone_Whoraid_Block_Seeds_The_Raid_Immediately()
+    {
+        // whoraid is self-identifying — no guild partner needed for the
+        // raid seed (the guild half only adds online/membership evidence).
+        var t = new RaidRosterTracker();
+        t.StartNewSession(T0);
+        t.OnLine("/whoraid search results for Veeshan's Peak:", At(0));
+        t.OnLine("[70 Conjuror] Tsuna (Freeblood)", At(0));
         t.OnLine("1 player found", At(0));
 
         var m = Assert.Single(t.Snapshot(), x => x.Name == "Tsuna");
-        Assert.False(m.InRaid);
-        Assert.True(m.Online);
+        Assert.True(m.InRaid);
+        Assert.Null(m.InGuild); // no guild who yet — no membership conclusions
     }
 
     [Fact]
@@ -144,27 +230,160 @@ public sealed class RaidTrackingTests
     // ── DkpCommandFile ──────────────────────────────────────────────────────
 
     [Fact]
-    public void Award_File_Has_Raid_Grant_Plus_SitOuts()
+    public void Award_File_Without_Mains_Has_Raid_Grant_Plus_SitOuts()
     {
-        var text = DkpCommandFile.BuildAward(5, "Raid DKP: end of raid", ["Menludiir", "Coyi", "a mob"]);
+        var text = DkpCommandFile.BuildAward(5, "Raid DKP: end of raid", ["Whoever"], ["Menludiir", "Coyi", "a mob"]);
         var lines = text.TrimEnd().Split("\r\n");
-        Assert.Equal("/guild points add 5 raid Raid DKP: end of raid", lines[0]);
-        Assert.Equal("/guild points add 5 Coyi Raid DKP: end of raid", lines[1]);
-        Assert.Equal("/guild points add 5 Menludiir Raid DKP: end of raid", lines[2]);
-        Assert.Equal(3, lines.Length); // "a mob" filtered by the player-name shape
+        Assert.Equal("guild points add 5 raid Raid DKP: end of raid", lines[0]);
+        Assert.Equal("guild points add 5 Coyi Raid DKP: end of raid", lines[1]);
+        Assert.Equal("guild points add 5 Menludiir Raid DKP: end of raid", lines[2]);
+        Assert.Equal(DkpCommandFile.MarkerCommand, lines[3]); // press-detection marker
+        Assert.Equal(4, lines.Length); // "a mob" filtered by the player-name shape
     }
 
     [Fact]
     public void Award_Reason_Is_Sanitised()
     {
-        var text = DkpCommandFile.BuildAward(3, "/quit\r\nhaha", []);
-        Assert.Equal("/guild points add 3 raid quit haha\r\n", text);
+        var text = DkpCommandFile.BuildAward(3, "/quit\r\nhaha", [], []);
+        Assert.Equal("guild points add 3 raid quit haha\r\neq2lexicon_dkp_done\r\n", text);
+    }
+
+    [Fact]
+    public void Award_With_Mains_Grants_Individually_To_Mains()
+    {
+        // Alty is Mainy's raid alt; Tanky raids on their main. No bulk grant —
+        // every award is individual and addressed to the MAIN.
+        var mains = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Alty"] = "Mainy",
+            ["Mainy"] = "Mainy",
+            ["Tanky"] = "Tanky",
+        };
+        var text = DkpCommandFile.BuildAward(5, "DKP", ["Alty", "Tanky", "Pugsy"], [], mains);
+        var lines = text.TrimEnd().Split("\r\n");
+        Assert.Equal("guild points add 5 Mainy DKP", lines[0]);
+        Assert.Equal("guild points add 5 Pugsy DKP", lines[1]); // unmapped pug → self
+        Assert.Equal("guild points add 5 Tanky DKP", lines[2]);
+        Assert.Equal(DkpCommandFile.MarkerCommand, lines[3]);
+        Assert.Equal(4, lines.Length);
+    }
+
+    [Fact]
+    public void Award_With_Mains_Dedupes_Main_And_Alt_Both_Present()
+    {
+        // Dual-boxing main + alt, and a sit-out alt whose main already got
+        // the raid grant: exactly one award per main.
+        var mains = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Alty"] = "Mainy",
+            ["Mainy"] = "Mainy",
+            ["Benchalt"] = "Tanky",
+            ["Tanky"] = "Tanky",
+        };
+        var text = DkpCommandFile.BuildAward(5, "DKP", ["Mainy", "Alty", "Tanky"], ["Benchalt", "Coyi"], mains);
+        var lines = text.TrimEnd().Split("\r\n");
+        Assert.Equal("guild points add 5 Mainy DKP", lines[0]);
+        Assert.Equal("guild points add 5 Tanky DKP", lines[1]);
+        Assert.Equal("guild points add 5 Coyi DKP", lines[2]); // sit-out, unmapped → self
+        Assert.Equal(DkpCommandFile.MarkerCommand, lines[3]);
+        Assert.Equal(4, lines.Length);
+    }
+
+    [Fact]
+    public void Award_With_Mains_Collapses_Two_Boxed_Characters_To_One_Grant()
+    {
+        // One player runs TWO characters in the raid (second account); their
+        // main isn't even present. Both rows map to the main -> ONE award.
+        var mains = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Alty"] = "Mainy",
+            ["Boxling"] = "Mainy",
+            ["Tanky"] = "Tanky",
+        };
+        var text = DkpCommandFile.BuildAward(5, "DKP", ["Alty", "Boxling", "Tanky"], [], mains);
+        var lines = text.TrimEnd().Split("\r\n");
+        Assert.Equal("guild points add 5 Mainy DKP", lines[0]);
+        Assert.Equal("guild points add 5 Tanky DKP", lines[1]);
+        Assert.Equal(DkpCommandFile.MarkerCommand, lines[2]);
+        Assert.Equal(3, lines.Length);
+    }
+
+    [Fact]
+    public void Award_With_Mains_Is_Case_Insensitive()
+    {
+        var mains = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["ALTY"] = "Mainy" };
+        var text = DkpCommandFile.BuildAward(5, "DKP", ["alty"], [], mains);
+        Assert.Equal("guild points add 5 Mainy DKP\r\neq2lexicon_dkp_done\r\n", text);
+    }
+
+    // ── DKP press-until-done loop (throttle discovered live 2026-09-02) ─────
+
+    [Fact]
+    public void Advance_Queue_Pops_The_Applied_Command()
+    {
+        var queue = new List<string> { "cmd A", "cmd B", "cmd C" };
+        var (remaining, applied) = DkpCommandFile.AdvanceQueue(queue, failures: 2);
+        Assert.Equal(1, applied);
+        Assert.Equal(["cmd B", "cmd C"], remaining);
+    }
+
+    [Fact]
+    public void Advance_Queue_Fully_Throttled_Press_Changes_Nothing()
+    {
+        var queue = new List<string> { "cmd A", "cmd B" };
+        var (remaining, applied) = DkpCommandFile.AdvanceQueue(queue, failures: 2);
+        Assert.Equal(0, applied);
+        Assert.Equal(queue, remaining);
+        // Stale/over-counted failures also never go negative.
+        (_, applied) = DkpCommandFile.AdvanceQueue(queue, failures: 5);
+        Assert.Equal(0, applied);
+    }
+
+    [Fact]
+    public void Advance_Queue_Last_Command_Completes()
+    {
+        var (remaining, applied) = DkpCommandFile.AdvanceQueue(["cmd A"], failures: 0);
+        Assert.Equal(1, applied);
+        Assert.Empty(remaining);
+    }
+
+    [Fact]
+    public void Queue_File_For_Empty_Queue_Is_Marker_Only()
+    {
+        Assert.Equal("eq2lexicon_dkp_done\r\n", DkpCommandFile.BuildQueueFile([]));
+    }
+
+    [Fact]
+    public void Dkp_Progress_Counts_Failures_Per_Press()
+    {
+        var p = new DkpAwardProgress();
+        var presses = new List<int>();
+        p.PressDetected += presses.Add;
+
+        // Press 1: 3 of 4 throttled, then the marker.
+        for (var i = 0; i < 3; i++)
+            p.OnLine(DkpCommandFile.ThrottleLogLine, T0);
+        p.OnLine(DkpCommandFile.MarkerLogLine, T0);
+        // Unrelated chatter between presses must not contaminate the count.
+        p.OnLine("Guildmate: Coyi has logged in.", T0);
+        // Press 2: everything applied (final command), marker only.
+        p.OnLine(DkpCommandFile.MarkerLogLine, At(20));
+
+        Assert.Equal([3, 0], presses);
+    }
+
+    [Fact]
+    public void Dkp_Progress_Lines_Pass_The_Raid_Prefilter()
+    {
+        Assert.True(RaidRosterTracker.LooksRelevant(DkpCommandFile.ThrottleLogLine));
+        Assert.True(RaidRosterTracker.LooksRelevant(DkpCommandFile.MarkerLogLine));
+        Assert.False(RaidRosterTracker.LooksRelevant("Unknown command: 'somethingelse'"));
     }
 
     [Fact]
     public void Refresh_File_Is_The_Ordered_Pair()
     {
-        Assert.Equal("/who all raid\r\n/who all guild\r\n", DkpCommandFile.BuildRefresh());
+        Assert.Equal("whoraid\r\nwho all guild\r\n", DkpCommandFile.BuildRefresh());
     }
 
     // ── LogPaths.ParseInstallDir ────────────────────────────────────────────

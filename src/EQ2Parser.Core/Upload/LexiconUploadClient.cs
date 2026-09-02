@@ -106,6 +106,39 @@ public sealed class LexiconUploadClient : IDisposable
         }
     }
 
+    /// <summary>Best-effort raid-main map from the site: {character → main}
+    /// for every rostered character in the logger's guild (raiders map to
+    /// themselves, alts to their owner's main). Null on ANY failure — an
+    /// older server (404), auth trouble, network — callers fall back to the
+    /// bulk raid DKP grant. Case-insensitive keys (EQ2 names are).</summary>
+    public async Task<Dictionary<string, string>?> FetchRaidMainsAsync(string character, string server, CancellationToken ct = default)
+    {
+        var query = $"character={Uri.EscapeDataString(character)}&server={Uri.EscapeDataString(server)}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{ServerUrl}/api/attendance/mains?{query}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ApiToken);
+        try
+        {
+            using var response = await _http.SendAsync(request, ct).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                return null;
+            var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(body);
+            if (!doc.RootElement.TryGetProperty("mains", out var mains) || mains.ValueKind != JsonValueKind.Object)
+                return null;
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var prop in mains.EnumerateObject())
+            {
+                if (prop.Value.ValueKind == JsonValueKind.String && prop.Value.GetString() is { Length: > 0 } main)
+                    map[prop.Name] = main;
+            }
+            return map;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or OperationCanceledException)
+        {
+            return null;
+        }
+    }
+
     public async Task<UploadResult> WhoAmIAsync(CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"{ServerUrl}/api/auth/whoami");
@@ -120,6 +153,28 @@ public sealed class LexiconUploadClient : IDisposable
         catch (HttpRequestException ex)
         {
             return new UploadResult(false, 0, $"Network error: {ex.Message}");
+        }
+    }
+
+    /// <summary>Reads the attendance-preview entitlement from a whoami
+    /// response body: is_admin, or 'subscriber' in static_roles (the site's
+    /// limited-preview role for the raid-attendance feature set). Absent
+    /// fields (older server) read as no access.</summary>
+    public static bool ParseAttendanceAccess(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("is_admin", out var admin) && admin.ValueKind == JsonValueKind.True)
+                return true;
+            return root.TryGetProperty("static_roles", out var roles)
+                && roles.ValueKind == JsonValueKind.Array
+                && roles.EnumerateArray().Any(r => r.ValueKind == JsonValueKind.String && r.GetString() == "subscriber");
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 
