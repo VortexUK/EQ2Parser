@@ -56,6 +56,12 @@ public sealed class LogLineProcessor
     /// add it. Never fires during catch-up/replay or for own pastes.</summary>
     public event Action<Triggers.SharedTrigger>? TriggerShared;
 
+    /// <summary>A LIVE line that passed the raid-attendance prefilter
+    /// (raid join/leave deltas, Guildmate presence, /who output) — feeds
+    /// the raid roster tracker. Live-only: replayed history must never
+    /// mutate the current raid session. (message, log timestamp).</summary>
+    public event Action<string, DateTimeOffset>? RaidLine;
+
     /// <summary>Lines seen / lines that produced a grammar event — the golden
     /// harness's coverage counters.</summary>
     public long LinesSeen { get; private set; }
@@ -86,6 +92,11 @@ public sealed class LogLineProcessor
         {
             TriggerShared.Invoke(share);
         }
+
+        // Raid attendance signals — the prefilter is a handful of cheap
+        // Contains/StartsWith checks, so cold lines cost almost nothing.
+        if (live && RaidLine is not null && Raid.RaidRosterTracker.LooksRelevant(line.Message))
+            RaidLine.Invoke(line.Message, line.Timestamp);
 
         // Scripted-win say lines (bosses that end by script, not death) —
         // only consulted while a fight is live; StartsWith early-out keeps

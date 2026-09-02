@@ -27,6 +27,7 @@ public sealed class SourceManager : IDisposable
 
     public object Sync { get; } = new();
     public EncounterCorrelator Correlator { get; } = new();
+    public Core.Raid.RaidRosterTracker RaidRoster { get; } = new();
 
     /// <summary>Curated source corrections + an optional local hot-fix file
     /// (%LocalAppData%\EQ2Parser\source_overrides.json, rules win over the
@@ -163,6 +164,8 @@ public sealed class SourceManager : IDisposable
                 source.Engine.EncounterEnded += Uploads.OnEncounterEnded;
                 source.Processor.StatusApplied += Callouts.OnStatusApplied;
                 source.Processor.TriggerShared += SharedTriggers.OnShared;
+                source.Processor.RaidLine += RaidRoster.OnLine;
+                source.Engine.EncounterEnded += OnEncounterEndedFeedRaid;
                 _sources.Add(source);
             }
             // Pump only once fully wired — starting in the LogSource
@@ -183,11 +186,23 @@ public sealed class SourceManager : IDisposable
             source.Engine.EncounterEnded -= Uploads.OnEncounterEnded;
             source.Processor.StatusApplied -= Callouts.OnStatusApplied;
             source.Processor.TriggerShared -= SharedTriggers.OnShared;
+            source.Processor.RaidLine -= RaidRoster.OnLine;
+            source.Engine.EncounterEnded -= OnEncounterEndedFeedRaid;
             _removedPaths.Add(source.Path);
         }
         if (source.TriggerEngine is { } engine)
             Triggers.RemoveEngine(engine);
         source.Dispose();
+    }
+
+    /// <summary>Feed a finished fight's player allies into the raid roster —
+    /// catches raid members present before our own join (the raid deltas
+    /// never enumerate them). Fires on the pump thread under Sync.</summary>
+    private void OnEncounterEndedFeedRaid(Core.Combat.Encounter encounter)
+    {
+        RaidRoster.OnFightAllies(
+            encounter.GetAllies().Select(c => c.Name),
+            encounter.EndTime);
     }
 
     /// <summary>Load past sessions' fights into the correlator — called at

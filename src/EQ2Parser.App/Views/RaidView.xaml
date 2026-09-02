@@ -1,0 +1,171 @@
+<UserControl x:Class="EQ2Parser.App.Views.RaidView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:EQ2Parser.App.Localization">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header: title left, session control top-right -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{loc:Tr Raid_Title}" Style="{StaticResource PageTitle}" />
+            <Button Grid.Column="1" Content="{loc:Tr Raid_NewSession}" Style="{StaticResource GoldButton}"
+                    VerticalAlignment="Top"
+                    ToolTip="{loc:Tr Raid_NewSessionTip}"
+                    Command="{Binding StartNewSessionCommand}" />
+        </Grid>
+
+        <TextBlock Grid.Row="1" Text="{Binding Status}" Foreground="{StaticResource GoldBrush}" FontSize="12"
+                   TextWrapping="Wrap" Margin="0,0,0,10" />
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- In raid -->
+            <Border Style="{StaticResource Card}" Margin="0,0,6,0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding InRaidHeader}" Style="{StaticResource SectionLabel}" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding InRaid}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,1">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="44" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Name}" FontSize="13" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Class}" Style="{StaticResource MutedText}" FontSize="12" Margin="8,0" />
+                                        <TextBlock Grid.Column="2" Text="{Binding LastSeen}" Style="{StaticResource MutedText}" FontSize="11"
+                                                   HorizontalAlignment="Right" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <!-- Sitting out (online, not in raid) with DKP include toggles -->
+            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="6,0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding SitOutHeader}" Style="{StaticResource SectionLabel}" />
+                    <TextBlock DockPanel.Dock="Top" Text="{loc:Tr Raid_SitOutHint}" Style="{StaticResource MutedText}"
+                               FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding SittingOut}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,1">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox IsChecked="{Binding Include}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Class}" Style="{StaticResource MutedText}" FontSize="12"
+                                                   VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <!-- Right column: DKP award mechanism + one-time setup -->
+            <StackPanel Grid.Column="2" Margin="6,0,0,0">
+                <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="{loc:Tr Raid_DkpTitle}" Style="{StaticResource SectionLabel}" />
+                        <Grid Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="{loc:Tr Raid_PointsLabel}" Style="{StaticResource MutedText}" FontSize="12"
+                                       VerticalAlignment="Center" Margin="0,0,8,6" />
+                            <TextBox Grid.Column="1" Text="{Binding DkpPoints, UpdateSourceTrigger=PropertyChanged}"
+                                     Width="60" HorizontalAlignment="Left" FontSize="13" Margin="0,0,0,6"
+                                     VerticalContentAlignment="Center" />
+                            <TextBlock Grid.Row="1" Text="{loc:Tr Raid_ReasonLabel}" Style="{StaticResource MutedText}" FontSize="12"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding DkpReason, UpdateSourceTrigger=PropertyChanged}"
+                                     FontSize="13" VerticalContentAlignment="Center" />
+                        </Grid>
+                        <Button Content="{loc:Tr Raid_WriteDkp}" Style="{StaticResource GoldButton}" Margin="0,10,0,0"
+                                HorizontalAlignment="Left"
+                                ToolTip="{loc:Tr Raid_WriteDkpTip}"
+                                Command="{Binding WriteDkpFileCommand}" />
+                        <TextBlock Text="{loc:Tr Raid_DkpHint}" Style="{StaticResource MutedText}" FontSize="11"
+                                   TextWrapping="Wrap" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="{loc:Tr Raid_HowToTitle}" Style="{StaticResource SectionLabel}" />
+                        <TextBlock Text="{loc:Tr Raid_HowToIntro}" Style="{StaticResource MutedText}" FontSize="12"
+                                   TextWrapping="Wrap" Margin="0,0,0,6" />
+
+                        <!-- The two macro commands, each with one-click copy -->
+                        <Grid Margin="0,0,0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{loc:Tr Raid_MacroRoster}" Style="{StaticResource MutedText}" FontSize="12"
+                                       VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Grid.Column="1" Text="{Binding RosterMacroCommand, Mode=OneWay}" FontFamily="Consolas"
+                                       FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            <Button Grid.Column="2" Content="📋" FontSize="12" Padding="4,1" Margin="6,0,0,0"
+                                    Style="{StaticResource GoldButton}"
+                                    ToolTip="{loc:Tr Raid_CopyTip}"
+                                    Command="{Binding CopyRosterMacroCommand}" />
+                        </Grid>
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{loc:Tr Raid_MacroDkp}" Style="{StaticResource MutedText}" FontSize="12"
+                                       VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Grid.Column="1" Text="{Binding DkpMacroCommand, Mode=OneWay}" FontFamily="Consolas"
+                                       FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            <Button Grid.Column="2" Content="📋" FontSize="12" Padding="4,1" Margin="6,0,0,0"
+                                    Style="{StaticResource GoldButton}"
+                                    ToolTip="{loc:Tr Raid_CopyTip}"
+                                    Command="{Binding CopyDkpMacroCommand}" />
+                        </Grid>
+
+                        <TextBlock Text="{loc:Tr Raid_HowToSteps}" Style="{StaticResource MutedText}" FontSize="12"
+                                   TextWrapping="Wrap" />
+                        <Button Content="{loc:Tr Raid_WriteRefresh}" Style="{StaticResource GoldButton}" Margin="0,10,0,0"
+                                HorizontalAlignment="Left"
+                                ToolTip="{loc:Tr Raid_WriteRefreshTip}"
+                                Command="{Binding WriteRefreshFileCommand}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

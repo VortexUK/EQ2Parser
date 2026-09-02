@@ -16,6 +16,7 @@ public sealed partial class MainViewModel : ObservableObject
     public TriggersViewModel Triggers { get; }
     public TimersViewModel Timers { get; }
     public OverlaysViewModel Overlays { get; }
+    public RaidViewModel Raid { get; }
     public SettingsViewModel Settings { get; }
 
     public IReadOnlyList<NavItem> NavItems { get; }
@@ -31,6 +32,7 @@ public sealed partial class MainViewModel : ObservableObject
         Triggers = new TriggersViewModel(manager);
         Timers = new TimersViewModel(manager);
         Overlays = new OverlaysViewModel(overlay, manager);
+        Raid = new RaidViewModel(manager);
         Settings = new SettingsViewModel(manager);
 
         NavItems =
@@ -40,6 +42,7 @@ public sealed partial class MainViewModel : ObservableObject
             new NavItem(Loc.Get("Nav_Triggers"), Triggers),
             new NavItem(Loc.Get("Nav_Timers"), Timers),
             new NavItem(Loc.Get("Nav_Overlays"), Overlays),
+            new NavItem(Loc.Get("Nav_Raid"), Raid),
             new NavItem(Loc.Get("Nav_Settings"), Settings),
         ];
         _selectedItem = NavItems[0];
@@ -83,11 +86,14 @@ public sealed partial class MainViewModel : ObservableObject
     {
         Manager.SpellTimers.Tick(DateTimeOffset.Now);
         Manager.Callouts.Tick(DateTimeOffset.Now);
+        Manager.Uploads.TickAttendance(Manager, DateTimeOffset.Now);
         if (SelectedItem.Page == Main)
             Main.Refresh();
         else if (SelectedItem.Page == Sources)
             Sources.Refresh();
         else if (SelectedItem.Page == Timers)
             Timers.Refresh();
+        else if (SelectedItem.Page == Raid)
+            Raid.Refresh();
     }
 }

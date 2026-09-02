@@ -50,6 +50,11 @@ public sealed class AppSettingsCompatTests : IDisposable
         // e.g. the mini parse fade arrives enabled at 5s, not off/0.
         Assert.True(settings.MiniParseFadeEnabled);
         Assert.Equal(5, settings.MiniParseFadeSeconds);
+        // Raid-tracking fields (2026-09) default correctly on old files.
+        Assert.Equal("eq2lexicon-raid-list.txt", settings.RaidListFileName);
+        Assert.Equal("eq2lexicon-raid-dkp.txt", settings.RaidDkpFileName);
+        Assert.Equal(5, settings.RaidDkpPoints);
+        Assert.Null(settings.RaidCommandDirOverride);
     }
 
     [Fact]

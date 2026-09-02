@@ -33,6 +33,9 @@
             <DataTemplate DataType="{x:Type vm:OverlaysViewModel}">
                 <views:OverlaysView />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:RaidViewModel}">
+                <views:RaidView />
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
                 <views:SettingsView />
             </DataTemplate>

@@ -80,6 +80,43 @@ public sealed class UploadService : IDisposable
 
     /// <summary>Engine EncounterEnded handler — never blocks (pump thread,
     /// inside the global sync lock).</summary>
+    private DateTimeOffset _lastAttendanceSend = DateTimeOffset.MinValue;
+    private static readonly TimeSpan AttendanceInterval = TimeSpan.FromMinutes(5);
+
+    /// <summary>Periodic attendance snapshot upload — call from the shell
+    /// tick (cheap no-op most ticks). Dark until the server grows the
+    /// /api/attendance/ingest endpoint: every failure (404 included) is
+    /// swallowed quietly, the roster tab works fine without it. Sends only
+    /// while a session has at least one raid member and uploads are on.</summary>
+    public void TickAttendance(SourceManager manager, DateTimeOffset now)
+    {
+        if (!Active || _client is not { } client || now - _lastAttendanceSend < AttendanceInterval)
+            return;
+        var snapshot = manager.RaidRoster.Snapshot();
+        if (!snapshot.Any(m => m.InRaid))
+            return;
+        var source = manager.Sources.Count > 0 ? manager.Sources[0] : null;
+        if (source is null)
+            return;
+        _lastAttendanceSend = now;
+        var payload = new AttendancePayload
+        {
+            LoggerName = source.Owner,
+            LoggerServer = Core.Upload.LogPaths.ParseServerName(source.Path),
+            SentAt = now.ToUnixTimeSeconds(),
+            RaidMembers = [.. snapshot.Where(m => m.InRaid).Select(ToMember)],
+            OnlineGuildies = [.. snapshot.Where(m => m is { InRaid: false, Online: true }).Select(ToMember)],
+        };
+        _ = Task.Run(() => client.UploadAttendanceAsync(payload));
+    }
+
+    private static AttendanceMember ToMember(Core.Raid.RaidMemberState m) => new()
+    {
+        Name = m.Name,
+        FirstSeen = (m.RaidFirstSeen ?? m.OnlineFirstSeen ?? DateTimeOffset.MinValue).ToUnixTimeSeconds(),
+        LastSeen = (m.RaidLastSeen ?? m.OnlineLastSeen ?? DateTimeOffset.MinValue).ToUnixTimeSeconds(),
+    };
+
     public void OnEncounterEnded(Encounter encounter)
     {
         if (!Active)

@@ -121,6 +121,22 @@ public sealed record AppSettings
     /// local dev server to test curation before it ships.</summary>
     public string LexiconBaseUrl { get; init; } = "https://varsoon.eq2lexicon.com";
 
+    /// <summary>File name for the roster-refresh /who command file (its own
+    /// in-game /do_file_commands macro).</summary>
+    public string RaidListFileName { get; init; } = "eq2lexicon-raid-list.txt";
+
+    /// <summary>File name for the DKP award command file (a separate macro,
+    /// so refreshing the roster can never fire an award by accident).</summary>
+    public string RaidDkpFileName { get; init; } = "eq2lexicon-raid-dkp.txt";
+
+    /// <summary>Default DKP points per award (persists the last used value).</summary>
+    public int RaidDkpPoints { get; init; } = 5;
+
+    /// <summary>Where to write the raid command files. Null = derive the EQ2
+    /// install dir from the active log paths (the normal case); set when the
+    /// install isn't user-writable (Program Files) or detection fails.</summary>
+    public string? RaidCommandDirOverride { get; init; }
+
     /// <summary>Subscribe to the curated EQ2Lexicon trigger/timer library.
     /// On by default. Off = the parser applies ONLY the triggers and timers
     /// the user made themselves; the Lexicon-sourced ones are removed and no

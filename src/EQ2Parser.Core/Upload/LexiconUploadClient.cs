@@ -65,10 +65,20 @@ public sealed class LexiconUploadClient : IDisposable
         return ms.ToArray();
     }
 
-    public async Task<UploadResult> UploadAsync(LexiconPayload payload, CancellationToken ct = default)
+    public Task<UploadResult> UploadAsync(LexiconPayload payload, CancellationToken ct = default) =>
+        PostSignedAsync("/api/parses/ingest", payload.ToJson(), ct);
+
+    /// <summary>Attendance snapshots ride the same signed+gzipped POST
+    /// contract as parse uploads, on their own endpoint (Phase 2 server
+    /// work; a 404 from an older server is expected and non-fatal).</summary>
+    public Task<UploadResult> UploadAttendanceAsync(AttendancePayload payload, CancellationToken ct = default) =>
+        PostSignedAsync("/api/attendance/ingest", payload.ToJson(), ct);
+
+    /// <summary>One canonical signed upload: bearer + HMAC over the
+    /// UNCOMPRESSED json in the signature header, body gzipped.</summary>
+    private async Task<UploadResult> PostSignedAsync(string relativePath, string json, CancellationToken ct)
     {
-        var json = payload.ToJson();
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{ServerUrl}/api/parses/ingest");
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{ServerUrl}{relativePath}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ApiToken);
         request.Headers.Add(SignatureHeader, Sign(json, ApiToken));
 
