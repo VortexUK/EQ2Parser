@@ -114,6 +114,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// for what's on screen.</summary>
     public void Tick()
     {
+        SessionJournal.Heartbeat(Manager.Sources.Count);
         Manager.SpellTimers.Tick(DateTimeOffset.Now);
         Manager.Callouts.Tick(DateTimeOffset.Now);
         Manager.Uploads.TickAttendance(Manager, DateTimeOffset.Now);

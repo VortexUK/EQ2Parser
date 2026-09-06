@@ -83,6 +83,9 @@ public sealed class PiperTtsEngine : IDisposable
                 }
 
                 stage = "synthesis";
+                // Breadcrumb BEFORE the native call — the prime suspect for
+                // silent (unmanaged) process deaths.
+                SessionJournal.MarkTts("tts synthesis (sherpa-onnx native)");
                 var d = Math.Clamp(depth, 0.7, 1.0);
                 var audio = _tts!.Generate(text, (float)Math.Clamp(rate / d, 0.5, 3.0), voice.SpeakerId);
                 if (audio?.Samples is not { Length: > 0 } samples)

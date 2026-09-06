@@ -139,7 +139,7 @@ public static class CrashLog
         }
     }
 
-    private static string Version =>
+    internal static string Version =>
         typeof(CrashLog).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? typeof(CrashLog).Assembly.GetName().Version?.ToString()
         ?? "dev";

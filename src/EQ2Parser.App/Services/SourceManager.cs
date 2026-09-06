@@ -201,6 +201,7 @@ public sealed class SourceManager : IDisposable
             // Pump only once fully wired — starting in the LogSource
             // constructor let a fast log's first lines process unattached.
             source.Start();
+            SessionJournal.Mark($"source added: {System.IO.Path.GetFileName(path)}");
             return source;
         }
     }

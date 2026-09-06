@@ -501,12 +501,14 @@ public sealed partial class RaidViewModel : ObservableObject
         {
             PersistedJsonFile.SaveText(Path.Combine(dir, fileName), contents);
             lastFailed = null;
+            SessionJournal.Mark($"raid file synced: {fileName} ({contents.Length} chars)");
             return true;
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
         {
             lastFailed = contents;
             Status = Loc.Format("Raid_FileError", ex.Message);
+            SessionJournal.Mark($"raid file sync FAILED: {fileName} ({ex.GetType().Name})");
             return false;
         }
     }

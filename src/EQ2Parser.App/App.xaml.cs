@@ -19,8 +19,10 @@ public partial class App : Application
     {
         base.OnStartup(e);
         // First, before anything can throw: even a startup crash must leave
-        // a log behind.
+        // a log behind. The journal + WER dump registration right after —
+        // they cover the deaths CrashLog can't see (native/SO/external kill).
         CrashLog.Install(this);
+        SessionJournal.Begin();
         // Process-wide default match-timeout for every Regex built without an
         // explicit one (belt-and-suspenders for the grammar + any future
         // pattern). Trigger patterns set their own explicit timeout; the
@@ -36,9 +38,12 @@ public partial class App : Application
         // Before ANY window: the {loc:Tr} markup extension resolves at
         // XAML load, so the dictionaries must be in place first.
         Localization.Loc.Initialize(_manager.Settings.LanguageCode);
+        SessionJournal.Mark("settings + localization loaded");
         _manager.RestoreHistory();
+        SessionJournal.Mark("history restored");
         _manager.RestoreFromSettings();
         _manager.StartFolderWatch();
+        SessionJournal.Mark("sources restored + folder watch started");
         var overlay = new OverlayController(_manager);
         // Overlay auto-hide: event-driven foreground tracking (no polling).
         // The setting is read per event so the Overlays-page toggle applies
@@ -65,10 +70,12 @@ public partial class App : Application
         overlay.RestoreFromSettings();
         _ = _manager.Updates.CheckAndDownloadAsync();
         _ = _manager.Lexicon.StartupAsync();
+        SessionJournal.Mark("startup complete — window shown, overlays restored");
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        SessionJournal.Mark("exit begin");
         _focusWatcher?.Dispose();
         // Join the folder watcher BEFORE persisting — a source discovered
         // mid-persist would lose its resume position.
@@ -78,6 +85,7 @@ public partial class App : Application
         // Last: a settings change made within the debounce window of
         // quitting still reaches disk.
         EQ2Parser.Core.Persistence.PersistedJsonFile.FlushPending();
+        SessionJournal.End();
         base.OnExit(e);
     }
 }
