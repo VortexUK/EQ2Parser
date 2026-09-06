@@ -53,7 +53,9 @@ public sealed class AppSettingsCompatTests : IDisposable
         // Raid-tracking fields (2026-09) default correctly on old files.
         Assert.Equal("eq2lexicon-raid-list.txt", settings.RaidListFileName);
         Assert.Equal("eq2lexicon-raid-dkp.txt", settings.RaidDkpFileName);
+        Assert.Equal("eq2lexicon-raid-loot.txt", settings.RaidLootFileName);
         Assert.Equal(5, settings.RaidDkpPoints);
+        Assert.Equal(10, settings.RaidLootMinBid);
         Assert.Null(settings.RaidCommandDirOverride);
     }
 

@@ -25,19 +25,28 @@ namespace EQ2Parser.Core.Raid;
 /// exactly how many awards remain. The app pops the applied command(s),
 /// rewrites the file, and the officer just presses the macro until done.
 /// </summary>
+/// <summary>One purchased raid drop to charge: the buyer pays ``Cost`` DKP,
+/// with the item name as the ledger comment.</summary>
+public sealed record LootCharge(string Buyer, int Cost, string ItemName);
+
+
 public static class DkpCommandFile
 {
     public const string RefreshFileName = "eq2lexicon-raid-list.txt";
     public const string AwardFileName = "eq2lexicon-raid-dkp.txt";
+    public const string LootFileName = "eq2lexicon-raid-loot.txt";
 
     /// <summary>Last line of every award file. Unknown to the game, immune
     /// to the points throttle — its "Unknown command" log line is the
-    /// press-completed signal.</summary>
+    /// press-completed signal. The loot file carries its OWN marker so the
+    /// app can tell which macro was pressed.</summary>
     public const string MarkerCommand = "eq2lexicon_dkp_done";
+    public const string LootMarkerCommand = "eq2lexicon_loot_done";
 
-    /// <summary>The marker's exact log echo (the game quotes the whole
+    /// <summary>The markers' exact log echoes (the game quotes the whole
     /// line, e.g. "Unknown command: 'delay 1'").</summary>
     public const string MarkerLogLine = "Unknown command: 'eq2lexicon_dkp_done'";
+    public const string LootMarkerLogLine = "Unknown command: 'eq2lexicon_loot_done'";
 
     /// <summary>The throttle failure's exact log line — one per award
     /// command that did NOT run this press.</summary>
@@ -98,11 +107,34 @@ public static class DkpCommandFile
         return lines;
     }
 
+    /// <summary>The loot file's commands: DEDUCT each item's cost from the
+    /// buyer's main, item name as the ledger comment. One command per row
+    /// (order preserved — the press-until-done queue confirms rows
+    /// positionally), never deduped: buying two items costs twice.</summary>
+    public static List<string> BuildLootCommands(
+        IReadOnlyList<LootCharge> charges,
+        IReadOnlyDictionary<string, string>? mains = null)
+    {
+        string ToMain(string name) =>
+            mains is not null && mains.TryGetValue(name, out var main) && !string.IsNullOrWhiteSpace(main)
+                ? main
+                : name;
+
+        var lines = new List<string>();
+        foreach (var charge in charges)
+        {
+            if (!Combat.Swing.LooksLikePlayer(charge.Buyer) || charge.Cost <= 0)
+                continue;
+            lines.Add($"guild points add -{charge.Cost} {ToMain(charge.Buyer)} {SanitizeReason(charge.ItemName)}");
+        }
+        return lines;
+    }
+
     /// <summary>The file text for the remaining queue: the commands plus
     /// the trailing marker. An empty queue writes a marker-only file, so a
     /// stray extra macro press can't re-award anything.</summary>
-    public static string BuildQueueFile(IReadOnlyList<string> commands) =>
-        string.Join("\r\n", commands.Append(MarkerCommand)) + "\r\n";
+    public static string BuildQueueFile(IReadOnlyList<string> commands, string marker = MarkerCommand) =>
+        string.Join("\r\n", commands.Append(marker)) + "\r\n";
 
     /// <summary>Convenience: the full initial award file.</summary>
     public static string BuildAward(

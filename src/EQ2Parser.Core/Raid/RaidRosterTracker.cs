@@ -122,7 +122,8 @@ public sealed partial class RaidRosterTracker
         message.Contains(" the raid", StringComparison.Ordinal)
         || message.StartsWith("Guildmate: ", StringComparison.Ordinal)
         || WhoParser.LooksRelevant(message)
-        || DkpAwardProgress.LooksRelevant(message);
+        || DkpAwardProgress.LooksRelevant(message)
+        || LootTracker.LooksRelevant(message);
 
     /// <summary>Feed one LIVE log line (any source).</summary>
     public void OnLine(string message, DateTimeOffset time)

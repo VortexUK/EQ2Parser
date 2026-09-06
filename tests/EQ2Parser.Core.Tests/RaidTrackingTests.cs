@@ -357,8 +357,8 @@ public sealed class RaidTrackingTests
     public void Dkp_Progress_Counts_Failures_Per_Press()
     {
         var p = new DkpAwardProgress();
-        var presses = new List<int>();
-        p.PressDetected += presses.Add;
+        var presses = new List<(string Marker, int Failures)>();
+        p.PressDetected += (marker, failures) => presses.Add((marker, failures));
 
         // Press 1: 3 of 4 throttled, then the marker.
         for (var i = 0; i < 3; i++)
@@ -369,7 +369,23 @@ public sealed class RaidTrackingTests
         // Press 2: everything applied (final command), marker only.
         p.OnLine(DkpCommandFile.MarkerLogLine, At(20));
 
-        Assert.Equal([3, 0], presses);
+        Assert.Equal([(DkpCommandFile.MarkerCommand, 3), (DkpCommandFile.MarkerCommand, 0)], presses);
+    }
+
+    [Fact]
+    public void Dkp_Progress_Routes_The_Loot_Marker()
+    {
+        // The loot file ends in its own marker — the event identifies WHICH
+        // macro was pressed so the app advances the right queue.
+        var p = new DkpAwardProgress();
+        var presses = new List<(string Marker, int Failures)>();
+        p.PressDetected += (marker, failures) => presses.Add((marker, failures));
+
+        p.OnLine(DkpCommandFile.ThrottleLogLine, T0);
+        p.OnLine(DkpCommandFile.ThrottleLogLine, T0);
+        p.OnLine(DkpCommandFile.LootMarkerLogLine, T0);
+
+        Assert.Equal([(DkpCommandFile.LootMarkerCommand, 2)], presses);
     }
 
     [Fact]
@@ -377,6 +393,7 @@ public sealed class RaidTrackingTests
     {
         Assert.True(RaidRosterTracker.LooksRelevant(DkpCommandFile.ThrottleLogLine));
         Assert.True(RaidRosterTracker.LooksRelevant(DkpCommandFile.MarkerLogLine));
+        Assert.True(RaidRosterTracker.LooksRelevant(DkpCommandFile.LootMarkerLogLine));
         Assert.False(RaidRosterTracker.LooksRelevant("Unknown command: 'somethingelse'"));
     }
 

@@ -17,10 +17,12 @@ public sealed class DkpAwardProgress
     private readonly object _gate = new();
     private int _failures;
 
-    /// <summary>One macro press completed; the argument is the number of
-    /// throttle-failure lines observed = award commands still queued.
-    /// Raised on the pump thread.</summary>
-    public event Action<int>? PressDetected;
+    /// <summary>One macro press completed. Arguments: the marker command
+    /// that closed the burst (identifying WHICH file was pressed —
+    /// DkpCommandFile.MarkerCommand or LootMarkerCommand) and the number of
+    /// throttle-failure lines observed = commands still queued in that
+    /// file. Raised on the pump thread.</summary>
+    public event Action<string, int>? PressDetected;
 
     /// <summary>Prefilter shapes for the pump-thread hook.</summary>
     public static bool LooksRelevant(string message) =>
@@ -37,7 +39,13 @@ public sealed class DkpAwardProgress
                 _failures++;
             return;
         }
-        if (message != DkpCommandFile.MarkerLogLine)
+        var marker = message switch
+        {
+            DkpCommandFile.MarkerLogLine => DkpCommandFile.MarkerCommand,
+            DkpCommandFile.LootMarkerLogLine => DkpCommandFile.LootMarkerCommand,
+            _ => null,
+        };
+        if (marker is null)
             return;
         int failures;
         lock (_gate)
@@ -45,6 +53,6 @@ public sealed class DkpAwardProgress
             failures = _failures;
             _failures = 0;
         }
-        PressDetected?.Invoke(failures);
+        PressDetected?.Invoke(marker, failures);
     }
 }

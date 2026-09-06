@@ -129,8 +129,16 @@ public sealed record AppSettings
     /// so refreshing the roster can never fire an award by accident).</summary>
     public string RaidDkpFileName { get; init; } = "eq2lexicon-raid-dkp.txt";
 
+    /// <summary>File name for the loot-charge command file (its own macro +
+    /// press-until-done queue, independent of the award file).</summary>
+    public string RaidLootFileName { get; init; } = "eq2lexicon-raid-loot.txt";
+
     /// <summary>Default DKP points per award (persists the last used value).</summary>
     public int RaidDkpPoints { get; init; } = 5;
+
+    /// <summary>Default DKP cost pre-filled on newly-dropped loot (the
+    /// guild's minimum bid).</summary>
+    public int RaidLootMinBid { get; init; } = 10;
 
     /// <summary>Where to write the raid command files. Null = derive the EQ2
     /// install dir from the active log paths (the normal case); set when the

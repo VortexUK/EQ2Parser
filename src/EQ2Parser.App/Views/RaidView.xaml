@@ -7,6 +7,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Header: title left, session control top-right -->
@@ -106,9 +107,11 @@
                             </Grid.RowDefinitions>
                             <TextBlock Text="{loc:Tr Raid_PointsLabel}" Style="{StaticResource MutedText}" FontSize="12"
                                        VerticalAlignment="Center" Margin="0,0,8,6" />
+                            <!-- Wrap collapses the Fluent clear (×) button, which
+                                 covers the whole value at this width. -->
                             <TextBox Grid.Column="1" Text="{Binding DkpPoints, UpdateSourceTrigger=PropertyChanged}"
                                      Width="60" HorizontalAlignment="Left" FontSize="13" Margin="0,0,0,6"
-                                     VerticalContentAlignment="Center" />
+                                     TextWrapping="Wrap" VerticalContentAlignment="Center" />
                             <TextBlock Grid.Row="1" Text="{loc:Tr Raid_ReasonLabel}" Style="{StaticResource MutedText}" FontSize="12"
                                        VerticalAlignment="Center" Margin="0,0,8,0" />
                             <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding DkpReason, UpdateSourceTrigger=PropertyChanged}"
@@ -147,7 +150,7 @@
                                     ToolTip="{loc:Tr Raid_CopyTip}"
                                     Command="{Binding CopyRosterMacroCommand}" />
                         </Grid>
-                        <Grid Margin="0,0,0,6">
+                        <Grid Margin="0,0,0,2">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -162,16 +165,112 @@
                                     ToolTip="{loc:Tr Raid_CopyTip}"
                                     Command="{Binding CopyDkpMacroCommand}" />
                         </Grid>
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{loc:Tr Raid_MacroLoot}" Style="{StaticResource MutedText}" FontSize="12"
+                                       VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Grid.Column="1" Text="{Binding LootMacroCommand, Mode=OneWay}" FontFamily="Consolas"
+                                       FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            <Button Grid.Column="2" Content="📋" FontSize="12" Padding="4,1" Margin="6,0,0,0"
+                                    Style="{StaticResource GoldButton}"
+                                    ToolTip="{loc:Tr Raid_CopyTip}"
+                                    Command="{Binding CopyLootMacroCommand}" />
+                        </Grid>
 
                         <TextBlock Text="{loc:Tr Raid_HowToSteps}" Style="{StaticResource MutedText}" FontSize="12"
                                    TextWrapping="Wrap" />
-                        <Button Content="{loc:Tr Raid_WriteRefresh}" Style="{StaticResource GoldButton}" Margin="0,10,0,0"
-                                HorizontalAlignment="Left"
-                                ToolTip="{loc:Tr Raid_WriteRefreshTip}"
-                                Command="{Binding WriteRefreshFileCommand}" />
                     </StackPanel>
                 </Border>
             </StackPanel>
         </Grid>
+
+        <!-- Loot: chest drops + who bought them for how much DKP. No write
+             button — the loot file auto-syncs to these rows every tick;
+             ✓ flips per row as each deduction lands in game. -->
+        <Border Grid.Row="3" Style="{StaticResource Card}" Margin="0,12,0,0">
+            <DockPanel>
+                <Grid DockPanel.Dock="Top">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding LootHeader}" Style="{StaticResource SectionLabel}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <TextBlock Text="{loc:Tr Raid_LootMinBid}" Style="{StaticResource MutedText}" FontSize="12"
+                                   VerticalAlignment="Center" Margin="0,0,6,0"
+                                   ToolTip="{loc:Tr Raid_LootMinBidTip}" />
+                        <!-- Wrap collapses the Fluent clear (×) button. -->
+                        <TextBox Text="{Binding LootMinBid, UpdateSourceTrigger=PropertyChanged}" Width="48"
+                                 FontSize="12" TextWrapping="Wrap" VerticalContentAlignment="Center"
+                                 HorizontalContentAlignment="Center"
+                                 ToolTip="{loc:Tr Raid_LootMinBidTip}" />
+                    </StackPanel>
+                </Grid>
+                <TextBlock DockPanel.Dock="Top" Text="{loc:Tr Raid_LootHint}" Style="{StaticResource MutedText}"
+                           FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
+                <Grid DockPanel.Dock="Top" Margin="0,0,0,2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="112" />
+                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="28" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{loc:Tr Raid_LootColItem}" Style="{StaticResource MutedText}" FontSize="11" />
+                    <TextBlock Grid.Column="1" Text="{loc:Tr Raid_LootColBoss}" Style="{StaticResource MutedText}" FontSize="11" />
+                    <TextBlock Grid.Column="2" Text="{loc:Tr Raid_LootColBuyer}" Style="{StaticResource MutedText}" FontSize="11" />
+                    <TextBlock Grid.Column="3" Text="{loc:Tr Raid_LootColCost}" Style="{StaticResource MutedText}" FontSize="11" />
+                </Grid>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="190">
+                    <ItemsControl ItemsSource="{Binding Loot}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="130" />
+                                        <ColumnDefinition Width="112" />
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="28" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding ItemName}" FontSize="13" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Boss}" Style="{StaticResource MutedText}"
+                                               FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    <TextBox Grid.Column="2" Text="{Binding Buyer, UpdateSourceTrigger=PropertyChanged}"
+                                             FontSize="12" Margin="0,0,8,0" VerticalContentAlignment="Center" />
+                                    <!-- ±10 steppers: guild DKP costs are near-always
+                                         tens. Wrap collapses the Fluent clear (×)
+                                         button that covers this narrow box. -->
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="0,0,8,0">
+                                        <Button Content="−" FontSize="12" Padding="6,0" MinWidth="24"
+                                                Command="{Binding CostDownCommand}" />
+                                        <TextBox Text="{Binding Cost, UpdateSourceTrigger=PropertyChanged}" Width="44"
+                                                 FontSize="12" Margin="2,0" TextWrapping="Wrap"
+                                                 VerticalContentAlignment="Center" HorizontalContentAlignment="Center" />
+                                        <Button Content="+" FontSize="12" Padding="6,0" MinWidth="24"
+                                                Command="{Binding CostUpCommand}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="4" Text="{loc:Tr Raid_LootCharged}" Foreground="{StaticResource GoldBrush}"
+                                               FontSize="11" VerticalAlignment="Center"
+                                               Visibility="{Binding Charged, Converter={StaticResource BoolToVis}}" />
+                                    <Button Grid.Column="5" Content="✕" FontSize="11" Padding="4,0"
+                                            HorizontalAlignment="Right" VerticalAlignment="Center"
+                                            ToolTip="{loc:Tr Raid_LootDeleteTip}"
+                                            Command="{Binding DataContext.DeleteLootCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
     </Grid>
 </UserControl>

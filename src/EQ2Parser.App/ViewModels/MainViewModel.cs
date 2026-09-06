@@ -123,7 +123,8 @@ public sealed partial class MainViewModel : ObservableObject
             Sources.Refresh();
         else if (SelectedItem.Page == Timers)
             Timers.Refresh();
-        else if (SelectedItem.Page == Raid)
-            Raid.Refresh();
+        // Always — the Raid tab auto-syncs its command files, which must
+        // stay current while the officer watches the parse on another tab.
+        Raid.Refresh();
     }
 }
