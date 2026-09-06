@@ -212,7 +212,9 @@
                 </Grid>
                 <TextBlock DockPanel.Dock="Top" Text="{loc:Tr Raid_LootHint}" Style="{StaticResource MutedText}"
                            FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
-                <Grid DockPanel.Dock="Top" Margin="0,0,0,2">
+                <!-- Rows keep 18px right clearance so the scrollbar never
+                     sits on the delete button; the header matches. -->
+                <Grid DockPanel.Dock="Top" Margin="0,0,18,2">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2*" />
                         <ColumnDefinition Width="*" />
@@ -227,7 +229,7 @@
                     <TextBlock Grid.Column="3" Text="{loc:Tr Raid_LootColCost}" Style="{StaticResource MutedText}" FontSize="11" />
                 </Grid>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="190">
-                    <ItemsControl ItemsSource="{Binding Loot}">
+                    <ItemsControl ItemsSource="{Binding Loot}" Margin="0,0,18,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="0,1">

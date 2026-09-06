@@ -18,6 +18,10 @@ public sealed partial class LootRow : ObservableObject
     public required int Id { get; init; }
     public required string ItemName { get; init; }
 
+    /// <summary>Raw in-game link as logged — becomes the guild points
+    /// ledger comment so the entry is clickable.</summary>
+    public string ItemLink { get; init; } = "";
+
     [ObservableProperty]
     private string _boss = "";
 
@@ -113,7 +117,9 @@ public sealed partial class RaidViewModel : ObservableObject
         _manager = manager;
         manager.RaidRoster.RosterChanged += () => _dirty = true;
         manager.Loot.LootChanged += () => _lootDirty = true;
-        manager.DkpProgress.PressDetected += OnDkpPress;
+        manager.DkpProgress.PressDetected += OnMarkerPress;
+        manager.DkpProgress.AwardEchoSeen += OnAwardEcho;
+        manager.DkpProgress.LootEchoSeen += OnLootEcho;
         _dkpPoints = manager.Settings.RaidDkpPoints.ToString(System.Globalization.CultureInfo.InvariantCulture);
         _dkpReason = Loc.Get("Raid_DefaultReason");
         _lootMinBid = manager.Settings.RaidLootMinBid.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -132,89 +138,116 @@ public sealed partial class RaidViewModel : ObservableObject
         AppSettings.SaveSoon(() => _manager.Settings);
     }
 
-    // ── press-until-done queues (the game applies ONE points command per
-    // macro press; each file's own marker line says how many remain). The
-    // award queue is set explicitly by "Write DKP file"; the loot queue is
-    // DERIVED — SyncLootFile keeps the file mirroring the editable rows,
-    // so there is no write button. _queueGate covers queue state AND the
-    // synced-file writes (press handler on the pump thread vs the UI tick). ──
+    // ── one-step-per-press queues. Each award/loot file carries a SINGLE
+    // points command + its officer-chat announcement + the marker; the
+    // announcement's log echo (with no throttle failure the same press) is
+    // the positive confirmation that advances the file to the next step.
+    // The award queue is set explicitly by "Write DKP file"; the loot
+    // pending list is DERIVED — SyncLootFile keeps the file mirroring the
+    // editable rows, so there is no write button. _queueGate covers queue
+    // state AND the synced-file writes (echo handlers on the pump thread
+    // vs the UI tick). ──
     private readonly object _queueGate = new();
-    private List<string> _awardQueue = [];
+    private List<PendingAward> _awardQueue = [];
     private int _awardTotal;
-    private List<string> _lootQueue = [];
-
-    /// <summary>The LootRow behind each queued loot command, in file order —
-    /// as presses land, rows are confirmed charged positionally.</summary>
-    private List<LootRow> _lootQueueRows = [];
+    private string? _awardFileFailed;
+    private bool _awardFileNeutralized;
+    private List<PendingLoot> _lootPending = [];
 
     /// <summary>Last text successfully synced to the loot file — the
     /// no-op-write comparison for the every-tick sync.</summary>
     private string? _lootFileText;
     private string? _lootFileFailed;
 
-    /// <summary>PressDetected handler — pump thread. Routes on the marker
-    /// (award file vs loot file), pops the applied command(s), rewrites
-    /// that file to the remainder, updates Status (WPF marshals scalar
-    /// binding updates).</summary>
-    private void OnDkpPress(string marker, int failures)
+    private sealed record PendingAward(string Command, string Announcement);
+
+    private sealed record PendingLoot(LootRow Row, string Command, string Announcement);
+
+    /// <summary>Marker echo — pump thread. With the announcements driving
+    /// the actual advancement, the marker only matters for a press on an
+    /// EMPTY file: everything already applied.</summary>
+    private void OnMarkerPress(string marker, int failures)
     {
+        _ = failures;
         if (marker == DkpCommandFile.LootMarkerCommand)
         {
-            OnLootPress(failures);
+            lock (_queueGate)
+            {
+                if (_lootPending.Any(e => !e.Row.Charged))
+                    return; // a step is still pending — the echo handler speaks
+            }
+            Status = Loc.Get("Raid_LootAllDone");
             return;
         }
-        string contents;
-        string status;
         lock (_queueGate)
         {
-            if (_awardQueue.Count == 0)
-                return; // stray press after completion — marker-only file, nothing to do
-            var (remaining, applied) = DkpCommandFile.AdvanceQueue(_awardQueue, failures);
-            if (applied == 0)
-            {
-                Status = Loc.Get("Raid_DkpThrottled");
+            if (_awardQueue.Count > 0 || _awardTotal == 0)
                 return;
-            }
-            _awardQueue = remaining;
-            contents = DkpCommandFile.BuildQueueFile(remaining);
-            status = remaining.Count == 0
-                ? Loc.Format("Raid_DkpAllDone", _awardTotal)
-                : Loc.Format("Raid_DkpProgress", _awardTotal - remaining.Count, _awardTotal);
         }
-        if (WriteCommandFile(contents, _manager.Settings.RaidDkpFileName))
-            Status = status; // progress line beats the plain file-written line
+        Status = Loc.Format("Raid_DkpAllDone", _awardTotal);
     }
 
-    private void OnLootPress(int failures)
+    /// <summary>Award announcement echo — pump thread. failures &gt; 0 means
+    /// the points command was throttled this press (the chat line still
+    /// fired): nothing applied, keep the file as is.</summary>
+    private void OnAwardEcho(string message, int failures)
     {
+        if (failures > 0)
+        {
+            Status = Loc.Get("Raid_DkpThrottled");
+            return;
+        }
+        PendingAward? hit;
         string status;
         lock (_queueGate)
         {
-            if (_lootQueue.Count == 0)
+            hit = _awardQueue.FirstOrDefault(e => message.Contains(e.Announcement, StringComparison.Ordinal));
+            if (hit is null)
+                return; // someone else's announcement, or an already-popped repeat
+            _awardQueue.Remove(hit);
+            var next = _awardQueue.FirstOrDefault();
+            var text = DkpCommandFile.BuildStepFile(next?.Command, next?.Announcement, DkpCommandFile.MarkerCommand);
+            TrySyncFile(text, _manager.Settings.RaidDkpFileName, ref _awardFileFailed);
+            status = _awardQueue.Count == 0
+                ? Loc.Format("Raid_DkpAllDone", _awardTotal)
+                : Loc.Format("Raid_DkpProgress", _awardTotal - _awardQueue.Count, _awardTotal);
+        }
+        DkpLedger.Append(hit.Command);
+        Status = status;
+    }
+
+    /// <summary>Loot announcement echo — pump thread. Content-addressed:
+    /// ticks the matching row's confirm column, logs the applied command to
+    /// the ledger, rewrites the file with the next charge.</summary>
+    private void OnLootEcho(string message, int failures)
+    {
+        if (failures > 0)
+        {
+            Status = Loc.Get("Raid_DkpThrottled");
+            return;
+        }
+        PendingLoot? hit;
+        string status;
+        lock (_queueGate)
+        {
+            hit = _lootPending.FirstOrDefault(e =>
+                !e.Row.Charged && message.Contains(e.Announcement, StringComparison.Ordinal));
+            if (hit is null)
                 return;
-            var (remaining, applied) = DkpCommandFile.AdvanceQueue(_lootQueue, failures);
-            if (applied == 0)
-            {
-                Status = Loc.Get("Raid_DkpThrottled");
-                return;
-            }
-            // Flip the confirm column INSIDE the gate: the deduction has
-            // provably run in game, and the next SyncLootFile (which also
-            // takes the gate) must already see the row as charged — a stale
-            // read would write the applied command back into the file.
-            foreach (var row in _lootQueueRows.Take(applied))
-                row.Charged = true;
-            _lootQueue = remaining;
-            _lootQueueRows = [.. _lootQueueRows.Skip(applied)];
-            // Rewrite immediately (not on the next tick) so a rapid second
-            // press can't re-run the just-applied command.
-            var text = DkpCommandFile.BuildQueueFile(remaining, DkpCommandFile.LootMarkerCommand);
+            // Flip the confirm column INSIDE the gate: the next SyncLootFile
+            // (which also takes the gate) must already see the row as
+            // charged — a stale read would write the applied command back.
+            hit.Row.Charged = true;
+            var next = _lootPending.FirstOrDefault(e => !e.Row.Charged);
+            var text = DkpCommandFile.BuildStepFile(next?.Command, next?.Announcement, DkpCommandFile.LootMarkerCommand);
             if (TrySyncFile(text, _manager.Settings.RaidLootFileName, ref _lootFileFailed))
                 _lootFileText = text;
-            status = remaining.Count == 0
+            var remaining = _lootPending.Count(e => !e.Row.Charged);
+            status = remaining == 0
                 ? Loc.Get("Raid_LootAllDone")
-                : Loc.Format("Raid_LootProgress", remaining.Count);
+                : Loc.Format("Raid_LootProgress", remaining);
         }
+        DkpLedger.Append(hit.Command);
         Status = status;
     }
 
@@ -262,6 +295,7 @@ public sealed partial class RaidViewModel : ObservableObject
         RefreshLoot();
         SyncRosterFile();
         SyncLootFile();
+        NeutralizeAwardFile();
         if (!_dirty && ReferenceEquals(_lastMains, _manager.Uploads.RaidMains))
             return;
         _dirty = false;
@@ -310,6 +344,7 @@ public sealed partial class RaidViewModel : ObservableObject
                     Suppress = true,
                     Id = item.Id,
                     ItemName = item.ItemName,
+                    ItemLink = item.ItemLink,
                     Boss = item.Boss ?? "",
                     Buyer = item.LootedBy ?? "",
                     // New drops start at the guild's minimum bid.
@@ -449,32 +484,56 @@ public sealed partial class RaidViewModel : ObservableObject
         _rosterFileSynced = TrySyncFile(DkpCommandFile.BuildRefresh(), _manager.Settings.RaidListFileName, ref _rosterFileFailed);
     }
 
-    /// <summary>Keep the loot file mirroring the rows: every unbilled row
-    /// with a plausible buyer and a positive cost, in list order, plus the
-    /// loot marker. Runs every tick — the text comparison makes the
-    /// steady-state a no-op. Filter matches BuildLootCommands EXACTLY so
-    /// the queue confirms rows positionally.</summary>
+    /// <summary>Keep the loot state mirroring the rows: every unbilled row
+    /// with a plausible buyer and a positive cost becomes a pending step
+    /// (command + announcement), and the FILE carries just the head step.
+    /// Runs every tick — the text comparison makes the steady-state a
+    /// no-op.</summary>
     private void SyncLootFile()
     {
         lock (_queueGate)
         {
-            var rows = Loot
+            _lootPending = [.. Loot
                 .Where(r => !r.Charged
                     && Core.Combat.Swing.LooksLikePlayer(r.Buyer.Trim())
                     && int.TryParse(r.Cost, out var c) && c > 0)
-                .ToList();
-            var charges = rows
-                .Select(r => new LootCharge(r.Buyer.Trim(), int.Parse(r.Cost, System.Globalization.CultureInfo.InvariantCulture), r.ItemName))
-                .ToList();
-            var commands = DkpCommandFile.BuildLootCommands(charges, _manager.Uploads.RaidMains);
-            var text = DkpCommandFile.BuildQueueFile(commands, DkpCommandFile.LootMarkerCommand);
+                .Select(r =>
+                {
+                    var charge = new LootCharge(
+                        r.Buyer.Trim(),
+                        int.Parse(r.Cost, System.Globalization.CultureInfo.InvariantCulture),
+                        r.ItemName,
+                        r.ItemLink.Length > 0 ? r.ItemLink : null);
+                    return new PendingLoot(
+                        r,
+                        DkpCommandFile.LootCommand(charge, _manager.Uploads.RaidMains),
+                        DkpCommandFile.LootAnnouncement(charge));
+                })];
+            var head = _lootPending.FirstOrDefault();
+            var text = DkpCommandFile.BuildStepFile(head?.Command, head?.Announcement, DkpCommandFile.LootMarkerCommand);
             if (text == _lootFileText)
                 return;
             if (!TrySyncFile(text, _manager.Settings.RaidLootFileName, ref _lootFileFailed))
                 return;
             _lootFileText = text;
-            _lootQueue = commands;
-            _lootQueueRows = rows;
+        }
+    }
+
+    /// <summary>Neutralise the award file once per session at startup: a
+    /// leftover step from a previous run must not fire into this one (the
+    /// in-memory queue is gone, so a press could never be confirmed).</summary>
+    private void NeutralizeAwardFile()
+    {
+        if (_awardFileNeutralized)
+            return;
+        lock (_queueGate)
+        {
+            if (_awardQueue.Count > 0)
+                return; // a live batch owns the file now
+            _awardFileNeutralized = TrySyncFile(
+                DkpCommandFile.BuildStepFile(null, null, DkpCommandFile.MarkerCommand),
+                _manager.Settings.RaidDkpFileName,
+                ref _awardFileFailed);
         }
     }
 
@@ -511,17 +570,20 @@ public sealed partial class RaidViewModel : ObservableObject
         var raidNames = InRaid.Where(r => !r.NotInGuild || r.DkpTarget is not null).Select(r => r.Name).ToList();
         var sitOuts = SittingOut.Where(r => r.Include).Select(r => r.Name).ToList();
 
-        var commands = DkpCommandFile.BuildAwardCommands(
-            points, DkpReason, raidNames, sitOuts, _manager.Uploads.RaidMains);
+        var queue = DkpCommandFile.BuildAwardEntries(points, DkpReason, raidNames, sitOuts, _manager.Uploads.RaidMains)
+            .Select(e => new PendingAward(DkpCommandFile.AwardCommand(e), DkpCommandFile.AwardAnnouncement(e)))
+            .ToList();
+        string headText;
         lock (_queueGate)
         {
-            _awardQueue = commands;
-            _awardTotal = commands.Count;
+            _awardQueue = queue;
+            _awardTotal = queue.Count;
+            var head = queue.FirstOrDefault();
+            headText = DkpCommandFile.BuildStepFile(head?.Command, head?.Announcement, DkpCommandFile.MarkerCommand);
         }
-        if (WriteCommandFile(DkpCommandFile.BuildQueueFile(commands), _manager.Settings.RaidDkpFileName)
-            && commands.Count > 0)
+        if (WriteCommandFile(headText, _manager.Settings.RaidDkpFileName) && queue.Count > 0)
         {
-            Status = Loc.Format("Raid_DkpQueued", commands.Count);
+            Status = Loc.Format("Raid_DkpQueued", queue.Count);
         }
         // Persist the chosen points as the new default.
         _manager.Settings = _manager.Settings with { RaidDkpPoints = points };
@@ -572,7 +634,11 @@ public sealed partial class RaidViewModel : ObservableObject
             _awardTotal = 0;
         }
         if (hadQueue)
-            WriteCommandFile(DkpCommandFile.BuildQueueFile([]), _manager.Settings.RaidDkpFileName);
+        {
+            WriteCommandFile(
+                DkpCommandFile.BuildStepFile(null, null, DkpCommandFile.MarkerCommand),
+                _manager.Settings.RaidDkpFileName);
+        }
         _manager.Loot.StartNewSession();
         Loot.Clear();
         _deletedLootIds.Clear(); // tracker ids restart with the session

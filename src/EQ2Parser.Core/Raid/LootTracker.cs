@@ -7,6 +7,11 @@ public sealed class LootItemState
 {
     public required int Id { get; init; }
     public required string ItemName { get; init; }
+
+    /// <summary>The raw in-game link exactly as logged
+    /// (<c>\aITEM …:Name\/a</c>) — written into the guild points comment so
+    /// the ledger entry is a clickable item link, not plain text.</summary>
+    public required string ItemLink { get; init; }
     public string? ChestType { get; init; }
     public string? Boss { get; set; }
     public DateTimeOffset DroppedAt { get; init; }
@@ -25,14 +30,20 @@ public sealed class LootItemState
 ///        \aITEM 740343232 1125831452 0 0 0 2 1296083784:Black Unicorn Horn Wristlet\/a
 ///   Shadynecro loots \aITEM -479148241 279173422:Anaconda Scale Belt\/a from the Exquisite Chest of Sawtooth the Ancient.
 ///
-/// A chest-open line starts a contents block; each indented ITEM line adds a
-/// drop (duplicates are real — two of the same item drop). The block closes
-/// on any non-item line or after <see cref="BlockTimeout"/>. A later
-/// "loots … from the … Chest of …" line assigns the FIRST unassigned drop
-/// with that item name (and back-fills the boss, which the chest-open line
-/// doesn't carry); a loots line with no matching drop creates the item on
-/// the spot (the logger may have missed the open). Corpse loot ("from the
-/// corpse of") is trash and ignored entirely.
+/// A chest-open line starts a contents block; each indented ITEM line is an
+/// OBSERVATION of the chest's current contents. Within one block duplicates
+/// are real (two of the same item drop), but a chest can be opened, closed
+/// and opened again — every open re-logs the remaining contents — so each
+/// block only TOPS UP: an item line adds a drop only when this block has
+/// now shown more copies of that name than we hold unassigned from that
+/// chest type (looted items vanish from re-opens, which keeps the counts
+/// honest). The block closes on any non-item line or after
+/// <see cref="BlockTimeout"/>. A later "loots … from the … Chest of …" line
+/// assigns the FIRST unassigned drop with that item name (and back-fills
+/// the boss, which the chest-open line doesn't carry); a loots line with no
+/// matching drop creates the item on the spot (the logger may have missed
+/// the open). Corpse loot ("from the corpse of") is trash and ignored
+/// entirely.
 ///
 /// Thread-safe like RaidRosterTracker (lock + per-line timestamps); LIVE
 /// lines only.
@@ -45,12 +56,12 @@ public sealed partial class LootTracker
     [GeneratedRegex(@"^(?<opener>[A-Za-z]+) opens (?<chest>[A-Za-z' ]+) and discovers: ?$")]
     private static partial Regex ChestOpenRegex();
 
-    [GeneratedRegex(@"^\s+\\aITEM [-\d ]+:(?<name>[^\\]+)\\/a\s*$")]
+    [GeneratedRegex(@"^\s+(?<link>\\aITEM [-\d ]+:(?<name>[^\\]+)\\/a)\s*$")]
     private static partial Regex ChestItemRegex();
 
     // The container must literally end in "Chest" — "from the corpse of X"
     // is trash loot and must never enter the list.
-    [GeneratedRegex(@"^(?<looter>[A-Za-z]+) loots \\aITEM [-\d ]+:(?<name>[^\\]+)\\/a from the (?<chest>[A-Za-z' ]*Chest) of (?<boss>.+)\.$")]
+    [GeneratedRegex(@"^(?<looter>[A-Za-z]+) loots (?<link>\\aITEM [-\d ]+:(?<name>[^\\]+)\\/a) from the (?<chest>[A-Za-z' ]*Chest) of (?<boss>.+)\.$")]
     private static partial Regex LootsRegex();
 
     private readonly List<LootItemState> _items = [];
@@ -58,6 +69,10 @@ public sealed partial class LootTracker
     private int _nextId;
     private string? _openChestType;
     private DateTimeOffset _openAt;
+
+    /// <summary>Copies of each item name seen in the CURRENT block — the
+    /// re-open top-up comparison (reset on every chest-open line).</summary>
+    private readonly Dictionary<string, int> _blockCounts = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Raised (on the pump thread) whenever the loot list changes.</summary>
     public event Action? LootChanged;
@@ -76,6 +91,7 @@ public sealed partial class LootTracker
             {
                 Id = i.Id,
                 ItemName = i.ItemName,
+                ItemLink = i.ItemLink,
                 ChestType = i.ChestType,
                 Boss = i.Boss,
                 DroppedAt = i.DroppedAt,
@@ -108,15 +124,17 @@ public sealed partial class LootTracker
             {
                 _openChestType = open.Groups["chest"].Value;
                 _openAt = time;
+                _blockCounts.Clear();
             }
             else if (_openChestType is not null && ChestItemRegex().Match(message) is { Success: true } item)
             {
-                changed = AddItem(item.Groups["name"].Value, _openChestType, time);
+                changed = AddItem(item.Groups["name"].Value, item.Groups["link"].Value, _openChestType, time);
             }
             else if (LootsRegex().Match(message) is { Success: true } loots)
             {
                 changed = AssignOrAdd(
                     loots.Groups["name"].Value,
+                    loots.Groups["link"].Value,
                     loots.Groups["looter"].Value,
                     loots.Groups["chest"].Value,
                     loots.Groups["boss"].Value,
@@ -134,21 +152,33 @@ public sealed partial class LootTracker
 
     // ── internals (under _gate) ─────────────────────────────────────────────
 
-    private bool AddItem(string name, string chestType, DateTimeOffset time)
+    private bool AddItem(string name, string link, string chestType, DateTimeOffset time)
     {
+        name = name.Trim();
+        // Top-up: only add when this block has now shown MORE copies than
+        // we already hold unassigned from this chest type — a re-opened
+        // chest re-lists its remaining contents and must not duplicate.
+        var seenThisBlock = _blockCounts[name] = _blockCounts.GetValueOrDefault(name) + 1;
+        var heldUnassigned = _items.Count(i =>
+            i.LootedBy is null
+            && string.Equals(i.ItemName, name, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(i.ChestType, chestType, StringComparison.OrdinalIgnoreCase));
+        if (heldUnassigned >= seenThisBlock)
+            return false;
         if (_items.Count >= MaxItems)
             return false;
         _items.Add(new LootItemState
         {
             Id = _nextId++,
-            ItemName = name.Trim(),
+            ItemName = name,
+            ItemLink = link,
             ChestType = chestType,
             DroppedAt = time,
         });
         return true;
     }
 
-    private bool AssignOrAdd(string name, string looter, string chestType, string boss, DateTimeOffset time)
+    private bool AssignOrAdd(string name, string link, string looter, string chestType, string boss, DateTimeOffset time)
     {
         name = name.Trim();
         var drop = _items.FirstOrDefault(i =>
@@ -161,6 +191,7 @@ public sealed partial class LootTracker
             {
                 Id = _nextId++,
                 ItemName = name,
+                ItemLink = link,
                 ChestType = chestType,
                 DroppedAt = time,
             };

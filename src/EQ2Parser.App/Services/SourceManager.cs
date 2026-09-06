@@ -33,6 +33,22 @@ public sealed class SourceManager : IDisposable
     /// press (see DkpCommandFile) — the Raid tab auto-advances its queue.</summary>
     public Core.Raid.DkpAwardProgress DkpProgress { get; } = new();
 
+    private readonly Core.Raid.RaidLineDedup _raidDedup = new();
+    private readonly Dictionary<LogSource, Action<string, DateTimeOffset>> _raidHandlers = [];
+
+    /// <summary>Per-source raid hook: cross-source dedup in front of the
+    /// three raid consumers, so a dual-boxer's second log can't deliver
+    /// the same game event twice.</summary>
+    private Action<string, DateTimeOffset> MakeRaidLineHandler(LogSource source) =>
+        (message, time) =>
+        {
+            if (!_raidDedup.ShouldProcess(source, message, time))
+                return;
+            RaidRoster.OnLine(message, time);
+            DkpProgress.OnLine(message, time);
+            Loot.OnLine(message, time);
+        };
+
     /// <summary>Raid loot accumulator (chest contents + who looted what) —
     /// feeds the Raid tab's loot list and the DKP purchase deductions.</summary>
     public Core.Raid.LootTracker Loot { get; } = new();
@@ -172,9 +188,13 @@ public sealed class SourceManager : IDisposable
                 source.Engine.EncounterEnded += Uploads.OnEncounterEnded;
                 source.Processor.StatusApplied += Callouts.OnStatusApplied;
                 source.Processor.TriggerShared += SharedTriggers.OnShared;
-                source.Processor.RaidLine += RaidRoster.OnLine;
-                source.Processor.RaidLine += DkpProgress.OnLine;
-                source.Processor.RaidLine += Loot.OnLine;
+                // One handler per source, routed through the cross-source
+                // dedup: a dual-boxer's second log witnesses the same chest
+                // blocks / loots lines / officer echoes, and feeding both
+                // would double every raid event (and double-confirm DKP).
+                var raidHandler = MakeRaidLineHandler(source);
+                _raidHandlers[source] = raidHandler;
+                source.Processor.RaidLine += raidHandler;
                 source.Engine.EncounterEnded += OnEncounterEndedFeedRaid;
                 _sources.Add(source);
             }
@@ -196,9 +216,8 @@ public sealed class SourceManager : IDisposable
             source.Engine.EncounterEnded -= Uploads.OnEncounterEnded;
             source.Processor.StatusApplied -= Callouts.OnStatusApplied;
             source.Processor.TriggerShared -= SharedTriggers.OnShared;
-            source.Processor.RaidLine -= RaidRoster.OnLine;
-            source.Processor.RaidLine -= DkpProgress.OnLine;
-            source.Processor.RaidLine -= Loot.OnLine;
+            if (_raidHandlers.Remove(source, out var raidHandler))
+                source.Processor.RaidLine -= raidHandler;
             source.Engine.EncounterEnded -= OnEncounterEndedFeedRaid;
             _removedPaths.Add(source.Path);
         }

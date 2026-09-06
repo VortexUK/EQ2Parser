@@ -230,26 +230,27 @@ public sealed class RaidTrackingTests
     // ── DkpCommandFile ──────────────────────────────────────────────────────
 
     [Fact]
-    public void Award_File_Without_Mains_Has_Raid_Grant_Plus_SitOuts()
+    public void Awards_Without_Mains_Are_Raid_Grant_Plus_SitOuts()
     {
-        var text = DkpCommandFile.BuildAward(5, "Raid DKP: end of raid", ["Whoever"], ["Menludiir", "Coyi", "a mob"]);
-        var lines = text.TrimEnd().Split("\r\n");
-        Assert.Equal("guild points add 5 raid Raid DKP: end of raid", lines[0]);
-        Assert.Equal("guild points add 5 Coyi Raid DKP: end of raid", lines[1]);
-        Assert.Equal("guild points add 5 Menludiir Raid DKP: end of raid", lines[2]);
-        Assert.Equal(DkpCommandFile.MarkerCommand, lines[3]); // press-detection marker
-        Assert.Equal(4, lines.Length); // "a mob" filtered by the player-name shape
+        var entries = DkpCommandFile.BuildAwardEntries(5, "Raid DKP: end of raid", ["Whoever"], ["Menludiir", "Coyi", "a mob"]);
+        Assert.Equal(
+            ["raid", "Coyi", "Menludiir"], // "a mob" filtered by the player-name shape
+            entries.Select(e => e.Player).ToList());
+        Assert.Equal("guild points add 5 raid Raid DKP: end of raid", DkpCommandFile.AwardCommand(entries[0]));
+        // The bulk grant announces as "the raid".
+        Assert.Equal("5 dkp awarded to the raid (Raid DKP: end of raid)", DkpCommandFile.AwardAnnouncement(entries[0]));
+        Assert.Equal("5 dkp awarded to Coyi (Raid DKP: end of raid)", DkpCommandFile.AwardAnnouncement(entries[1]));
     }
 
     [Fact]
     public void Award_Reason_Is_Sanitised()
     {
-        var text = DkpCommandFile.BuildAward(3, "/quit\r\nhaha", [], []);
-        Assert.Equal("guild points add 3 raid quit haha\r\neq2lexicon_dkp_done\r\n", text);
+        var entry = Assert.Single(DkpCommandFile.BuildAwardEntries(3, "/quit\r\nhaha", [], []));
+        Assert.Equal("guild points add 3 raid quit haha", DkpCommandFile.AwardCommand(entry));
     }
 
     [Fact]
-    public void Award_With_Mains_Grants_Individually_To_Mains()
+    public void Awards_With_Mains_Grant_Individually_To_Mains()
     {
         // Alty is Mainy's raid alt; Tanky raids on their main. No bulk grant —
         // every award is individual and addressed to the MAIN.
@@ -259,17 +260,12 @@ public sealed class RaidTrackingTests
             ["Mainy"] = "Mainy",
             ["Tanky"] = "Tanky",
         };
-        var text = DkpCommandFile.BuildAward(5, "DKP", ["Alty", "Tanky", "Pugsy"], [], mains);
-        var lines = text.TrimEnd().Split("\r\n");
-        Assert.Equal("guild points add 5 Mainy DKP", lines[0]);
-        Assert.Equal("guild points add 5 Pugsy DKP", lines[1]); // unmapped pug → self
-        Assert.Equal("guild points add 5 Tanky DKP", lines[2]);
-        Assert.Equal(DkpCommandFile.MarkerCommand, lines[3]);
-        Assert.Equal(4, lines.Length);
+        var entries = DkpCommandFile.BuildAwardEntries(5, "DKP", ["Alty", "Tanky", "Pugsy"], [], mains);
+        Assert.Equal(["Mainy", "Pugsy", "Tanky"], entries.Select(e => e.Player).ToList()); // unmapped pug → self
     }
 
     [Fact]
-    public void Award_With_Mains_Dedupes_Main_And_Alt_Both_Present()
+    public void Awards_With_Mains_Dedupe_Main_And_Alt_Both_Present()
     {
         // Dual-boxing main + alt, and a sit-out alt whose main already got
         // the raid grant: exactly one award per main.
@@ -280,17 +276,12 @@ public sealed class RaidTrackingTests
             ["Benchalt"] = "Tanky",
             ["Tanky"] = "Tanky",
         };
-        var text = DkpCommandFile.BuildAward(5, "DKP", ["Mainy", "Alty", "Tanky"], ["Benchalt", "Coyi"], mains);
-        var lines = text.TrimEnd().Split("\r\n");
-        Assert.Equal("guild points add 5 Mainy DKP", lines[0]);
-        Assert.Equal("guild points add 5 Tanky DKP", lines[1]);
-        Assert.Equal("guild points add 5 Coyi DKP", lines[2]); // sit-out, unmapped → self
-        Assert.Equal(DkpCommandFile.MarkerCommand, lines[3]);
-        Assert.Equal(4, lines.Length);
+        var entries = DkpCommandFile.BuildAwardEntries(5, "DKP", ["Mainy", "Alty", "Tanky"], ["Benchalt", "Coyi"], mains);
+        Assert.Equal(["Mainy", "Tanky", "Coyi"], entries.Select(e => e.Player).ToList()); // sit-out, unmapped → self
     }
 
     [Fact]
-    public void Award_With_Mains_Collapses_Two_Boxed_Characters_To_One_Grant()
+    public void Awards_With_Mains_Collapse_Two_Boxed_Characters_To_One_Grant()
     {
         // One player runs TWO characters in the raid (second account); their
         // main isn't even present. Both rows map to the main -> ONE award.
@@ -300,92 +291,102 @@ public sealed class RaidTrackingTests
             ["Boxling"] = "Mainy",
             ["Tanky"] = "Tanky",
         };
-        var text = DkpCommandFile.BuildAward(5, "DKP", ["Alty", "Boxling", "Tanky"], [], mains);
-        var lines = text.TrimEnd().Split("\r\n");
-        Assert.Equal("guild points add 5 Mainy DKP", lines[0]);
-        Assert.Equal("guild points add 5 Tanky DKP", lines[1]);
-        Assert.Equal(DkpCommandFile.MarkerCommand, lines[2]);
-        Assert.Equal(3, lines.Length);
+        var entries = DkpCommandFile.BuildAwardEntries(5, "DKP", ["Alty", "Boxling", "Tanky"], [], mains);
+        Assert.Equal(["Mainy", "Tanky"], entries.Select(e => e.Player).ToList());
     }
 
     [Fact]
-    public void Award_With_Mains_Is_Case_Insensitive()
+    public void Awards_With_Mains_Are_Case_Insensitive()
     {
         var mains = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["ALTY"] = "Mainy" };
-        var text = DkpCommandFile.BuildAward(5, "DKP", ["alty"], [], mains);
-        Assert.Equal("guild points add 5 Mainy DKP\r\neq2lexicon_dkp_done\r\n", text);
+        var entry = Assert.Single(DkpCommandFile.BuildAwardEntries(5, "DKP", ["alty"], [], mains));
+        Assert.Equal("Mainy", entry.Player);
+    }
+
+    [Fact]
+    public void Step_File_Is_Command_Announcement_Marker()
+    {
+        var entry = new AwardEntry("Mainy", 5, "DKP");
+        var text = DkpCommandFile.BuildStepFile(
+            DkpCommandFile.AwardCommand(entry), DkpCommandFile.AwardAnnouncement(entry), DkpCommandFile.MarkerCommand);
+        Assert.Equal(
+            "guild points add 5 Mainy DKP\r\nof 5 dkp awarded to Mainy (DKP)\r\neq2lexicon_dkp_done\r\n",
+            text);
     }
 
     // ── DKP press-until-done loop (throttle discovered live 2026-09-02) ─────
 
     [Fact]
-    public void Advance_Queue_Pops_The_Applied_Command()
-    {
-        var queue = new List<string> { "cmd A", "cmd B", "cmd C" };
-        var (remaining, applied) = DkpCommandFile.AdvanceQueue(queue, failures: 2);
-        Assert.Equal(1, applied);
-        Assert.Equal(["cmd B", "cmd C"], remaining);
-    }
-
-    [Fact]
-    public void Advance_Queue_Fully_Throttled_Press_Changes_Nothing()
-    {
-        var queue = new List<string> { "cmd A", "cmd B" };
-        var (remaining, applied) = DkpCommandFile.AdvanceQueue(queue, failures: 2);
-        Assert.Equal(0, applied);
-        Assert.Equal(queue, remaining);
-        // Stale/over-counted failures also never go negative.
-        (_, applied) = DkpCommandFile.AdvanceQueue(queue, failures: 5);
-        Assert.Equal(0, applied);
-    }
-
-    [Fact]
-    public void Advance_Queue_Last_Command_Completes()
-    {
-        var (remaining, applied) = DkpCommandFile.AdvanceQueue(["cmd A"], failures: 0);
-        Assert.Equal(1, applied);
-        Assert.Empty(remaining);
-    }
-
-    [Fact]
     public void Queue_File_For_Empty_Queue_Is_Marker_Only()
     {
         Assert.Equal("eq2lexicon_dkp_done\r\n", DkpCommandFile.BuildQueueFile([]));
+        Assert.Equal("eq2lexicon_loot_done\r\n", DkpCommandFile.BuildStepFile(null, null, DkpCommandFile.LootMarkerCommand));
     }
 
     [Fact]
-    public void Dkp_Progress_Counts_Failures_Per_Press()
+    public void Award_Echo_Confirms_With_Zero_Failures()
     {
+        // Own echo wrapper. The points command ran (no throttle line), so the
+        // echo arrives with failures == 0 — the confirmation to advance on.
         var p = new DkpAwardProgress();
-        var presses = new List<(string Marker, int Failures)>();
-        p.PressDetected += (marker, failures) => presses.Add((marker, failures));
+        var echoes = new List<(string Message, int Failures)>();
+        p.AwardEchoSeen += (m, f) => echoes.Add((m, f));
 
-        // Press 1: 3 of 4 throttled, then the marker.
-        for (var i = 0; i < 3; i++)
-            p.OnLine(DkpCommandFile.ThrottleLogLine, T0);
-        p.OnLine(DkpCommandFile.MarkerLogLine, T0);
-        // Unrelated chatter between presses must not contaminate the count.
+        p.OnLine(@"You say to the officers, ""5 dkp awarded to Mainy (Raid DKP)""", T0);
+        // Unrelated chatter must not contaminate anything.
         p.OnLine("Guildmate: Coyi has logged in.", T0);
-        // Press 2: everything applied (final command), marker only.
-        p.OnLine(DkpCommandFile.MarkerLogLine, At(20));
 
-        Assert.Equal([(DkpCommandFile.MarkerCommand, 3), (DkpCommandFile.MarkerCommand, 0)], presses);
+        var echo = Assert.Single(echoes);
+        Assert.Equal(0, echo.Failures);
+        Assert.Contains("5 dkp awarded to Mainy (Raid DKP)", echo.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Dkp_Progress_Routes_The_Loot_Marker()
+    public void Throttled_Press_Reports_Failures_With_The_Echo()
     {
-        // The loot file ends in its own marker — the event identifies WHICH
-        // macro was pressed so the app advances the right queue.
+        // Pressed too soon: the points command throttles but the chat line
+        // still fires — failures > 0 tells the app NOT to advance.
+        var p = new DkpAwardProgress();
+        var echoes = new List<int>();
+        p.AwardEchoSeen += (_, f) => echoes.Add(f);
+
+        p.OnLine(DkpCommandFile.ThrottleLogLine, T0);
+        p.OnLine(@"You say to the officers, ""5 dkp awarded to Mainy (Raid DKP)""", T0);
+        // Next press: applied cleanly.
+        p.OnLine(@"You say to the officers, ""5 dkp awarded to Mainy (Raid DKP)""", At(20));
+
+        Assert.Equal([1, 0], echoes);
+    }
+
+    [Fact]
+    public void Loot_Echo_Routes_Separately_And_Sees_Other_Officers()
+    {
+        var p = new DkpAwardProgress();
+        var loot = new List<(string Message, int Failures)>();
+        var award = new List<string>();
+        p.LootEchoSeen += (m, f) => loot.Add((m, f));
+        p.AwardEchoSeen += (m, _) => award.Add(m);
+
+        // ANOTHER officer's macro press is visible too (cross-parser sync).
+        p.OnLine(@"\aPC -1 Ariadneh:Ariadneh\/a says to the officers, ""\aITEM -809902670 226691356:Torc of Winding Waters\/a assigned to Alty for 25 dkp""", T0);
+
+        var echo = Assert.Single(loot);
+        Assert.Equal(0, echo.Failures);
+        Assert.Empty(award);
+    }
+
+    [Fact]
+    public void Markers_Route_By_File_With_Failure_Counts()
+    {
         var p = new DkpAwardProgress();
         var presses = new List<(string Marker, int Failures)>();
         p.PressDetected += (marker, failures) => presses.Add((marker, failures));
 
-        p.OnLine(DkpCommandFile.ThrottleLogLine, T0);
-        p.OnLine(DkpCommandFile.ThrottleLogLine, T0);
-        p.OnLine(DkpCommandFile.LootMarkerLogLine, T0);
+        p.OnLine(DkpCommandFile.MarkerLogLine, T0);
+        p.OnLine(DkpCommandFile.ThrottleLogLine, At(1));
+        p.OnLine(DkpCommandFile.LootMarkerLogLine, At(1));
 
-        Assert.Equal([(DkpCommandFile.LootMarkerCommand, 2)], presses);
+        Assert.Equal([(DkpCommandFile.MarkerCommand, 0), (DkpCommandFile.LootMarkerCommand, 1)], presses);
     }
 
     [Fact]
@@ -394,6 +395,8 @@ public sealed class RaidTrackingTests
         Assert.True(RaidRosterTracker.LooksRelevant(DkpCommandFile.ThrottleLogLine));
         Assert.True(RaidRosterTracker.LooksRelevant(DkpCommandFile.MarkerLogLine));
         Assert.True(RaidRosterTracker.LooksRelevant(DkpCommandFile.LootMarkerLogLine));
+        Assert.True(RaidRosterTracker.LooksRelevant(@"You say to the officers, ""5 dkp awarded to Mainy (Raid DKP)"""));
+        Assert.True(RaidRosterTracker.LooksRelevant(@"You say to the officers, ""\aITEM 1 2:Torc\/a assigned to Alty for 25 dkp"""));
         Assert.False(RaidRosterTracker.LooksRelevant("Unknown command: 'somethingelse'"));
     }
 
