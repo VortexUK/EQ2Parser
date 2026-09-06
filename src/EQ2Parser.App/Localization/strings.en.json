@@ -250,6 +250,7 @@
   "Raid_LootMinBid": "Min bid:",
   "Raid_LootMinBidTip": "Newly-dropped items start at this DKP cost.",
   "Raid_LootDeleteTip": "Remove this row — not bought loot (materials, collection pieces…).",
+  "Raid_DupApplied": "⚠ A charge that was already confirmed just applied AGAIN in game (double press or two officers). See the last line of dkp-ledger.log and correct in game.",
   "Raid_MacroLoot": "Loot:",
   "Raid_LootProgress": "{0} loot charges remaining — press the loot macro again.",
   "Raid_LootAllDone": "All loot charges applied.",

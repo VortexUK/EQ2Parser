@@ -163,6 +163,37 @@ public sealed partial class RaidViewModel : ObservableObject
 
     private sealed record PendingLoot(LootRow Row, string Command, string Announcement);
 
+    /// <summary>Recently CONFIRMED steps (under _queueGate). An echo that
+    /// matches one of these but no pending step means the game applied the
+    /// same command AGAIN — a rapid re-press inside the log-flush lag, or
+    /// two officers pressing for the same item. Surfaced + ledgered so the
+    /// double-charge can be corrected in game instead of vanishing.</summary>
+    private readonly List<(string Announcement, string Command, DateTimeOffset At)> _confirmed = [];
+
+    private static readonly TimeSpan ConfirmedWindow = TimeSpan.FromMinutes(5);
+
+    /// <summary>Call under _queueGate.</summary>
+    private void RecordConfirmed(string announcement, string command)
+    {
+        var now = DateTimeOffset.UtcNow;
+        _confirmed.RemoveAll(e => now - e.At > ConfirmedWindow);
+        _confirmed.Add((announcement, command, now));
+    }
+
+    /// <summary>Call under _queueGate. True when this echo re-announces an
+    /// already-confirmed step (the ledger + warning are emitted here).</summary>
+    private bool DetectDuplicateApplication(string message)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var dup = _confirmed.FirstOrDefault(e =>
+            now - e.At <= ConfirmedWindow && message.Contains(e.Announcement, StringComparison.Ordinal));
+        if (dup.Command is null)
+            return false;
+        DkpLedger.Append($"DUPLICATE APPLICATION — the game ran this again: {dup.Command}");
+        Status = Loc.Get("Raid_DupApplied");
+        return true;
+    }
+
     /// <summary>Marker echo — pump thread. With the announcements driving
     /// the actual advancement, the marker only matters for a press on an
     /// EMPTY file: everything already applied.</summary>
@@ -203,7 +234,11 @@ public sealed partial class RaidViewModel : ObservableObject
         {
             hit = _awardQueue.FirstOrDefault(e => message.Contains(e.Announcement, StringComparison.Ordinal));
             if (hit is null)
-                return; // someone else's announcement, or an already-popped repeat
+            {
+                DetectDuplicateApplication(message);
+                return; // else: someone else's announcement entirely
+            }
+            RecordConfirmed(hit.Announcement, hit.Command);
             _awardQueue.Remove(hit);
             var next = _awardQueue.FirstOrDefault();
             var text = DkpCommandFile.BuildStepFile(next?.Command, next?.Announcement, DkpCommandFile.MarkerCommand);
@@ -233,7 +268,11 @@ public sealed partial class RaidViewModel : ObservableObject
             hit = _lootPending.FirstOrDefault(e =>
                 !e.Row.Charged && message.Contains(e.Announcement, StringComparison.Ordinal));
             if (hit is null)
+            {
+                DetectDuplicateApplication(message);
                 return;
+            }
+            RecordConfirmed(hit.Announcement, hit.Command);
             // Flip the confirm column INSIDE the gate: the next SyncLootFile
             // (which also takes the gate) must already see the row as
             // charged — a stale read would write the applied command back.

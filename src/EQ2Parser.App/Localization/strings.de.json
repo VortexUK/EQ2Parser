@@ -250,6 +250,7 @@
   "Raid_LootMinBid": "Mindestgebot:",
   "Raid_LootMinBidTip": "Neue Drops starten mit diesen DKP-Kosten.",
   "Raid_LootDeleteTip": "Zeile entfernen — kein gekaufter Loot (Materialien, Sammelstücke …).",
+  "Raid_DupApplied": "⚠ Eine bereits bestätigte Buchung wurde im Spiel ERNEUT angewendet (Doppeldruck oder zwei Offiziere). Letzte Zeile in dkp-ledger.log prüfen und im Spiel korrigieren.",
   "Raid_MacroLoot": "Loot:",
   "Raid_LootProgress": "Noch {0} Loot-Abbuchungen — Loot-Makro erneut drücken.",
   "Raid_LootAllDone": "Alle Loot-Abbuchungen angewendet.",

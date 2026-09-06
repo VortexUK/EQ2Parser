@@ -250,6 +250,7 @@
   "Raid_LootMinBid": "Mise min. :",
   "Raid_LootMinBidTip": "Les nouveaux objets démarrent à ce coût en DKP.",
   "Raid_LootDeleteTip": "Retirer cette ligne — pas un achat (matériaux, pièces de collection…).",
+  "Raid_DupApplied": "⚠ Une opération déjà confirmée vient de s'appliquer À NOUVEAU en jeu (double appui ou deux officiers). Voir la dernière ligne de dkp-ledger.log et corriger en jeu.",
   "Raid_MacroLoot": "Loot :",
   "Raid_LootProgress": "{0} déductions de loot restantes — appuyez de nouveau sur la macro loot.",
   "Raid_LootAllDone": "Les déductions de loot sont toutes appliquées.",
