@@ -61,11 +61,25 @@ public sealed class RaidTrackingTests
 
     // ── RaidRosterTracker ───────────────────────────────────────────────────
 
+    /// <summary>Feeds a minimal VALIDATED macro pair (non-empty whoraid +
+    /// pure single-guild block) — the only way a session starts.</summary>
+    private static void Arm(RaidRosterTracker t, DateTimeOffset at)
+    {
+        t.OnLine("/whoraid search results for Veeshan's Peak:", at);
+        t.OnLine("[70 Conjuror] Tsuna (Freeblood)", at);
+        t.OnLine("1 player found", at);
+        t.OnLine("/who search results:", at.AddSeconds(1));
+        t.OnLine("[70 Conjuror] Tsuna (Freeblood) <Paragon> Zone: Veeshan's Peak", at.AddSeconds(1));
+        t.OnLine("[70 Templar] Menludiir (Gnome) <Paragon> Zone: Veeshan's Peak", at.AddSeconds(1));
+        t.OnLine("2 players found", at.AddSeconds(1));
+    }
+
     [Fact]
     public void Raid_Deltas_And_Presence_Accumulate()
     {
         var t = new RaidRosterTracker();
         t.StartNewSession(T0);
+        Arm(t, T0);
         t.OnLine("Shadynecro has joined the raid.", At(1));
         t.OnLine("Betabonk's group has joined the raid.", At(2));
         t.OnLine("Guildmate: Coyi has logged in.", At(3));
@@ -83,17 +97,135 @@ public sealed class RaidTrackingTests
     }
 
     [Fact]
-    public void Fight_Allies_Catch_PreJoin_Members()
+    public void Fight_Allies_Catch_PreJoin_Members_Once_Armed()
     {
         // Martyn was in the raid before our own join — no delta ever names
         // him joining, but he appears in a fight's ally set.
         var t = new RaidRosterTracker();
         t.StartNewSession(T0);
+        Arm(t, T0);
         t.OnFightAllies(["Martyn", "a krait patriarch", "Betabonk"], At(300));
         var by = t.Snapshot().ToDictionary(m => m.Name);
         Assert.True(by["Martyn"].InRaid);
         Assert.True(by["Betabonk"].InRaid);
         Assert.False(by.ContainsKey("a krait patriarch")); // articled mob filtered
+    }
+
+    [Fact]
+    public void Unarmed_Tracker_Ignores_Every_Passive_Signal()
+    {
+        // The live 2026-09-10 disaster: guildies running SIX-MAN content all
+        // day minted phantom "raids" — fight allies, deltas and presence
+        // lines fed attendance with no macro press anywhere. Until a
+        // validated pair arms the tracker, none of it may count.
+        var t = new RaidRosterTracker();
+        t.StartNewSession(T0);
+        t.OnLine("Shadynecro has joined the raid.", At(1));
+        t.OnLine("Betabonk's group has joined the raid.", At(2));
+        t.OnLine("Guildmate: Coyi has logged in.", At(3));
+        t.OnFightAllies(["Martyn", "Betabonk"], At(10));
+        Assert.False(t.Armed);
+        Assert.Empty(t.Snapshot());
+
+        // The macro press arms it — from then on the same signals count.
+        Arm(t, At(60));
+        Assert.True(t.Armed);
+        t.OnLine("Shadynecro has joined the raid.", At(70));
+        Assert.True(t.Snapshot().Single(m => m.Name == "Shadynecro").InRaid);
+    }
+
+    [Fact]
+    public void Macro_Pair_Outside_A_Raid_Is_Rejected()
+    {
+        // Verbatim live capture 2026-09-10: the macro pressed during a
+        // 6-man — whoraid answers "Not in a raid" and completes EMPTY, then
+        // the (valid-looking) guild who lands. An empty raid half means
+        // this was not a raid: nothing applies, nothing arms.
+        var t = new RaidRosterTracker();
+        t.StartNewSession(T0);
+        t.OnLine("/whoraid search results for Charasis: Vault of Eternal Sleep:", At(0));
+        t.OnLine("------------------------------------------", At(0));
+        t.OnLine("Not in a raid", At(0));
+        t.OnLine("0 players found", At(0));
+        t.OnLine("/who search results:", At(1));
+        t.OnLine("[74 Troubador] Waverat (Ratonga) <Paragon> Zone: The Crypt of Agony", At(1));
+        t.OnLine("[70 Illusionist] Neomi (Fae) <Paragon> Zone:    12 Qeynos Place", At(1));
+        t.OnLine("2 players found", At(1));
+
+        Assert.False(t.Armed);
+        Assert.Empty(t.Snapshot());
+    }
+
+    [Fact]
+    public void Pair_With_A_Mixed_Guild_Block_Is_Rejected()
+    {
+        // A zone who right after a whoraid is NOT the macro — its rows span
+        // guilds (or carry none). The pure-guild validation catches it.
+        var t = new RaidRosterTracker();
+        t.StartNewSession(T0);
+        t.OnLine("/whoraid search results for Veeshan's Peak:", At(0));
+        t.OnLine("[70 Conjuror] Tsuna (Freeblood)", At(0));
+        t.OnLine("1 player found", At(0));
+        t.OnLine("/who search results for The Commonlands:", At(1));
+        t.OnLine("[70 Brigand] Xantos (Dark Elf) <Some Other Guild> Zone: The Commonlands", At(1));
+        t.OnLine("[70 Necromancer] Shadynecro (Gnome) <Paragon> Zone: The Commonlands", At(1));
+        t.OnLine("2 players found", At(1));
+
+        Assert.False(t.Armed);
+        Assert.Empty(t.Snapshot());
+    }
+
+    [Fact]
+    public void Pair_With_An_Anonymous_Or_Guildless_Row_Is_Rejected()
+    {
+        // "/who all" output right after a whoraid: anonymous rows (and
+        // detailed strangers without a guild tag) can never appear in a
+        // guild who — guildmates always show full detail to each other.
+        var t = new RaidRosterTracker();
+        t.StartNewSession(T0);
+        t.OnLine("/whoraid search results for Veeshan's Peak:", At(0));
+        t.OnLine("[70 Conjuror] Tsuna (Freeblood)", At(0));
+        t.OnLine("1 player found", At(0));
+        t.OnLine("/who search results:", At(1));
+        t.OnLine("[70 Templar] Menludiir (Gnome) <Paragon> Zone: Veeshan's Peak", At(1));
+        t.OnLine("[Anonymous] Betabonk", At(1));
+        t.OnLine("2 players found", At(1));
+        Assert.False(t.Armed);
+        Assert.Empty(t.Snapshot());
+
+        // Guildless detailed row — same verdict.
+        t.OnLine("/whoraid search results for Veeshan's Peak:", At(20));
+        t.OnLine("[70 Conjuror] Tsuna (Freeblood)", At(20));
+        t.OnLine("1 player found", At(20));
+        t.OnLine("/who search results:", At(21));
+        t.OnLine("[70 Templar] Menludiir (Gnome) Zone: Veeshan's Peak", At(21));
+        t.OnLine("1 player found", At(21));
+        Assert.False(t.Armed);
+        Assert.Empty(t.Snapshot());
+    }
+
+    [Fact]
+    public void Fresh_Pair_A_Raid_Night_Later_Auto_Rolls_The_Session()
+    {
+        // Nobody pressed "New session" between raid nights — the tracker
+        // must not let Tuesday's roster haunt Thursday's attendance.
+        var t = new RaidRosterTracker();
+        t.StartNewSession(T0);
+        Arm(t, T0); // night 1: Tsuna in raid
+        Assert.Contains(t.Snapshot(), m => m.Name == "Tsuna" && m.InRaid);
+
+        var night2 = T0.AddHours(48);
+        t.OnLine("/whoraid search results for Chelsith:", night2);
+        t.OnLine("[80 Berserker] Badbang (Ogre)", night2);
+        t.OnLine("1 player found", night2);
+        t.OnLine("/who search results:", night2.AddSeconds(1));
+        t.OnLine("[80 Berserker] Badbang (Ogre) <Paragon> Zone: Chelsith", night2.AddSeconds(1));
+        t.OnLine("1 player found", night2.AddSeconds(1));
+
+        var members = t.Snapshot();
+        Assert.DoesNotContain(members, m => m.Name == "Tsuna"); // night 1 wiped
+        Assert.Contains(members, m => m.Name == "Badbang" && m.InRaid);
+        Assert.Equal(night2.AddSeconds(1), t.SessionStarted);
     }
 
     [Fact]
@@ -123,7 +255,8 @@ public sealed class RaidTrackingTests
         // IS raiding) must change nothing — not even for known members.
         var t = new RaidRosterTracker();
         t.StartNewSession(T0);
-        t.OnLine("Shadynecro has joined the raid.", At(0));
+        Arm(t, T0);
+        t.OnLine("Shadynecro has joined the raid.", At(2));
         t.OnLine("/who search results for The Commonlands:", At(60));
         t.OnLine("[70 Brigand] Xantos (Dark Elf) <Some Other Guild> Zone: The Commonlands", At(60));
         t.OnLine("[70 Necromancer] Shadynecro (Gnome) <Paragon> Zone: The Commonlands", At(60));
@@ -180,9 +313,10 @@ public sealed class RaidTrackingTests
     {
         var t = new RaidRosterTracker();
         t.StartNewSession(T0);
-        // Delta join + guildmate line, no who pair yet: no false conclusions.
-        t.OnLine("Shadynecro has joined the raid.", At(0));
-        t.OnLine("Guildmate: Coyi has logged in.", At(1));
+        Arm(t, T0);
+        // Delta join + guildmate line after arming: no false conclusions.
+        t.OnLine("Shadynecro has joined the raid.", At(2));
+        t.OnLine("Guildmate: Coyi has logged in.", At(3));
         var by = t.Snapshot().ToDictionary(m => m.Name);
         Assert.Null(by["Shadynecro"].InGuild);        // unknown — still gets DKP (best effort)
         Assert.True(by["Coyi"].InGuild);
@@ -201,19 +335,25 @@ public sealed class RaidTrackingTests
     }
 
     [Fact]
-    public void Lone_Whoraid_Block_Seeds_The_Raid_Immediately()
+    public void Lone_Whoraid_Block_Is_Held_Never_Applied()
     {
-        // whoraid is self-identifying — no guild partner needed for the
-        // raid seed (the guild half only adds online/membership evidence).
+        // A whoraid alone proves nothing (typed by hand, pickup raid, or a
+        // partial macro read) — it is only the pending half of the pair.
         var t = new RaidRosterTracker();
         t.StartNewSession(T0);
         t.OnLine("/whoraid search results for Veeshan's Peak:", At(0));
         t.OnLine("[70 Conjuror] Tsuna (Freeblood)", At(0));
         t.OnLine("1 player found", At(0));
 
-        var m = Assert.Single(t.Snapshot(), x => x.Name == "Tsuna");
-        Assert.True(m.InRaid);
-        Assert.Null(m.InGuild); // no guild who yet — no membership conclusions
+        Assert.False(t.Armed);
+        Assert.Empty(t.Snapshot());
+
+        // The guild half arriving PAST the pair window doesn't pair either.
+        t.OnLine("/who search results:", At(30));
+        t.OnLine("[70 Templar] Menludiir (Gnome) <Paragon> Zone: Veeshan's Peak", At(30));
+        t.OnLine("1 player found", At(30));
+        Assert.False(t.Armed);
+        Assert.Empty(t.Snapshot());
     }
 
     [Fact]

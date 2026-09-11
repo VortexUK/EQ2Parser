@@ -151,6 +151,12 @@ public sealed class UploadService : IDisposable
             return; // no entitlement — uploads would 403; stay silent
         if (!Active || _client is not { } client || now - _lastAttendanceSend < AttendanceInterval)
             return;
+        // Only a tracker ARMED by a validated roster-macro pair may report —
+        // unarmed state can't accrue members, but keep the gate explicit so
+        // a future tracker change can't silently turn passive noise (fight
+        // allies, stray whos) back into attendance sessions.
+        if (!manager.RaidRoster.Armed)
+            return;
         var snapshot = manager.RaidRoster.Snapshot();
         if (!snapshot.Any(m => m.InRaid))
             return;
