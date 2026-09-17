@@ -98,4 +98,28 @@ public class CombatantClassifierTests
         raid.EndCombat();
         Assert.Equal(CombatantKind.Player, classifier.Classify(raid.History[^1])["AFKLAD"].Kind);
     }
+
+    [Fact]
+    public void Player_Ally_Names_Exclude_Pets()
+    {
+        // The raid-attendance ally feed. GetAllies() contains the warder AND
+        // the auto-named pet, and the auto pet is a single word the
+        // tracker's name-shape filter can't tell from a player — only the
+        // classified PLAYERS may reach the roster (pets were landing in
+        // attendance as raiders, live 2026-09-17).
+        var engine = new ParserEngine("log", "Menlu");
+        Assert.True(engine.SetEncounter(T0, "Menlu", "a gnoll"));
+        engine.AddSwing(SwingCategory.NonMelee, false, "None", "Menlu", "Divine Strike", 100, T0, "a gnoll", "divine");
+        engine.AddSwing(SwingCategory.NonMelee, false, "None", "Bosun", "Quick Strike", 90, T0, "a gnoll", "piercing");
+        engine.AddSwing(SwingCategory.Melee, false, "None", "Menlu's warder", Grammar.EnglishGrammar.AutoAttackAbility, 40, T0, "a gnoll", "slashing");
+        engine.AddSwing(SwingCategory.Melee, false, "None", "Gibab", Grammar.EnglishGrammar.AutoAttackAbility, 30, T0, "a gnoll", "crushing");
+        engine.AddSwing(SwingCategory.Melee, false, "None", "a gnoll", Grammar.EnglishGrammar.AutoAttackAbility, 25, T0, "Menlu", "crushing");
+        engine.EndCombat();
+
+        var names = new CombatantClassifier(new ClassIdentifier(Fixture))
+            .PlayerAllyNames(engine.History[^1])
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToList();
+        Assert.Equal(["Bosun", "Menlu"], names);
+    }
 }

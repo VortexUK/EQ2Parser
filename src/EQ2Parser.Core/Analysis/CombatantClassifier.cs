@@ -64,6 +64,22 @@ public sealed partial class CombatantClassifier(ClassIdentifier identifier)
         return KnownPetNames.Contains(trimmed) || AutoPetName().IsMatch(trimmed);
     }
 
+    /// <summary>The encounter's allies classified as PLAYERS — the feed for
+    /// raid-attendance tracking. Raw <see cref="Encounter.GetAllies"/>
+    /// includes pets, and auto-named mage/necro pets are single words
+    /// indistinguishable from players by name shape alone (feeding them
+    /// minted phantom attendance rows, live 2026-09-17); the full
+    /// classification is the same filter the parse pages rank by.</summary>
+    public IEnumerable<string> PlayerAllyNames(Encounter encounter)
+    {
+        var tags = Classify(encounter);
+        foreach (var ally in encounter.GetAllies())
+        {
+            if (tags.TryGetValue(ally.Key, out var tag) && tag.Kind == CombatantKind.Player)
+                yield return ally.Name;
+        }
+    }
+
     /// <summary>Tag every combatant in the encounter, keyed by combatant key.</summary>
     public IReadOnlyDictionary<string, CombatantTag> Classify(Encounter encounter)
     {

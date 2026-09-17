@@ -229,11 +229,14 @@ public sealed class SourceManager : IDisposable
 
     /// <summary>Feed a finished fight's player allies into the raid roster —
     /// catches raid members present before our own join (the raid deltas
-    /// never enumerate them). Fires on the pump thread under Sync.</summary>
+    /// never enumerate them). CLASSIFIED first: raw allies include pets,
+    /// and auto-named mage/necro pets are single words the tracker's
+    /// name-shape filter can't tell from players — they were landing in
+    /// attendance as raiders. Fires on the pump thread under Sync.</summary>
     private void OnEncounterEndedFeedRaid(Core.Combat.Encounter encounter)
     {
         RaidRoster.OnFightAllies(
-            encounter.GetAllies().Select(c => c.Name),
+            Classifier.PlayerAllyNames(encounter),
             encounter.EndTime);
     }
 
