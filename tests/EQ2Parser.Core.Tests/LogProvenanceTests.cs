@@ -69,25 +69,41 @@ public class LogProvenanceTests
     }
 
     [Fact]
-    public void Foreign_Holders_Are_Named_Deduped_And_Capped()
+    public void Act_Alongside_Eq2_Is_Expected_Not_Foreign()
+    {
+        // The 99% case: ACT tailing the same log. No foreign marker.
+        var warnings = LogProvenance.BuildWarnings(
+            [H(2222, "EverQuest2"), H(3333, "Advanced Combat Tracker")], OwnPid);
+        Assert.Equal([LogProvenance.WriterVerified], warnings);
+    }
+
+    [Fact]
+    public void Act_Match_Is_Case_Insensitive_And_Counts_For_Unverified_Too()
+    {
+        var warnings = LogProvenance.BuildWarnings([H(3333, "advanced combat tracker")], OwnPid);
+        Assert.Equal([LogProvenance.WriterUnverified], warnings);
+    }
+
+    [Fact]
+    public void Any_Other_Holder_Is_One_Bare_Marker_Never_A_Name()
     {
         var warnings = LogProvenance.BuildWarnings(
             [
                 H(2222, "EverQuest2"),
-                H(3333, "notepad"), H(4444, "notepad"), // same name twice → once
-                H(5555, "a"), H(6666, "b"), H(7777, "c"), H(8888, "d"), H(9999, "e"),
+                H(3333, "Advanced Combat Tracker"),
+                H(4444, "notepad"), H(5555, "notepad"), H(6666, "SomeAntivirus"),
             ],
             OwnPid);
-        Assert.Equal(LogProvenance.WriterVerified, warnings[0]);
-        Assert.Single(warnings, w => w == $"{LogProvenance.ForeignHolderPrefix}notepad");
-        Assert.Equal(5, warnings.Count); // stamp + 4 foreign (capped), dedup dropped one
+        Assert.Equal([LogProvenance.WriterVerified, LogProvenance.ForeignHolder], warnings);
+        Assert.DoesNotContain(warnings, w => w.Contains("notepad", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(warnings, w => w.Contains("SomeAntivirus", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(warnings, w => w.Contains(':'));
     }
 
     [Fact]
-    public void Foreign_Names_Are_Truncated_Under_The_Server_Cap()
+    public void Foreign_Marker_Stays_Under_The_Server_Cap()
     {
         var warnings = LogProvenance.BuildWarnings([H(2222, new string('x', 100))], OwnPid);
-        var foreign = Assert.Single(warnings, w => w.StartsWith(LogProvenance.ForeignHolderPrefix, StringComparison.Ordinal));
-        Assert.True(foreign.Length <= 64, $"server caps entries at 64 chars, got {foreign.Length}");
+        Assert.All(warnings, w => Assert.True(w.Length <= 64, $"server caps entries at 64 chars, got {w.Length}"));
     }
 }

@@ -96,7 +96,10 @@ enumeration would need undocumented NtQuerySystemInformation; rejected as
 fragile). EQ2 keeps its log open for append while /log is on, so
 "EverQuest2 among the holders" is the live-writer signal. `LogProvenance`
 (pure, tested) turns a probe into `client_warnings`: `log_writer_eq2` /
-`log_writer_unverified` + capped `log_foreign_holder:<name>` entries. The
+`log_writer_unverified` + a single bare `log_foreign_holder` marker when any
+process other than EQ2, ACT ("Advanced Combat Tracker" — the normal
+co-holder) or us has the log open. Since v0.5.6 the upload never names a
+process (privacy: earlier builds stamped `log_foreign_holder:<name>`). The
 probe runs on the UploadQueue drain thread seconds after the fight ends
 (~ms cost, once per fight, never per line); manual re-uploads of archived
 fights skip it (`withProvenance: false`) — probing NOW says nothing about
