@@ -121,6 +121,10 @@
                         <CheckBox Content="{loc:Tr Settings_UploadFinishedFights}" IsChecked="{Binding UploadEnabled}"
                                   FontSize="12" Margin="0,8,0,0"
                                   ToolTip="{loc:Tr Settings_UploadFinishedFightsTip}" />
+                        <CheckBox Content="{loc:Tr Settings_UploadRaidOnly}" IsChecked="{Binding UploadRaidOnly}"
+                                  IsEnabled="{Binding UploadEnabled}"
+                                  FontSize="12" Margin="20,6,0,0"
+                                  ToolTip="{loc:Tr Settings_UploadRaidOnlyTip}" />
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />

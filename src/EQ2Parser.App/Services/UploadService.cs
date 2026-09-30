@@ -16,6 +16,19 @@ public sealed class UploadService : IDisposable
     private readonly UploadQueue _queue;
     private LexiconUploadClient? _client;
     private volatile bool _enabled;
+    private volatile bool _raidOnly;
+
+    /// <summary>Player-ally count for the raid-only rule (SourceManager
+    /// wires the classifier — pets out, the same filter attendance uses).
+    /// Null = count unknown = 0, so only the boss list can pass a fight.</summary>
+    public Func<Encounter, int>? PlayerCounter { get; set; }
+
+    /// <summary>The site's raid-boss list for the raid-only rule; null =
+    /// no sync configured (headcount alone decides).</summary>
+    public RaidBossSyncService? RaidBosses { get; set; }
+
+    /// <summary>Fights skipped this session by the raid-only rule.</summary>
+    public int SkippedNonRaid { get; private set; }
 
     public UploadService()
     {
@@ -55,9 +68,12 @@ public sealed class UploadService : IDisposable
             ? client.UploadAsync(payload, ct)
             : Task.FromResult(new UploadResult(false, 0, Loc.Get("UploadSvc_NoTokenConfigured")));
 
-    public void Configure(string baseUrl, string? apiToken, bool enabled)
+    public void Configure(string baseUrl, string? apiToken, bool enabled, bool raidOnly = false)
     {
         _enabled = enabled;
+        _raidOnly = raidOnly;
+        if (enabled && raidOnly && RaidBosses is { } bosses)
+            _ = bosses.EnsureFreshAsync(DateTimeOffset.Now);
         // The old client is dropped, not disposed — an in-flight send may
         // still hold it, and the queue treats a disposed-client throw as a
         // plain failure anyway. Reconfigures are rare; the GC collects it.
@@ -140,6 +156,10 @@ public sealed class UploadService : IDisposable
     /// The raid-mains map rides the same cadence (one extra GET / 5 min).</summary>
     public void TickAttendance(SourceManager manager, DateTimeOffset now)
     {
+        // Raid-boss list refresh rides the same tick (cheap no-op until
+        // RefreshInterval elapses; only while the raid-only rule is in use).
+        if (Active && _raidOnly && RaidBosses is { } bosses)
+            _ = bosses.EnsureFreshAsync(now);
         // Entitlement unknown (e.g. offline at startup) → keep re-probing so
         // the Raid tab appears once the site answers.
         if (_client is { } probeClient && AttendanceAccess is null && now - _lastAccessProbe > AccessProbeRetry)
@@ -190,9 +210,28 @@ public sealed class UploadService : IDisposable
 
     public void OnEncounterEnded(Encounter encounter)
     {
-        if (!Active)
+        if (!ShouldAutoUpload(encounter))
             return;
         _queue.Enqueue(encounter, LogPaths.ParseServerName(encounter.SourceId));
+    }
+
+    /// <summary>The auto-upload gate: on + configured, and (when raid-only
+    /// is set) a raid fight per <see cref="RaidUploadFilter"/>. A skipped
+    /// fight is counted and named in the status line so an empty parses
+    /// page is explainable from the Settings card. Pump thread, under the
+    /// sync lock — the classifier walk is the same cost attendance pays.</summary>
+    internal bool ShouldAutoUpload(Encounter encounter)
+    {
+        if (!Active)
+            return false;
+        if (!_raidOnly || encounter.Title == Encounter.PlaceholderTitle)
+            return true;
+        var players = PlayerCounter?.Invoke(encounter) ?? 0;
+        if (RaidUploadFilter.IsRaidEncounter(encounter.Title, players, RaidBosses?.Bosses))
+            return true;
+        SkippedNonRaid++;
+        Set(Loc.Format("UploadSvc_SkippedNonRaid", encounter.Title, players));
+        return false;
     }
 
     /// <summary>Fight-tree manual upload: every source's view of the fight,

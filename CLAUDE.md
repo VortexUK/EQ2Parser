@@ -89,6 +89,21 @@ multi-log mirrors of one fight are mirror-grouped server-side by distinct
 logger_names, longest duration wins as primary. Token test button hits
 `/api/auth/whoami` (accepts bearer) and shows the Discord name.
 
+**Raid-only option (2026-09-30, `AppSettings.UploadRaidOnly`, off by
+default)**: with it on, `UploadService.ShouldAutoUpload` passes a fight only
+when `Core/Upload/RaidUploadFilter.IsRaidEncounter` says so — its title is
+on the site's curated raid-boss list OR it had ≥ 7 player allies
+(`RaidMinPlayers`, the site's own raid scope; the count comes from
+`CombatantClassifier.PlayerAllyNames`, pets out). The list is
+`GET /api/zones/raid-bosses` (public, `{version, bosses[]}`), synced by
+`App/Services/RaidBossSyncService` (cache `raid_bosses.json`, 6 h refresh
+on the shell tick, offline = last good list, none = headcount alone).
+`RaidUploadFilter.NormaliseBossName` mirrors the site's
+`_normalise_boss_key` (lowercase, NFC, apostrophe look-alikes → `'`) — keep
+them in step. Skipped fights are counted (`SkippedNonRaid`) and named in
+the Settings status line. Manual fight-tree uploads ignore the rule (the
+click is the consent).
+
 Log-writer provenance (2026-08-03): `Core/Logs/LogFileHolders` probes who
 holds the log file via the Windows **Restart Manager** (the supported
 "which processes are using this file" API — write-handle-specific

@@ -57,6 +57,9 @@ public sealed class AppSettingsCompatTests : IDisposable
         Assert.Equal(5, settings.RaidDkpPoints);
         Assert.Equal(10, settings.RaidLootMinBid);
         Assert.Null(settings.RaidCommandDirOverride);
+        // Raid-only upload filter (2026-09-30) stays off on old files — the
+        // fleet model (upload everything) is the documented default.
+        Assert.False(settings.UploadRaidOnly);
     }
 
     [Fact]

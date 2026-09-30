@@ -155,6 +155,13 @@ public sealed record AppSettings
     /// user opts in AND a token is saved.</summary>
     public bool UploadEnabled { get; init; }
 
+    /// <summary>With auto-upload on, send only raid fights: the target is on
+    /// the site's curated raid-boss list OR the fight had 7+ player allies
+    /// (see Core RaidUploadFilter). Off by default — the fleet model uploads
+    /// everything and lets the site's retention sweep clear trash. Manual
+    /// fight-tree uploads ignore this (the click is the consent).</summary>
+    public bool UploadRaidOnly { get; init; }
+
     /// <summary>EQ2Lexicon API token, DPAPI-encrypted for the current
     /// Windows user + base64 (see TokenProtector) — never plaintext, so a
     /// copied settings.json (or a quarantine copy) can't leak it.</summary>

@@ -258,6 +258,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                 VoiceStatus = Loc.Format("SettingsVm_NeuralFailed", reason));
         _loadingUpload = true;
         UploadEnabled = manager.Settings.UploadEnabled;
+        UploadRaidOnly = manager.Settings.UploadRaidOnly;
         _loadingUpload = false;
         _uploadTokenState = Loc.Get(manager.Settings.LexiconApiTokenProtected is null ? "SettingsVm_NoTokenSaved" : "SettingsVm_TokenSavedState");
         _uploadStatus = manager.Uploads.Status;
@@ -373,11 +374,27 @@ public sealed partial class SettingsViewModel : ObservableObject
         ReconfigureUploads();
     }
 
+    /// <summary>Only raid fights auto-upload (curated boss list OR 7+ player
+    /// allies). Persists + applies immediately; greyed out while auto-upload
+    /// is off.</summary>
+    [ObservableProperty]
+    private bool _uploadRaidOnly;
+
+    partial void OnUploadRaidOnlyChanged(bool value)
+    {
+        if (_loadingUpload)
+            return;
+        _manager.Settings = _manager.Settings with { UploadRaidOnly = value };
+        _manager.Settings.Save();
+        ReconfigureUploads();
+    }
+
     private void ReconfigureUploads() =>
         _manager.Uploads.Configure(
             _manager.Settings.LexiconBaseUrl,
             TokenProtector.Unprotect(_manager.Settings.LexiconApiTokenProtected),
-            _manager.Settings.UploadEnabled);
+            _manager.Settings.UploadEnabled,
+            _manager.Settings.UploadRaidOnly);
 
     /// <summary>PasswordBox can't data-bind its Password (by design) — the
     /// button passes the box itself and we read + clear it here, so the

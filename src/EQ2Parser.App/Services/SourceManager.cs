@@ -64,6 +64,7 @@ public sealed class SourceManager : IDisposable
     public TriggerService Triggers { get; }
     public TimerService SpellTimers { get; }
     public LexiconSyncService Lexicon { get; }
+    public RaidBossSyncService RaidBosses { get; }
     public StatusCalloutMonitor Callouts { get; } = new();
     public UndoService Undo { get; } = new();
 
@@ -95,6 +96,12 @@ public sealed class SourceManager : IDisposable
         SpellTimers = new TimerService(Audio, Sync);
         SharedTriggers = new SharedTriggerPrompter(this);
         Lexicon = new LexiconSyncService(Triggers, SpellTimers, Settings.LexiconBaseUrl, Settings.LexiconTriggersEnabled);
+        RaidBosses = new RaidBossSyncService(Settings.LexiconBaseUrl);
+        // Raid-only upload rule: classified player count (pets out) + the
+        // synced boss list. Wired before Configure so a startup with the
+        // rule on can kick the first sync.
+        Uploads.PlayerCounter = encounter => Classifier.PlayerAllyNames(encounter).Count();
+        Uploads.RaidBosses = RaidBosses;
         Callouts.MinVictims = Settings.CalloutMinPlayers;
         Callouts.Cooldown = TimeSpan.FromSeconds(Settings.CalloutCooldownSeconds);
         Callouts.Callout += (effect, count) =>
@@ -109,7 +116,8 @@ public sealed class SourceManager : IDisposable
         Uploads.Configure(
             Settings.LexiconBaseUrl,
             TokenProtector.Unprotect(Settings.LexiconApiTokenProtected),
-            Settings.UploadEnabled);
+            Settings.UploadEnabled,
+            Settings.UploadRaidOnly);
         // Archive collapse: whenever a mirror joins a fight, the archive
         // keeps only the primary copy (fires under Sync — correlator events
         // are raised inside Accept on the pump/restore path).
