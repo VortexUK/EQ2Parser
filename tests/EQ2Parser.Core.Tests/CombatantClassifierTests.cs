@@ -23,6 +23,10 @@ public class CombatantClassifierTests
     [InlineData("Zebekn", true)]
     [InlineData("Jentik", true)]
     [InlineData("jener", true)] // je + ner
+    // Fixed-name pets (deity pets) — player-shaped names, always pets.
+    [InlineData("Bonecruncher", true)]
+    [InlineData("Mistrunner", true)]
+    [InlineData("mistrunner", true)] // case-insensitive
     // Multi-word / empty / Unknown.
     [InlineData("Broomm's attack hawk", true)]
     [InlineData("Unknown", true)]

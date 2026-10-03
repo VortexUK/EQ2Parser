@@ -45,10 +45,14 @@ public sealed partial class CombatantClassifier(ClassIdentifier identifier)
         RegexOptions.IgnoreCase)]
     private static partial Regex AutoPetName();
 
-    /// <summary>Safety net for observed auto-pet names the regex misses.</summary>
+    /// <summary>Safety net for observed auto-pet names the regex misses, plus
+    /// fixed-name pets (deity pets) whose constant names collide with the
+    /// player-name shape — always pets, never players. Keep in step with the
+    /// site's KNOWN_EXAMPLES + FIXED_NAME_PETS (pet_detection.py).</summary>
     private static readonly HashSet<string> KnownPetNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "Gibab", "Zosn", "Kebn", "Zebekn", "Jentik",
+        "Bonecruncher", "Mistrunner",
     };
 
     public ClassIdentifier Identifier { get; } = identifier;
