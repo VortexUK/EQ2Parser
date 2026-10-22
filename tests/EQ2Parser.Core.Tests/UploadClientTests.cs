@@ -124,6 +124,27 @@ public class UploadClientTests
     }
 
     [Fact]
+    public void A_Fight_With_No_Ally_Damage_Ends_Where_It_Starts_Not_In_Year_One()
+    {
+        // No ally dealt damage, so the fight has no last damaging swing and
+        // Encounter.EndTime is MinValue. Shipped as-is it was stored as year
+        // 1, and the site's attendance reconstruction crashed on it.
+        var engine = new ParserEngine("log-a", "Menludiir");
+        engine.ChangeZone("Deathtoll");
+        Assert.True(engine.SetEncounter(T0, "Menludiir", "Lord Bob"));
+        engine.AddSwing(SwingCategory.Melee, false, "None", "Lord Bob", "Bash", 300, T0, "Menludiir", "crushing");
+        engine.AddSwing(SwingCategory.Healing, false, "None", "Menludiir", "Mend", 300, T0.AddSeconds(2), "Menludiir", "Hitpoints");
+        engine.EndCombat();
+        var encounter = engine.History[^1];
+        Assert.Equal(DateTimeOffset.MinValue, encounter.EndTime); // the logger only healed
+
+        var payload = PayloadBuilder.Build(encounter, "Varsoon");
+
+        Assert.DoesNotContain("0001", payload.Encounter.EndTime);
+        Assert.Equal(payload.Encounter.StartTime, payload.Encounter.EndTime);
+    }
+
+    [Fact]
     public async Task FetchRaidMains_Parses_The_Map_Case_Insensitively()
     {
         var handler = new GetHandler(HttpStatusCode.OK,

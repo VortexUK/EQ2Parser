@@ -130,7 +130,11 @@ public static class PayloadBuilder
                 Title = encounter.Title,
                 Zone = encounter.Zone.Length > 0 ? encounter.Zone : null,
                 StartTime = Ts(encounter.StartTime),
-                EndTime = Ts(encounter.EndTime),
+                // A fight in which no ally dealt damage has no last damaging
+                // swing, so EndTime is MinValue: the site stored year 1 for
+                // 1,780 such fights and attendance reconstruction crashed on
+                // one. Same clamp as the combatants below.
+                EndTime = Ts(encounter.EndTime == DateTimeOffset.MinValue ? encounter.StartTime : encounter.EndTime),
                 Duration = (int)encounterSeconds,
                 Damage = encounter.Damage,
                 EncDps = encounter.EncDps,
